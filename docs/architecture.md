@@ -7,9 +7,12 @@ real, or that changes the plan.
 
 ## Principles
 
-1. **The archive is the source of truth.** Every daily file from OFCOM is kept
-   unmodified. The database is derived from the archive and can be rebuilt from
-   it at any time, so a parsing bug never destroys information.
+1. **The archive is the source of truth.** Every daily file from OFCOM is
+   kept, in a separate repository,
+   [swisscoverage-data](https://github.com/mathieumaf/swisscoverage-data): the
+   original, and a line-per-site form that git can compare from one day to the
+   next. The database is derived from the archive and can be rebuilt from it at
+   any time, so a parsing bug never destroys information.
 2. **One API, several clients.** The web map and the MCP server read the same
    public HTTP API as everyone else. A feature that the map needs is a feature
    of the API.
@@ -27,7 +30,7 @@ real, or that changes the plan.
                      │
                      ▼
    ┌──────────────────────────────────┐
-   │ archive   one snapshot per day   │   planned
+   │ archive   one snapshot per day   │   exists (swisscoverage-data)
    └──────────────────────────────────┘
                      │
                      ▼
@@ -52,14 +55,15 @@ real, or that changes the plan.
    └─────────────┘      └─────────────┘
 ```
 
-| Part       | Path            | State   | Role                                                                                                                 |
-| ---------- | --------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| Core       | `packages/core` | exists  | Domain model, and parsers that turn source files into it. Pure TypeScript: no network, no database, no clock.        |
-| Database   | `packages/db`   | planned | Schema, migrations and queries for PostgreSQL with PostGIS. Converts positions from LV95 to WGS84.                   |
-| Import     | `apps/ingest`   | planned | Command-line program that reads a snapshot, compares it with the previous one and loads the result. Runs once a day. |
-| API        | `apps/api`      | planned | Public HTTP API with an OpenAPI description, and the MCP server built on the same queries.                           |
-| Web map    | `apps/web`      | planned | MapLibre map that reads the API.                                                                                     |
-| Deployment | `deploy/`       | planned | Docker Compose for local work and tests; a Helm chart for Kubernetes in production.                                  |
+| Part       | Path                                                                   | State   | Role                                                                                                                                      |
+| ---------- | ---------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Archive    | [swisscoverage-data](https://github.com/mathieumaf/swisscoverage-data) | exists  | A separate repository. A scheduled workflow downloads OFCOM's file once a day, checks it against the catalogue's checksum and commits it. |
+| Core       | `packages/core`                                                        | exists  | Domain model, and parsers that turn source files into it. Pure TypeScript: no network, no database, no clock.                             |
+| Database   | `packages/db`                                                          | planned | Schema, migrations and queries for PostgreSQL with PostGIS. Converts positions from LV95 to WGS84.                                        |
+| Import     | `apps/ingest`                                                          | planned | Command-line program that reads a snapshot, compares it with the previous one and loads the result. Runs once a day.                      |
+| API        | `apps/api`                                                             | planned | Public HTTP API with an OpenAPI description, and the MCP server built on the same queries.                                                |
+| Web map    | `apps/web`                                                             | planned | MapLibre map that reads the API.                                                                                                          |
+| Deployment | `deploy/`                                                              | planned | Docker Compose for local work and tests; a Helm chart for Kubernetes in production.                                                       |
 
 ## Where a change belongs
 

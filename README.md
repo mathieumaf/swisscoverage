@@ -18,7 +18,8 @@ swisscoverage aims to make that information easy to use, for everyone:
 - **A map** to explore sites by operator, technology and type.
 - **An API** so the data can be queried without opening the map.
 - **An MCP server** so AI assistants can answer questions from the same data.
-- **Open data**: every daily snapshot is archived, so the history of the
+- **Open data**: every daily snapshot is
+  [archived](https://github.com/mathieumaf/swisscoverage-data), so the history of the
   network can be studied and reproduced.
 
 The project is independent. It is not affiliated with any operator or with the

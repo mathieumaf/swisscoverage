@@ -29,6 +29,10 @@ The base dataset of the project.
 
 Attribution to use: "Source: Federal Office of Communications OFCOM".
 
+OFCOM replaces the file every day and keeps no history. Every version since
+23 November 2026 is kept in
+[swisscoverage-data](https://github.com/mathieumaf/swisscoverage-data).
+
 ### Fields
 
 Each feature is one site. Every property is a display string, repeated with the

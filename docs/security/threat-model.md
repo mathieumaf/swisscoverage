@@ -6,7 +6,8 @@ security review of pull requests, and the place that explains the promises in
 
 Revisit this page when exposure, identity, data access or privileged
 operations change: in practice, in the pull request that adds the database, the
-API, the MCP server, the archive job or the deployment.
+API, the MCP server or the deployment, or that changes how the archive is
+read.
 
 ## System and scope
 
@@ -24,8 +25,8 @@ into a map, a public API and an MCP server.
   [`mathieumaf/swisscoverage-data`](https://github.com/mathieumaf/swisscoverage-data).
   A scheduled workflow there downloads OFCOM's file once a day, commits it in a
   comparable form and attaches the original to a release
-  (`scripts/archive.sh`, `.github/workflows/archive.yml`). It is outside this
-  repository's review and branch protection.
+  (`scripts/archive.sh`, `.github/workflows/archive.yml`). Changes there do
+  not go through this repository's pull requests or its CI.
 
 **What is planned** ([architecture](../architecture.md)). Everything in this
 list is an assumption until the code exists, and is marked _unverified_ below.
@@ -80,7 +81,9 @@ personal data.
    project's model. Enforced today in `packages/core`: nothing from the file is
    evaluated, and a file in another reference system is rejected.
 2. **Fork → repository.** A pull request crosses when it is merged. Enforced by
-   review and by the required CI check.
+   the maintainer's review and by the `check` job. Branch protection on `main`
+   is what makes both mandatory. It is a repository setting, not a file: it
+   does not show in a diff, so confirm it is in place when it matters.
 3. **Repository → published artefact.** _Unverified._ A commit will cross when
    CI builds and publishes an image. The release workflow must run only on the
    protected branch, with the narrowest token that works.
