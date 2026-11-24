@@ -1,11 +1,16 @@
 # swisscoverage
 
 An open map, API and MCP server for mobile network antennas in Switzerland,
-built on OFCOM's open data. A TypeScript monorepo run with Bun. The project is
-at its beginning: `packages/core` exists, the apps are planned.
+built on OFCOM's open data. The project is at its beginning. Today the only
+code is `packages/core`, a parser in TypeScript run with Bun. The target is a
+backend in Go and a website in TypeScript, and the parser is ported to Go
+first.
 
-- `docs/architecture.md`: read before adding a package, an app or a dependency.
-  It says what exists, what is planned, and where a change belongs.
+- `docs/architecture.md`: read before adding a module, a command or a
+  dependency. It says what exists, what is planned, and where a change belongs.
+- `docs/decisions.md`: read before proposing another language, framework or
+  service. It says why each choice was made and what would reopen it.
+- `docs/roadmap.md`: the order of work, and what "done" means for each step.
 - `docs/data-sources.md`: read before touching a parser or adding data. It
   describes each source file and the rule on which data may be used.
 
@@ -56,8 +61,9 @@ Flag a change when:
 
 - **It loses what the source said.** A parser drops a station, or throws,
   because of one label it does not recognise, so a new upstream value blocks
-  the whole daily import. The expected behaviour is to keep the station, set
-  the field to `unknown` or `null`, and add a warning.
+  the whole daily import. The expected behaviour is to keep the station, keep
+  what the parser does recognise, set the rest to `unknown`, `null` or an empty
+  list, and add a warning.
 - **It invents meaning.** A parser guesses a value the file does not state:
   an operator for a bare station code, a technology, a default power class. Or
   it treats the station label as unique. One label appears at several
@@ -68,9 +74,13 @@ Flag a change when:
 - **It brings in data we may not use.** A fixture or data file that does not
   come from a source documented in `docs/data-sources.md`, anything scraped
   from another map or app, or a change that drops the attribution to OFCOM.
-- **It breaks the core boundary.** `packages/core` reads the network, the file
-  system, the environment, a database or the clock. It must stay pure so its
-  tests are deterministic and every app can rely on it.
+- **It breaks the parser's boundary.** The parser (`packages/core` today,
+  `backend/internal/ofcom` after the port) reads the network, the file system,
+  the environment, a database or the clock. It must stay pure so its tests are
+  deterministic.
+- **It opens a second path to the data.** The website or the MCP server
+  imports backend code or connects to the database instead of calling the
+  public API. Both are clients of the API, like any third party.
 
 Skip third-party texts: `LICENSE` and `CODE_OF_CONDUCT.md`. For
 `**/fixtures/*.json`, check where the sample comes from, not its formatting.
@@ -86,21 +96,23 @@ When paths overlap, the higher tier wins.
 
 - `.github/workflows/**`, `.github/dependabot.yml`: what runs with the
   repository's token, and what may merge.
-- `package.json`, `packages/*/package.json`, `apps/*/package.json`, `bun.lock`:
+- `package.json`, `packages/*/package.json`, `bun.lock`:
   the dependencies that run.
 - `AGENTS.md`, `CLAUDE.md`, `SECURITY.md`, `docs/security/**`: they steer
   review and shipping.
 - `docs/data-sources.md`: the list of sources the project may use. Adding one
   there is what allows its data in.
 - `LICENSE`: the terms of the whole project.
-- Planned, High from their first commit: `packages/db/**` (schema and
-  migrations), `apps/api/**` (the public API contract), `deploy/**` and any
-  `Dockerfile` (what is released and how).
+- Planned, High from their first commit: `backend/internal/store/**` (schema
+  and migrations), `openapi.json` and `backend/internal/api/**` (the public API
+  contract), `backend/go.mod`, `backend/go.sum`, `web/package.json` and
+  `web/bun.lock` (the dependencies that run), `deploy/**` and any `Dockerfile` (what is released
+  and how).
 
 **Low**
 
 - `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `docs/**` other
-  than the High paths above.
+  than the High and Medium paths.
 - `.github/ISSUE_TEMPLATE/**`, `.github/PULL_REQUEST_TEMPLATE.md`.
 - `**/*.test.ts`.
 
@@ -108,5 +120,7 @@ When paths overlap, the higher tier wins.
 
 - Everything not listed in High or Low: for example the source files under
   `packages/core/src/`, `biome.json` and `tsconfig.json`.
+- `docs/architecture.md` and `docs/decisions.md`: agents and contributors act
+  on them, so a wrong statement there misdirects real work.
 - `**/fixtures/**`: a fixture is data entering the repository, so its origin
   gets a real review.

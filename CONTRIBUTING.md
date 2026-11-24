@@ -24,9 +24,17 @@ bun install
 ## Where things go
 
 [docs/architecture.md](docs/architecture.md) explains the layout and has a
-section on where a change belongs. The short version: understanding a source
-file is plain TypeScript in `packages/core` with tests beside it, and anything
-that touches the database, the network or the clock lives in an app.
+section on where a change belongs. [docs/decisions.md](docs/decisions.md) says
+why it is built that way, and [docs/roadmap.md](docs/roadmap.md) what comes
+next.
+
+The short version: today the only code is the parser in `packages/core`, plain
+TypeScript with its tests beside it. The backend is planned in Go under
+`backend/` and the website in TypeScript under `web/`.
+
+The parser never touches the network, the file system, the environment, a
+database or the clock. Code that needs the database belongs in the backend.
+The website reaches the data only by calling the public API.
 
 ## Checks
 
