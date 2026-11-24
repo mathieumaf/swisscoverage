@@ -155,6 +155,27 @@ describe("parseMobileStations", () => {
     ]);
   });
 
+  test("does not mistake a label for a built-in property name", () => {
+    const result = parseMobileStations(
+      documentWith({
+        station: "constructor X",
+        typ_en: "toString",
+        adaptiv_en: "constructor",
+      }),
+    );
+
+    expect(result.stations[0]).toMatchObject({
+      operator: "other",
+      code: "constructor X",
+      kind: "unknown",
+      adaptive: null,
+    });
+    expect(result.warnings).toEqual([
+      'constructor X: unrecognised type "toString"',
+      'constructor X: unrecognised adaptive operation "constructor"',
+    ]);
+  });
+
   test("rejects a document that is not a FeatureCollection", () => {
     expect(() => parseMobileStations({ type: "Feature" })).toThrow(
       OfcomFormatError,

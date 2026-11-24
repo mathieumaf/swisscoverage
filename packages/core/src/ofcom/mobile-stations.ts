@@ -159,14 +159,14 @@ function parseFeature(
     warnings.push(`${name}: unrecognised ${field} "${value}"`);
 
   const kindLabel = readString(properties, "typ_en", where);
-  const kind = KINDS[kindLabel];
+  const kind = lookup(KINDS, kindLabel);
   if (kind === undefined) warn("type", kindLabel);
 
   const powerLabel = readString(properties, "power_en", where);
   const powerMatch = /^Power class : (very low|low|medium|high) \(/.exec(
     powerLabel,
   );
-  const powerClass = POWER_CLASSES[powerMatch?.[1] ?? ""];
+  const powerClass = lookup(POWER_CLASSES, powerMatch?.[1] ?? "");
   if (powerClass === undefined) warn("power class", powerLabel);
 
   const technologyLabel = readString(properties, "techno_en", where);
@@ -184,7 +184,7 @@ function parseFeature(
   }
 
   const adaptiveLabel = readString(properties, "adaptiv_en", where);
-  const adaptive = ADAPTIVE[adaptiveLabel];
+  const adaptive = lookup(ADAPTIVE, adaptiveLabel);
   if (adaptive === undefined) warn("adaptive operation", adaptiveLabel);
 
   return {
@@ -213,7 +213,8 @@ function parseFeature(
  */
 function splitName(name: string): { operator: Operator; code: string } {
   const space = name.indexOf(" ");
-  const operator = space > 0 ? OPERATORS[name.slice(0, space)] : undefined;
+  const operator =
+    space > 0 ? lookup(OPERATORS, name.slice(0, space)) : undefined;
   if (operator === undefined) return { operator: "other", code: name };
   return { operator, code: name.slice(space + 1) };
 }
@@ -244,6 +245,15 @@ function parseLimitValue(
     return null;
   }
   return Number(match[1]);
+}
+
+/**
+ * Reads a label from one of the tables above. A plain `table[label]` would
+ * also find inherited properties: the label "constructor" would come back as
+ * a function instead of as unknown.
+ */
+function lookup<T>(table: Record<string, T>, label: string): T | undefined {
+  return Object.hasOwn(table, label) ? table[label] : undefined;
 }
 
 function readPosition(geometry: unknown, where: string): Lv95 {
