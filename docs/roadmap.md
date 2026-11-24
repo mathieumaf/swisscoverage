@@ -55,9 +55,12 @@ The parser moves to Go, and the repository gets its Go toolchain.
 - **Proves, once, in the pull request.** Both parsers read the same downloaded
   snapshot and write their stations and warnings as JSON. The two outputs are
   identical. Only then is the TypeScript parser removed.
-- **Removes.** `packages/core`, `tsconfig.json`, and the `typecheck` and `test`
-  scripts. Biome stays at the root, installed with Bun, so that Markdown, JSON
-  and YAML keep being checked until `web/` brings TypeScript back in step 4.
+- **Removes.** `packages/core`, `tsconfig.json`, the `typecheck` and `test`
+  scripts, the TypeScript development dependencies and the `workspaces` field;
+  the `check` script is reduced to linting. Biome stays at the root, installed
+  with Bun, so that Markdown, JSON and YAML keep being checked until `web/`
+  brings TypeScript back in step 4. Node goes from CI if nothing else needs
+  it.
 - **Updates.** `README.md` (development), `CONTRIBUTING.md`, the pull request
   template, `AGENTS.md` (proof commands, review rules, and `**/testdata/**`
   beside `**/fixtures/**` in the review rule and the risk tiers),
@@ -134,7 +137,8 @@ The parser moves to Go, and the repository gets its Go toolchain.
 - **Decides.** The hostnames; the number of nodes; what Cloudflare caches, and
   whether it connects as a proxy or as a tunnel.
 - **Done when.**
-  - `swisscoverage.ch` serves the map from the cluster.
+  - The site's public address, chosen in this step, serves the map from the
+    cluster.
   - The daily import runs there on its own.
   - A deployment and a rollback have each been done once on purpose.
 
@@ -143,11 +147,11 @@ The parser moves to Go, and the repository gets its Go toolchain.
 ### Step 6. MCP server
 
 - **Adds.** The `mcp` command, with a client generated from `openapi.json`;
-  the test that fails when `internal/mcp` imports the store or a database
-  driver; its deployment, without database credentials.
-- **Done when.** An assistant connected to the server answers "which sites are
-  within one kilometre of these coordinates, and from which operators" from
-  live data.
+  the test that fails when `internal/mcp` imports the API package, the store
+  or a database driver; its deployment, without database credentials.
+- **Done when.** An assistant connected to the server over Streamable HTTP
+  answers "which sites are within one kilometre of these coordinates, and from
+  which operators" from live data.
 
 ### Step 7. Visible history
 

@@ -30,8 +30,11 @@ next.
 
 The short version: today the only code is the parser in `packages/core`, plain
 TypeScript with its tests beside it. The backend is planned in Go under
-`backend/` and the website in TypeScript under `web/`. The parser never touches
-the network, the database or the clock; whatever does belongs in the backend.
+`backend/` and the website in TypeScript under `web/`.
+
+The parser never touches the network, the file system, the environment, a
+database or the clock. Code that needs the database belongs in the backend.
+The website reaches the data only by calling the public API.
 
 ## Checks
 

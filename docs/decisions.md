@@ -130,8 +130,9 @@ Three facts shaped most choices:
 
 - **Decision.** The MCP server is its own package and its own deployment. It
   calls the public API over HTTP, through a client generated from
-  `openapi.json`, and has no access to the database. It is written in Go, as
-  the `mcp` command of the backend program.
+  `openapi.json`, and has no access to the database. Assistants reach it over
+  Streamable HTTP. It is written in Go, as the `mcp` command of the backend
+  program.
 - **Why.** It proves the API is enough: what the MCP server cannot do, no third
   party can. There is one path to the data to secure, not two. And it can be
   replaced without touching anything else.
@@ -141,8 +142,9 @@ Three facts shaped most choices:
 - **Cost.** One more deployment, from the same image, and one more HTTP round
   trip per question.
 - **Guardrail.** Sharing a program with the API must not become sharing its
-  access. A test fails the build when the MCP package imports the store or a
-  database driver, and the deployment gives it no database credentials.
+  access. A test fails the build when the MCP package imports the API package,
+  the store or a database driver, and the deployment gives it no database
+  credentials.
 - **Revisit when.** The Go SDK for MCP proves limiting. Because the server is
   only a client of the API, it can then be rewritten in another language
   without affecting the rest.
@@ -156,7 +158,8 @@ Three facts shaped most choices:
   import, instead of three to publish and to keep in step.
 - **To know.** Built together does not mean running the same version at every
   moment: two versions overlap during an update and after a rollback. The
-  schema and the API therefore stay compatible with the previous version.
+  schema and the API therefore stay compatible with the previous version, and
+  the API is updated before its clients and rolled back after them.
 - **Rejected.** One image per service: finer builds, more to publish.
 - **Revisit when.** The image becomes heavy, or one command needs dependencies
   the others should not carry.

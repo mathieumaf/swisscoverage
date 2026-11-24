@@ -129,9 +129,9 @@ Rules that keep it honest:
 - **`web/` and `internal/mcp` never use server code and never open a database
   connection.** They know the API through its contract only. Two things
   enforce it for the MCP server, which lives in the same program as the API: a
-  test fails the build when `internal/mcp` imports `internal/store` or a
-  database driver, and the deployment gives database credentials only to the
-  API, the import and the migrations.
+  test fails the build when `internal/mcp` imports `internal/api`,
+  `internal/store` or a database driver, and the deployment gives database
+  credentials only to the API, the import and the migrations.
 - **The archive stays in its own repository**, so cloning the code does not
   download years of data.
 
@@ -173,7 +173,7 @@ them. Choices marked "open" are questions listed in
 | -------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------ |
 | API, import, MCP     | Go                                        | One static binary. The MCP server may move to another language if Go fits it badly.  |
 | API description      | OpenAPI 3.1, generated from the Go code   | Huma is the candidate library.                                                       |
-| MCP server           | The official MCP SDK for Go               | Read-only tools over HTTP.                                                           |
+| MCP server           | The official MCP SDK for Go               | Read-only tools, served to assistants over Streamable HTTP.                          |
 | Database             | PostgreSQL with PostGIS                   | Spatial queries, history, and the rigorous LV95 to WGS84 transformation.             |
 | Database access      | SQL written by hand, typed code generated | `pgx` and `sqlc` are the candidates.                                                 |
 | Migrations           | Versioned SQL files                       | Applied by `migrate`. They stay compatible with the previous version of the program. |
@@ -251,7 +251,10 @@ An arrow goes from the one that calls to the one that answers.
 - **Two versions overlap during an update, and after a rollback.** The schema
   and the API therefore stay compatible with the previous version for as long
   as it may still run or be restored: a migration adds, with a default, and
-  does not remove or tighten what the previous version relies on.
+  does not remove or tighten what the previous version relies on, and a change
+  to the API adds without changing what exists. The order matters too: the API
+  is updated before the website and the MCP server, and rolled back after
+  them, so a client never calls an API older than the one it was built for.
 - **Secrets.** The database passwords are created inside the cluster and stay
   there. GitHub holds only an access limited to the application's namespace.
 - **Backups.** Daily, to object storage. Today they only save time, since
