@@ -130,7 +130,7 @@ describe("parseMobileStations", () => {
       kind: "unknown",
       powerClass: "unknown",
       technologies: [],
-      adaptive: true,
+      adaptive: null,
       permit: null,
       installationLimitValue: null,
     });
@@ -141,6 +141,17 @@ describe("parseMobileStations", () => {
       'Swisscom BIFO: unrecognised adaptive operation "Fully adaptive operation"',
       'Swisscom BIFO: unrecognised permit "Pending"',
       'Swisscom BIFO: unrecognised installation limit value "Installation limit value high"',
+    ]);
+  });
+
+  test("reports a technology it does not know beside ones it does", () => {
+    const result = parseMobileStations(
+      documentWith({ techno_en: "Technology 4G,6G" }),
+    );
+
+    expect(result.stations[0]?.technologies).toEqual(["4G"]);
+    expect(result.warnings).toEqual([
+      'Swisscom BIFO: unrecognised technology "Technology 4G,6G"',
     ]);
   });
 

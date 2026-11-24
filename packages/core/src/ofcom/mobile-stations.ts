@@ -44,8 +44,11 @@ export interface MobileStation {
   kind: StationKind;
   powerClass: PowerClass;
   technologies: Technology[];
-  /** True when at least part of the site runs adaptive antennas. */
-  adaptive: boolean;
+  /**
+   * True when at least part of the site runs adaptive antennas. Null when the
+   * file says something about it that this parser does not recognise.
+   */
+  adaptive: boolean | null;
   /** Null when OFCOM publishes no permit information for the site. */
   permit: Permit | null;
   /** Installation limit value in V/m. Null when absent or left blank. */
@@ -101,7 +104,10 @@ const POWER_CLASSES: Record<string, PowerClass> = {
 
 const TECHNOLOGIES: readonly Technology[] = ["2G", "3G", "4G", "5G"];
 
-const ADAPTIVE_LABEL = "Partially adaptive operation";
+const ADAPTIVE: Record<string, boolean> = {
+  "": false,
+  "Partially adaptive operation": true,
+};
 const EXEMPT_MARKER = "NISV Annex 1 No. 64";
 
 /**
@@ -164,15 +170,22 @@ function parseFeature(
   if (powerClass === undefined) warn("power class", powerLabel);
 
   const technologyLabel = readString(properties, "techno_en", where);
+  // Published as "Technology 3G,4G,5G". Every item of the list has to be
+  // known: one unknown item beside known ones must not go unnoticed.
+  const listed = technologyLabel
+    .replace(/^Technology\s*/, "")
+    .split(",")
+    .map((item) => item.trim());
   const technologies = TECHNOLOGIES.filter((technology) =>
-    new RegExp(`\\b${technology}\\b`).test(technologyLabel),
+    listed.includes(technology),
   );
-  if (technologies.length === 0) warn("technology", technologyLabel);
+  if (technologies.length !== listed.length) {
+    warn("technology", technologyLabel);
+  }
 
   const adaptiveLabel = readString(properties, "adaptiv_en", where);
-  if (adaptiveLabel !== "" && adaptiveLabel !== ADAPTIVE_LABEL) {
-    warn("adaptive operation", adaptiveLabel);
-  }
+  const adaptive = ADAPTIVE[adaptiveLabel];
+  if (adaptive === undefined) warn("adaptive operation", adaptiveLabel);
 
   return {
     name,
@@ -180,7 +193,7 @@ function parseFeature(
     kind: kind ?? "unknown",
     powerClass: powerClass ?? "unknown",
     technologies,
-    adaptive: adaptiveLabel !== "",
+    adaptive: adaptive ?? null,
     permit: parsePermit(
       readString(properties, "bewilligung_en", where),
       (value) => warn("permit", value),
