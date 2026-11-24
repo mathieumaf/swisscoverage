@@ -4,8 +4,8 @@ An open map of mobile network antennas in Switzerland, with a public API and an
 MCP server over the same data.
 
 > **Status: early development.** Nothing is deployed yet. The repository holds
-> the foundations: the data model, the parser for the official dataset, and the
-> project's documentation. Follow the [roadmap](#roadmap) to see what comes next.
+> the foundations: the parser for the official dataset, the architecture and
+> the plan. Follow the [roadmap](docs/roadmap.md) to see what comes next.
 
 ## Why
 
@@ -43,24 +43,36 @@ Source of the antenna data: Federal Office of Communications OFCOM.
 
 ## Roadmap
 
-| Version   | Scope                                                                                               |
-| --------- | --------------------------------------------------------------------------------------------------- |
-| **0.1**   | Map of the public OFCOM dataset with filters; daily archive of the source file; first API endpoints |
-| **0.x**   | History and deployment map (what changed, and when); statistics; data exports; MCP server           |
-| **1.0**   | Detailed data: frequency bands, directions, per-antenna sheets                                      |
-| **Later** | Speed tests and community features                                                                  |
+| Version   | Scope                                                                       |
+| --------- | --------------------------------------------------------------------------- |
+| **0.1**   | The public OFCOM dataset on a map with filters, behind a public API         |
+| **0.2**   | MCP server; history and deployment map (what changed, and when); statistics |
+| **1.0**   | Detailed data: frequency bands, directions, per-antenna sheets              |
+| **Later** | Estimated coverage, speed tests and community features                      |
 
-## Repository layout
+[docs/roadmap.md](docs/roadmap.md) breaks this down into steps and says where
+the project stands.
+
+## How it is built
+
+- **Backend in Go**: the public API, the daily import and the MCP server.
+- **Website in TypeScript**: the map and the pages, a client of the API like
+  any other.
+- **PostgreSQL with PostGIS** for the spatial queries and the history.
+- **Kubernetes** in production, described by a Helm chart anyone can reuse.
+
+Most of this is planned, not built. Today the repository holds:
 
 ```
-apps/        Deployable programs: API, web map, data import (none yet)
 packages/
-  core/      Domain model and the parser for the OFCOM dataset
-docs/        Architecture and data-source documentation
+  core/      Parser for the OFCOM dataset, in TypeScript; to be ported to Go
+docs/        Architecture, decisions, roadmap, data sources, security
 ```
 
-[docs/architecture.md](docs/architecture.md) explains how the pieces fit
-together and where a change belongs.
+- [docs/architecture.md](docs/architecture.md): how the pieces fit together
+  and where a change belongs.
+- [docs/decisions.md](docs/decisions.md): why each choice was made, and what
+  was rejected.
 
 ## Development
 
