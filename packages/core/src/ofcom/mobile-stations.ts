@@ -170,16 +170,18 @@ function parseFeature(
   if (powerClass === undefined) warn("power class", powerLabel);
 
   const technologyLabel = readString(properties, "techno_en", where);
-  // Published as "Technology 3G,4G,5G". Every item of the list has to be
-  // known: one unknown item beside known ones must not go unnoticed.
-  const listed = technologyLabel
-    .replace(/^Technology\s*/, "")
-    .split(",")
-    .map((item) => item.trim());
+  // Published as "Technology 3G,4G,5G". Only that exact shape is read: the
+  // prefix, then known items separated by commas. Anything else, such as an
+  // unknown item beside known ones or another separator, adds a warning.
+  const listed =
+    /^Technology (.+)$/
+      .exec(technologyLabel)?.[1]
+      ?.split(",")
+      .map((item) => item.trim()) ?? [];
   const technologies = TECHNOLOGIES.filter((technology) =>
     listed.includes(technology),
   );
-  if (technologies.length !== listed.length) {
+  if (listed.length === 0 || technologies.length !== listed.length) {
     warn("technology", technologyLabel);
   }
 

@@ -155,6 +155,16 @@ describe("parseMobileStations", () => {
     ]);
   });
 
+  test("reports a technology list that is not in the published shape", () => {
+    for (const label of ["4G,5G", "Technology4G", "Technology 4G/5G", ""]) {
+      const result = parseMobileStations(documentWith({ techno_en: label }));
+
+      expect(result.warnings).toEqual([
+        `Swisscom BIFO: unrecognised technology "${label}"`,
+      ]);
+    }
+  });
+
   test("does not mistake a label for a built-in property name", () => {
     const result = parseMobileStations(
       documentWith({
