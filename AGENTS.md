@@ -15,31 +15,30 @@ Everything in the repository and on GitHub is written in English.
 
 Run with Bun 1.4.5 and Node 26. Each command exits 0 when the change is good.
 
-| Command             | Proves                         | Expected            |
-| ------------------- | ------------------------------ | ------------------- |
-| `bun run check`     | lint, formatting, types, tests | ends with `0 fail`  |
-| `bun run lint`      | lint and formatting only       | `No fixes applied.` |
-| `bun run typecheck` | types only                     | no output           |
-| `bun run test`      | tests only                     | ends with `0 fail`  |
+| Command             | Proves                         | Expected                   |
+| ------------------- | ------------------------------ | -------------------------- |
+| `bun run check`     | lint, formatting, types, tests | prints `0 fail`            |
+| `bun run lint`      | lint and formatting only       | prints `No fixes applied.` |
+| `bun run typecheck` | types only                     | prints no TypeScript error |
+| `bun run test`      | tests only                     | prints `0 fail`            |
 
 `bun run format` fixes formatting and import order.
 
-There is no app to run yet. To see a parser change against real data, download
-today's public file into a temporary directory and parse it:
+There is no app to run yet. To see a parser change against real data, parse
+today's public file:
 
 ```sh
-TMP=$(mktemp -d)
-curl -sSfo "$TMP/stations.json" https://data.geo.admin.ch/ch.bakom.standorte-mobilfunkanlagen/standorte-mobilfunkanlagen/standorte-mobilfunkanlagen_2056.json
-bun -e 'import { parseMobileStations } from "./packages/core/src/index.ts"; const r = parseMobileStations(await Bun.file(process.argv[1]).json()); console.log(r.stations.length, "stations,", r.warnings.length, "warnings"); console.log(r.warnings.slice(0, 20).join("\n"));' "$TMP/stations.json"
-rm -r "$TMP"
+curl -sSf https://data.geo.admin.ch/ch.bakom.standorte-mobilfunkanlagen/standorte-mobilfunkanlagen/standorte-mobilfunkanlagen_2056.json | bun -e 'import { parseMobileStations } from "./packages/core/src/index.ts"; const r = parseMobileStations(await Bun.stdin.json()); console.log(r.stations.length, "stations,", r.warnings.length, "warnings"); console.log(r.warnings.slice(0, 20).join("\n"));'
 ```
 
-It prints about `23000 stations, 0 warnings`. A warning means the file contains
-a label the parser does not know: add it, with a fixture taken from that file.
+It prints about `23000 stations, 0 warnings` and exits 0. It exits with an
+error when the download fails or the file is not the dataset. A warning means
+the file contains a label the parser does not know: add it, with a fixture
+taken from that file.
 
 Everything above is safe: the download is a public, read-only file, fetched
-once, and nothing is written outside the temporary directory. The repository
-holds no credentials, no database and no deployment today.
+once, and nothing is written to disk. The repository holds no credentials, no
+database and no deployment today.
 
 Off limits:
 
@@ -91,6 +90,8 @@ When paths overlap, the higher tier wins.
   the dependencies that run.
 - `AGENTS.md`, `CLAUDE.md`, `SECURITY.md`, `docs/security/**`: they steer
   review and shipping.
+- `docs/data-sources.md`: the list of sources the project may use. Adding one
+  there is what allows its data in.
 - `LICENSE`: the terms of the whole project.
 - Planned, High from their first commit: `packages/db/**` (schema and
   migrations), `apps/api/**` (the public API contract), `deploy/**` and any
@@ -98,12 +99,14 @@ When paths overlap, the higher tier wins.
 
 **Low**
 
-- `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `docs/**` outside
-  `docs/security/`.
+- `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `docs/**` other
+  than the High paths above.
 - `.github/ISSUE_TEMPLATE/**`, `.github/PULL_REQUEST_TEMPLATE.md`.
-- `**/*.test.ts` and `**/fixtures/**`.
+- `**/*.test.ts`.
 
 **Medium**
 
-- Everything else, including `packages/core/src/**`, `biome.json` and
-  `tsconfig.json`.
+- Everything not listed in High or Low: for example the source files under
+  `packages/core/src/`, `biome.json` and `tsconfig.json`.
+- `**/fixtures/**`: a fixture is data entering the repository, so its origin
+  gets a real review.
