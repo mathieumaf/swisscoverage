@@ -61,8 +61,9 @@ Flag a change when:
 
 - **It loses what the source said.** A parser drops a station, or throws,
   because of one label it does not recognise, so a new upstream value blocks
-  the whole daily import. The expected behaviour is to keep the station, set
-  the field to `unknown` or `null`, and add a warning.
+  the whole daily import. The expected behaviour is to keep the station, keep
+  what the parser does recognise, set the rest to `unknown`, `null` or an empty
+  list, and add a warning.
 - **It invents meaning.** A parser guesses a value the file does not state:
   an operator for a bare station code, a technology, a default power class. Or
   it treats the station label as unique. One label appears at several
@@ -95,7 +96,7 @@ When paths overlap, the higher tier wins.
 
 - `.github/workflows/**`, `.github/dependabot.yml`: what runs with the
   repository's token, and what may merge.
-- `package.json`, `packages/*/package.json`, `apps/*/package.json`, `bun.lock`:
+- `package.json`, `packages/*/package.json`, `bun.lock`:
   the dependencies that run.
 - `AGENTS.md`, `CLAUDE.md`, `SECURITY.md`, `docs/security/**`: they steer
   review and shipping.
@@ -104,14 +105,14 @@ When paths overlap, the higher tier wins.
 - `LICENSE`: the terms of the whole project.
 - Planned, High from their first commit: `backend/internal/store/**` (schema
   and migrations), `openapi.json` and `backend/internal/api/**` (the public API
-  contract), `backend/go.mod`, `backend/go.sum` and `web/package.json` (the
-  dependencies that run), `deploy/**` and any `Dockerfile` (what is released
+  contract), `backend/go.mod`, `backend/go.sum`, `web/package.json` and
+  `web/bun.lock` (the dependencies that run), `deploy/**` and any `Dockerfile` (what is released
   and how).
 
 **Low**
 
 - `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `docs/**` other
-  than the High paths above.
+  than the High and Medium paths.
 - `.github/ISSUE_TEMPLATE/**`, `.github/PULL_REQUEST_TEMPLATE.md`.
 - `**/*.test.ts`.
 

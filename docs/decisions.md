@@ -114,12 +114,13 @@ Three facts shaped most choices:
 
 ### 8. A generated API contract, committed to the repository
 
-- **Decision.** The backend generates `openapi.json` from its code. The file is
-  committed, and CI fails when it differs from what the code produces.
+- **Decision.** The backend prints the API contract from its code
+  (`swisscoverage openapi`). The result is committed as `openapi.json`, and CI
+  fails when the committed file differs from what the code prints.
 - **Why.** The contract is the only thing the website and the MCP server know
   about the backend. Committed, every change to it appears in a pull request's
-  diff. The website's types are generated from it, so a breaking change fails
-  a build instead of production.
+  diff. The website's types and the MCP server's client are generated from it,
+  so a breaking change fails a build instead of production.
 - **Rejected.** Writing the contract by hand first: more rigorous, slower for
   one maintainer. GraphQL: more than read-only data needs.
 - **Revisit when.** Third parties depend on the API enough to want each change
@@ -127,9 +128,10 @@ Three facts shaped most choices:
 
 ### 9. The MCP server is a separate client of the API
 
-- **Decision.** The MCP server is its own module and its own deployment. It
-  calls the public API over HTTP and has no access to the database. It is
-  written in Go, as a command of the backend program.
+- **Decision.** The MCP server is its own package and its own deployment. It
+  calls the public API over HTTP, through a client generated from
+  `openapi.json`, and has no access to the database. It is written in Go, as
+  the `mcp` command of the backend program.
 - **Why.** It proves the API is enough: what the MCP server cannot do, no third
   party can. There is one path to the data to secure, not two. And it can be
   replaced without touching anything else.
@@ -138,18 +140,24 @@ Three facts shaped most choices:
   consistent.
 - **Cost.** One more deployment, from the same image, and one more HTTP round
   trip per question.
+- **Guardrail.** Sharing a program with the API must not become sharing its
+  access. A test fails the build when the MCP package imports the store or a
+  database driver, and the deployment gives it no database credentials.
 - **Revisit when.** The Go SDK for MCP proves limiting. Because the server is
   only a client of the API, it can then be rewritten in another language
   without affecting the rest.
 
 ### 10. One backend program with several commands
 
-- **Decision.** The Go backend is one program: `serve`, `mcp`, `ingest` and
-  `migrate`. It ships as one image. The website ships as a second image.
-- **Why.** One build, and the API, the MCP server and the import are always at
-  the same version.
-- **Rejected.** One image per service: finer builds, more to publish and to
-  keep in step.
+- **Decision.** The Go backend is one program. `serve`, `mcp`, `ingest` and
+  `migrate` run in production; `parse` and `openapi` are tools for developers.
+  It ships as one image. The website ships as a second image.
+- **Why.** One build from one commit for the API, the MCP server and the
+  import, instead of three to publish and to keep in step.
+- **To know.** Built together does not mean running the same version at every
+  moment: two versions overlap during an update and after a rollback. The
+  schema and the API therefore stay compatible with the previous version.
+- **Rejected.** One image per service: finer builds, more to publish.
 - **Revisit when.** The image becomes heavy, or one command needs dependencies
   the others should not carry.
 
@@ -213,10 +221,10 @@ Three facts shaped most choices:
   several people or environments, too much for one maintainer.
 - **Revisit when.** Other people deploy, or there are several environments.
 
-### 16. Cloudflare in front of the website and the API
+### 16. Cloudflare in front of the public hostnames
 
 - **Decision.** The domain's name servers point to Cloudflare, which sits in
-  front of the website and the API.
+  front of every public hostname: the website, the API and the MCP server.
 - **Why.** Public data that changes once a day suits a CDN well. The cluster
   receives less traffic and is not exposed directly.
 - **To know.** All visitor traffic then passes through a company outside
@@ -226,8 +234,8 @@ Three facts shaped most choices:
   standard cache headers and work without it, and the Helm chart does not
   assume it.
 - **Revisit when.** It gets in the way of API or MCP clients, or the project
-  wants to state that no traffic leaves Switzerland. What Cloudflare caches is
-  still open, see below.
+  wants to state that no traffic leaves Switzerland. What Cloudflare caches,
+  and how it connects to the cluster, are still open, see below.
 
 ### 17. AGPL-3.0 for the code
 
@@ -243,14 +251,16 @@ Three facts shaped most choices:
 ## Open
 
 Not decided yet. Each has a recommendation and the step of the
-[roadmap](roadmap.md) by which it must be settled.
+[roadmap](roadmap.md) that settles it.
 
-| Question                                                                            | Recommendation                                                                                               | Settle before  |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------- |
-| A page per station, found by search engines, or only a map?                         | Pages. Without them the site could be a browser-only application, with one service fewer.                    | Website        |
-| Which base map?                                                                     | The official swisstopo base map if its terms allow it, otherwise OpenFreeMap. The terms are not checked yet. | Website        |
-| The API on `api.swisscoverage.ch` or under `swisscoverage.ch/api`?                  | The subdomain: the API's address then does not depend on the website.                                        | Going online   |
-| Two small cluster nodes, or one?                                                    | Two, so that a cluster update does not interrupt the site. Prices are not checked yet.                       | Going online   |
-| What does Cloudflare do: cache pages and API responses, or only CDN and protection? | Start with DNS, CDN for static files and protection. Decide on caching responses with real measurements.     | Going online   |
-| Cloudflare as a plain proxy, or as a tunnel into the cluster?                       | The plain proxy. A tunnel saves a load balancer and a public address, and makes the site depend on it.       | Going online   |
-| Which Go libraries for OpenAPI, SQL generation and migrations?                      | Huma, `sqlc` with `pgx`, and plain SQL migration files. Confirmed in the step that introduces each.          | Their own step |
+| Question                                                                            | Recommendation                                                                                                                                                | Settled in    |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| A page per station, found by search engines, or only a map?                         | Pages, rendered on the server. Without them the site is a browser-only application and the `web` image serves static files.                                   | Step 4        |
+| Which base map?                                                                     | The official swisstopo base map if its terms allow it, otherwise OpenFreeMap. The terms are not checked yet.                                                  | Step 4        |
+| Which service turns an address into coordinates, and who calls it?                  | swisstopo's public search service, called from the browser, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first. | Step 4        |
+| The API on `api.swisscoverage.ch` or under `swisscoverage.ch/api`?                  | The subdomain: the API's address then does not depend on the website.                                                                                         | Step 5        |
+| Two small cluster nodes, or one?                                                    | Two, so that a cluster update does not interrupt the site. Prices are not checked yet.                                                                        | Step 5        |
+| What does Cloudflare do: cache pages and API responses, or only CDN and protection? | Start with DNS, CDN for static files and protection. Decide on caching responses with real measurements.                                                      | Step 5        |
+| Cloudflare as a plain proxy, or as a tunnel into the cluster?                       | The plain proxy. A tunnel saves a load balancer and a public address, but makes the site depend on Cloudflare, which would reopen decision 16's guardrail.    | Step 5        |
+| Which source for cantons and municipalities?                                        | swisstopo's open boundaries dataset, loaded into PostGIS, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first.   | Step 8        |
+| Which Go libraries for OpenAPI, SQL generation and migrations?                      | Huma, `sqlc` with `pgx`, and plain SQL migration files.                                                                                                       | Steps 2 and 3 |

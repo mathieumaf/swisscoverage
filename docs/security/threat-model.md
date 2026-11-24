@@ -31,13 +31,16 @@ into a map, a public API and an MCP server.
 **What is planned** ([architecture](../architecture.md)). Everything in this
 list is an assumption until the code exists, and is marked _unverified_ below.
 
-- A backend in Go, one program with several commands: an import that loads
-  snapshots into PostgreSQL with PostGIS, and a public, read-only HTTP API.
-- An MCP server and a website. Both are clients of the public API over HTTP
-  and have no access to the database.
+- A backend in Go, one program with four commands in production: `serve`, the
+  public, read-only HTTP API; `mcp`, the MCP server; `ingest`, the import that
+  loads snapshots into PostgreSQL with PostGIS; and `migrate`, which changes
+  the schema.
+- The MCP server and a website. Both are clients of the public API over HTTP
+  and have no access to the database. The website is a server exposed to the
+  internet, not only a page in a browser.
 - Container images published to the GitHub container registry, deployed to a
   Kubernetes cluster with a Helm chart.
-- Cloudflare in front of the website and the API, for DNS and as a CDN.
+- Cloudflare in front of every public hostname, for DNS and as a CDN.
 
 Nothing is deployed. There are no users, accounts, credentials or stored
 personal data.
@@ -67,16 +70,17 @@ personal data.
 
 ## Entry points and untrusted input
 
-| Entry point                | State        | Input                                          | Handling                                                                                                                                                                                 |
-| -------------------------- | ------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OFCOM file                 | exists       | A GeoJSON document of about 28 MB              | `parseMobileStations` validates the shape and the reference system, reads strings as data, and reports unknown labels as warnings                                                        |
-| Fixtures in the repository | exists       | JSON samples added by contributors             | Reviewed for provenance (`AGENTS.md`, Code Review Rules); parsed like any other file                                                                                                     |
-| Pull requests from forks   | exists       | Code, workflows, lockfile                      | CI runs on `pull_request` with `contents: read` and no secrets; changes to workflows and dependencies are High risk                                                                      |
-| Dependencies               | exists       | Packages from the registry, GitHub actions     | Locked install (`bun install --frozen-lockfile`); actions pinned to a commit; Dependabot proposes updates as pull requests                                                               |
-| Daily archive job          | exists       | OFCOM's catalogue and file, fetched unattended | In `swisscoverage-data`: checks the address, dates and checksum format before use, verifies the file's SHA-256 against the catalogue, and passes values to steps through the environment |
-| Public API                 | _unverified_ | Query parameters                               | Must validate every parameter, use parameterised SQL, bound result sizes, and stay read-only                                                                                             |
-| MCP server                 | _unverified_ | Tool arguments chosen by an AI model           | Must treat arguments as untrusted, reach data only through the public API, and return API data as data, never as instructions to follow                                                  |
-| Web map                    | _unverified_ | Station labels and other strings from the API  | Must render them as text, never as HTML                                                                                                                                                  |
+| Entry point                | State        | Input                                                           | Handling                                                                                                                                                                                 |
+| -------------------------- | ------------ | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OFCOM file                 | exists       | A GeoJSON document of about 28 MB                               | `parseMobileStations` validates the shape and the reference system, reads strings as data, and reports unknown labels as warnings                                                        |
+| Fixtures in the repository | exists       | JSON samples added by contributors                              | Reviewed for provenance (`AGENTS.md`, Code Review Rules); parsed like any other file                                                                                                     |
+| Pull requests from forks   | exists       | Code, workflows, lockfile                                       | CI runs on `pull_request` with `contents: read` and no secrets; changes to workflows and dependencies are High risk                                                                      |
+| Dependencies               | exists       | Packages from the registry, GitHub actions                      | Locked install (`bun install --frozen-lockfile`); actions pinned to a commit; Dependabot proposes updates as pull requests                                                               |
+| Daily archive job          | exists       | OFCOM's catalogue and file, fetched unattended                  | In `swisscoverage-data`: checks the address, dates and checksum format before use, verifies the file's SHA-256 against the catalogue, and passes values to steps through the environment |
+| Public API                 | _unverified_ | Query parameters                                                | Must validate every parameter, use parameterised SQL, bound result sizes, and stay read-only                                                                                             |
+| MCP server                 | _unverified_ | Tool arguments chosen by an AI model                            | Must treat arguments as untrusted, reach data only through the public API, and return API data as data, never as instructions to follow                                                  |
+| Website server             | _unverified_ | Request paths, query parameters and the language in the address | Must validate them, and build its calls to the API only from a fixed base address, never from what a visitor sends                                                                       |
+| Website in the browser     | _unverified_ | Station labels and other strings from the API                   | Must render them as text, never as HTML                                                                                                                                                  |
 
 ## Trust boundaries
 
@@ -93,10 +97,14 @@ personal data.
 4. **Internet → API.** _Unverified._ Requests will cross into SQL queries.
 5. **API → database.** _Unverified._ The API should connect with a role that
    can only read. It is the only service exposed to the internet that connects
-   to the database.
+   to the database. The import writes data and the migrations change the
+   schema, each with its own role, and neither is reachable from the internet.
 6. **MCP server and website → API.** _Unverified._ Both call the public API
    like any third party. Neither may hold database credentials, so a flaw in
-   either exposes nothing the API does not already publish.
+   either exposes nothing the API does not already publish. The MCP server
+   ships in the same image as the API, the import and the migrations, so this
+   holds only if each deployment gets its own credentials and network access,
+   and if the MCP package cannot import the database code.
 7. **Internet → Cloudflare → cluster.** _Unverified._ Cloudflare will
    terminate visitors' TLS and forward requests to the cluster. It then sees
    all visitor traffic, and a response it caches is served without reaching
