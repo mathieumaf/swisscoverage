@@ -130,7 +130,7 @@ describe("parseMobileStations", () => {
       kind: "unknown",
       powerClass: "unknown",
       technologies: [],
-      adaptive: true,
+      adaptive: null,
       permit: null,
       installationLimitValue: null,
     });
@@ -141,6 +141,48 @@ describe("parseMobileStations", () => {
       'Swisscom BIFO: unrecognised adaptive operation "Fully adaptive operation"',
       'Swisscom BIFO: unrecognised permit "Pending"',
       'Swisscom BIFO: unrecognised installation limit value "Installation limit value high"',
+    ]);
+  });
+
+  test("reports a technology it does not know beside ones it does", () => {
+    const result = parseMobileStations(
+      documentWith({ techno_en: "Technology 4G,6G" }),
+    );
+
+    expect(result.stations[0]?.technologies).toEqual(["4G"]);
+    expect(result.warnings).toEqual([
+      'Swisscom BIFO: unrecognised technology "Technology 4G,6G"',
+    ]);
+  });
+
+  test("reports a technology list that is not in the published shape", () => {
+    for (const label of ["4G,5G", "Technology4G", "Technology 4G/5G", ""]) {
+      const result = parseMobileStations(documentWith({ techno_en: label }));
+
+      expect(result.warnings).toEqual([
+        `Swisscom BIFO: unrecognised technology "${label}"`,
+      ]);
+    }
+  });
+
+  test("does not mistake a label for a built-in property name", () => {
+    const result = parseMobileStations(
+      documentWith({
+        station: "constructor X",
+        typ_en: "toString",
+        adaptiv_en: "constructor",
+      }),
+    );
+
+    expect(result.stations[0]).toMatchObject({
+      operator: "other",
+      code: "constructor X",
+      kind: "unknown",
+      adaptive: null,
+    });
+    expect(result.warnings).toEqual([
+      'constructor X: unrecognised type "toString"',
+      'constructor X: unrecognised adaptive operation "constructor"',
     ]);
   });
 

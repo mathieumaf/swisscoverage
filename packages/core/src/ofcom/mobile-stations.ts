@@ -44,8 +44,11 @@ export interface MobileStation {
   kind: StationKind;
   powerClass: PowerClass;
   technologies: Technology[];
-  /** True when at least part of the site runs adaptive antennas. */
-  adaptive: boolean;
+  /**
+   * True when at least part of the site runs adaptive antennas. Null when the
+   * file says something about it that this parser does not recognise.
+   */
+  adaptive: boolean | null;
   /** Null when OFCOM publishes no permit information for the site. */
   permit: Permit | null;
   /** Installation limit value in V/m. Null when absent or left blank. */
@@ -101,7 +104,10 @@ const POWER_CLASSES: Record<string, PowerClass> = {
 
 const TECHNOLOGIES: readonly Technology[] = ["2G", "3G", "4G", "5G"];
 
-const ADAPTIVE_LABEL = "Partially adaptive operation";
+const ADAPTIVE: Record<string, boolean> = {
+  "": false,
+  "Partially adaptive operation": true,
+};
 const EXEMPT_MARKER = "NISV Annex 1 No. 64";
 
 /**
@@ -153,26 +159,35 @@ function parseFeature(
     warnings.push(`${name}: unrecognised ${field} "${value}"`);
 
   const kindLabel = readString(properties, "typ_en", where);
-  const kind = KINDS[kindLabel];
+  const kind = lookup(KINDS, kindLabel);
   if (kind === undefined) warn("type", kindLabel);
 
   const powerLabel = readString(properties, "power_en", where);
   const powerMatch = /^Power class : (very low|low|medium|high) \(/.exec(
     powerLabel,
   );
-  const powerClass = POWER_CLASSES[powerMatch?.[1] ?? ""];
+  const powerClass = lookup(POWER_CLASSES, powerMatch?.[1] ?? "");
   if (powerClass === undefined) warn("power class", powerLabel);
 
   const technologyLabel = readString(properties, "techno_en", where);
+  // Published as "Technology 3G,4G,5G". Only that exact shape is read: the
+  // prefix, then known items separated by commas. Anything else, such as an
+  // unknown item beside known ones or another separator, adds a warning.
+  const listed =
+    /^Technology (.+)$/
+      .exec(technologyLabel)?.[1]
+      ?.split(",")
+      .map((item) => item.trim()) ?? [];
   const technologies = TECHNOLOGIES.filter((technology) =>
-    new RegExp(`\\b${technology}\\b`).test(technologyLabel),
+    listed.includes(technology),
   );
-  if (technologies.length === 0) warn("technology", technologyLabel);
+  if (listed.length === 0 || technologies.length !== listed.length) {
+    warn("technology", technologyLabel);
+  }
 
   const adaptiveLabel = readString(properties, "adaptiv_en", where);
-  if (adaptiveLabel !== "" && adaptiveLabel !== ADAPTIVE_LABEL) {
-    warn("adaptive operation", adaptiveLabel);
-  }
+  const adaptive = lookup(ADAPTIVE, adaptiveLabel);
+  if (adaptive === undefined) warn("adaptive operation", adaptiveLabel);
 
   return {
     name,
@@ -180,7 +195,7 @@ function parseFeature(
     kind: kind ?? "unknown",
     powerClass: powerClass ?? "unknown",
     technologies,
-    adaptive: adaptiveLabel !== "",
+    adaptive: adaptive ?? null,
     permit: parsePermit(
       readString(properties, "bewilligung_en", where),
       (value) => warn("permit", value),
@@ -200,7 +215,8 @@ function parseFeature(
  */
 function splitName(name: string): { operator: Operator; code: string } {
   const space = name.indexOf(" ");
-  const operator = space > 0 ? OPERATORS[name.slice(0, space)] : undefined;
+  const operator =
+    space > 0 ? lookup(OPERATORS, name.slice(0, space)) : undefined;
   if (operator === undefined) return { operator: "other", code: name };
   return { operator, code: name.slice(space + 1) };
 }
@@ -231,6 +247,15 @@ function parseLimitValue(
     return null;
   }
   return Number(match[1]);
+}
+
+/**
+ * Reads a label from one of the tables above. A plain `table[label]` would
+ * also find inherited properties: the label "constructor" would come back as
+ * a function instead of as unknown.
+ */
+function lookup<T>(table: Record<string, T>, label: string): T | undefined {
+  return Object.hasOwn(table, label) ? table[label] : undefined;
 }
 
 function readPosition(geometry: unknown, where: string): Lv95 {
