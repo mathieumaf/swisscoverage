@@ -28,7 +28,7 @@ There is no app to run yet. To see a parser change against real data, parse
 today's public file:
 
 ```sh
-curl -sSf https://data.geo.admin.ch/ch.bakom.standorte-mobilfunkanlagen/standorte-mobilfunkanlagen/standorte-mobilfunkanlagen_2056.json | bun -e 'import { parseMobileStations } from "./packages/core/src/index.ts"; const r = parseMobileStations(await Bun.stdin.json()); console.log(r.stations.length, "stations,", r.warnings.length, "warnings"); console.log(r.warnings.slice(0, 20).join("\n"));'
+(set -o pipefail; curl -sSf https://data.geo.admin.ch/ch.bakom.standorte-mobilfunkanlagen/standorte-mobilfunkanlagen/standorte-mobilfunkanlagen_2056.json | bun -e 'import { parseMobileStations } from "./packages/core/src/index.ts"; const r = parseMobileStations(await Bun.stdin.json()); console.log(r.stations.length, "stations,", r.warnings.length, "warnings"); console.log(r.warnings.slice(0, 20).join("\n"));')
 ```
 
 It prints about `23000 stations, 0 warnings` and exits 0. It exits with an
