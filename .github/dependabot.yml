@@ -1,0 +1,32 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # JavaScript dependencies (Bun reads package.json and bun.lock).
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "fix"
+      prefix-development: "chore"
+      include: "scope"
+    groups:
+      # Majors stay ungrouped so each one is reviewed on its own.
+      js-production-dependencies:
+        dependency-type: "production"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      js-development-dependencies:
+        dependency-type: "development"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

@@ -1,0 +1,21 @@
+# Dependencies and caches
+node_modules/
+*.tsbuildinfo
+
+# Environment files
+.env*
+!.env.example
+*.local
+
+# Build and test outputs
+dist/
+coverage/
+
+# Local data: downloaded snapshots and database volumes never belong in git
+data/
+*.dump
+
+# Local tooling
+.DS_Store
+*.pem
+*-debug.log*

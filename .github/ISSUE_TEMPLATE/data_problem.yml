@@ -1,0 +1,32 @@
+name: Data problem
+description: A site is missing, misplaced or described wrongly.
+labels: [data]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        swisscoverage republishes official data. If the error is already in the
+        [OFCOM map](https://map.geo.admin.ch/?topic=funksender), it has to be fixed at the
+        source, but we still want to know about it.
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong
+      description: The site (operator and station code, or coordinates) and what should be different.
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Is the same error on the OFCOM map?
+      options:
+        - "Yes"
+        - "No, only in swisscoverage"
+        - I have not checked
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How do you know
+      description: A link, a document or an observation. Do not paste data copied from another map or app.

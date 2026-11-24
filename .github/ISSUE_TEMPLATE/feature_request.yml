@@ -1,0 +1,16 @@
+name: Feature request
+description: An idea for the map, the API, the MCP server or the data.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The question you want to answer or the task you want to get done.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: Your idea, if you have one. A new data source needs its publisher and its terms of use.
