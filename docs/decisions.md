@@ -279,8 +279,8 @@ Three facts shaped most choices:
 - **Decision.** The import loads snapshots in the order they were published.
   It refuses a snapshot older than the latest one loaded, a loaded snapshot
   whose checksum changed in the archive, a file that is not the one the
-  index describes, and a file with less than half the sites of the one before
-  unless a person allows it.
+  index describes, a snapshot dated in the future, and a file with less than
+  half the sites of the one before unless a person allows it.
 - **Why.** Each snapshot is recorded as differences from the one before, so
   inserting one in the middle would mean rewriting what follows. And the
   archive is written by an unattended job: a wrong or truncated file would

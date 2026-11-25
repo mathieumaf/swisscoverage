@@ -114,7 +114,7 @@ func (a *testArchive) arguments() []string {
 	}
 }
 
-// add publishes a file on a day of November 2026 and lists it in the index.
+// add publishes a file on a day of October 2026, safely in the past and lists it in the index.
 // It returns the file's checksum.
 func (a *testArchive) add(day int, file []byte) string {
 	a.t.Helper()
@@ -124,7 +124,7 @@ func (a *testArchive) add(day int, file []byte) string {
 	if err := writer.Close(); err != nil {
 		a.t.Fatal(err)
 	}
-	name := fmt.Sprintf("mobile-stations_2026-11-%02d.json.gz", day)
+	name := fmt.Sprintf("mobile-stations_2026-10-%02d.json.gz", day)
 	a.files["/releases/raw-2026/"+name] = compressed.Bytes()
 
 	var document struct {
@@ -136,7 +136,7 @@ func (a *testArchive) add(day int, file []byte) string {
 	sum := sha256.Sum256(file)
 	checksum := hex.EncodeToString(sum[:])
 	a.index = append(a.index, fmt.Sprintf(
-		`{"published":"2026-11-%02dT22:01:35.611529Z","sha256":"%s","sites":%d,"release":"raw-2026","file":"%s"}`+"\n",
+		`{"published":"2026-10-%02dT22:01:35.611529Z","sha256":"%s","sites":%d,"release":"raw-2026","file":"%s"}`+"\n",
 		day, checksum, len(document.Features), name))
 	return checksum
 }
@@ -190,9 +190,9 @@ func TestIngestLoadsTheArchiveInOrder(t *testing.T) {
 
 	stdout, stderr, status := callWith(t, address, archive.arguments()...)
 
-	const want = `2026-11-23T22:01:35Z: 8 sites, 8 appeared, 0 disappeared, 0 changed, 0 warnings
-2026-11-24T22:01:35Z: 8 sites, 1 appeared, 1 disappeared, 1 changed, 0 warnings
-2026-11-25T22:01:35Z: 8 sites, 0 appeared, 0 disappeared, 0 changed, 0 warnings
+	const want = `2026-10-23T22:01:35Z: 8 sites, 8 appeared, 0 disappeared, 0 changed, 0 warnings
+2026-10-24T22:01:35Z: 8 sites, 1 appeared, 1 disappeared, 1 changed, 0 warnings
+2026-10-25T22:01:35Z: 8 sites, 0 appeared, 0 disappeared, 0 changed, 0 warnings
 Loaded 3 snapshots. The database holds the 3 snapshots of the archive.
 `
 	if stdout != want || stderr != "" || status != 0 {
@@ -223,7 +223,7 @@ Loaded 3 snapshots. The database holds the 3 snapshots of the archive.
 	// A snapshot archived later is the only one loaded.
 	archive.add(26, sampleWith(t, unchanged))
 	stdout, _, status = callWith(t, address, archive.arguments()...)
-	const wantLater = `2026-11-26T22:01:35Z: 9 sites, 1 appeared, 0 disappeared, 1 changed, 0 warnings
+	const wantLater = `2026-10-26T22:01:35Z: 9 sites, 1 appeared, 0 disappeared, 1 changed, 0 warnings
 Loaded 1 snapshot. The database holds the 4 snapshots of the archive.
 `
 	if stdout != wantLater || status != 0 {
@@ -243,11 +243,11 @@ func TestIngestReportsWarningsAndStillLoads(t *testing.T) {
 	stdout, stderr, status := callWith(t, address, archive.arguments()...)
 
 	if !strings.HasPrefix(stdout,
-		"2026-11-23T22:01:35Z: 10 sites, 9 appeared, 0 disappeared, 0 changed, 2 warnings\n") || status != 0 {
+		"2026-10-23T22:01:35Z: 10 sites, 9 appeared, 0 disappeared, 0 changed, 2 warnings\n") || status != 0 {
 		t.Errorf("got status %d and output %q", status, stdout)
 	}
-	const want = `2026-11-23T22:01:35Z: warning: Swisscom BIFO: unrecognised type "Balloon"
-2026-11-23T22:01:35Z: warning: Salt TI_3787A at 2705499, 1132611: published more than once, the first is kept
+	const want = `2026-10-23T22:01:35Z: warning: Swisscom BIFO: unrecognised type "Balloon"
+2026-10-23T22:01:35Z: warning: Salt TI_3787A at 2705499, 1132611: published more than once, the first is kept
 `
 	if stderr != want {
 		t.Errorf("got stderr:\n%s\nwant:\n%s", stderr, want)
@@ -289,10 +289,10 @@ func TestIngestRefusesAnArchiveItCannotTrust(t *testing.T) {
 				other.add(24, sampleWith(t, func(features []map[string]any) []map[string]any {
 					return features[:5]
 				}))
-				const path = "/releases/raw-2026/mobile-stations_2026-11-24.json.gz"
+				const path = "/releases/raw-2026/mobile-stations_2026-10-24.json.gz"
 				archive.files[path] = other.files[path]
 			},
-			want: "mobile-stations_2026-11-24.json.gz has checksum",
+			want: "mobile-stations_2026-10-24.json.gz has checksum",
 		},
 		{
 			name: "a number of sites that is not the file's",
@@ -300,14 +300,14 @@ func TestIngestRefusesAnArchiveItCannotTrust(t *testing.T) {
 				archive.add(24, sampleWith(t, unchanged))
 				archive.index[1] = strings.Replace(archive.index[1], `"sites":9`, `"sites":7`, 1)
 			},
-			want: "the snapshot published at 2026-11-24T22:01:35Z has 9 sites, and the index says 7",
+			want: "the snapshot published at 2026-10-24T22:01:35Z has 9 sites, and the index says 7",
 		},
 		{
 			name: "a file that is not the dataset",
 			spoil: func(t *testing.T, archive *testArchive) {
 				archive.add(24, []byte(`{"type": "FeatureCollection", "features": []}`))
 			},
-			want: "the snapshot published at 2026-11-24T22:01:35Z: expected coordinates in EPSG:2056, found no CRS",
+			want: "the snapshot published at 2026-10-24T22:01:35Z: expected coordinates in EPSG:2056, found no CRS",
 		},
 		{
 			name: "a file with less than half the sites",
@@ -332,7 +332,15 @@ func TestIngestRefusesAnArchiveItCannotTrust(t *testing.T) {
 				// The index is in order: the new line goes first.
 				archive.index[0], archive.index[1] = archive.index[1], archive.index[0]
 			},
-			want: "the snapshot published at 2026-11-22T22:01:35.611529Z is in the archive's index but not in the database",
+			want: "the snapshot published at 2026-10-22T22:01:35.611529Z is in the archive's index but not in the database",
+		},
+		{
+			name: "a snapshot dated in the future",
+			spoil: func(t *testing.T, archive *testArchive) {
+				archive.add(24, sampleWith(t, unchanged))
+				archive.index[1] = strings.Replace(archive.index[1], `"published":"2026-`, `"published":"2999-`, 1)
+			},
+			want: "the snapshot published at 2999-10-24T22:01:35Z is dated in the future",
 		},
 		{
 			name: "an index that is not one",
@@ -375,11 +383,19 @@ func TestIngestLoadsASmallerFileWhenTold(t *testing.T) {
 		return features[:4]
 	}))
 
+	// A second file that small is one nobody looked at yet.
+	archive.add(25, sampleWith(t, func(features []map[string]any) []map[string]any {
+		return features[:1]
+	}))
+
 	stdout, stderr, status := callWith(t, address, append(archive.arguments(), "-allow-drop")...)
 
-	if status != 0 || !strings.Contains(stdout,
-		"2026-11-24T22:01:35Z: 4 sites, 0 appeared, 5 disappeared, 0 changed, 0 warnings\n") {
-		t.Errorf("got status %d, output %q and stderr %q", status, stdout, stderr)
+	if !strings.Contains(stdout,
+		"2026-10-24T22:01:35Z: 4 sites, 0 appeared, 5 disappeared, 0 changed, 0 warnings\n") {
+		t.Errorf("the first smaller file was not loaded: output %q and stderr %q", stdout, stderr)
+	}
+	if status != 1 || !strings.Contains(stderr, "has 1 sites, less than half the 4 of the one before") {
+		t.Errorf("the second one: got status %d and stderr %q, want it refused", status, stderr)
 	}
 }
 
@@ -391,19 +407,19 @@ func TestIngestResumesAfterAFailure(t *testing.T) {
 	archive.add(24, sampleWith(t, func(features []map[string]any) []map[string]any {
 		return features[1:]
 	}))
-	const path = "/releases/raw-2026/mobile-stations_2026-11-24.json.gz"
+	const path = "/releases/raw-2026/mobile-stations_2026-10-24.json.gz"
 	file := archive.files[path]
 	delete(archive.files, path)
 
 	stdout, stderr, status := callWith(t, address, archive.arguments()...)
 	if status != 1 || !strings.Contains(stderr, "answered 404 Not Found") ||
-		!strings.HasPrefix(stdout, "2026-11-23T22:01:35Z: 9 sites, 9 appeared") {
+		!strings.HasPrefix(stdout, "2026-10-23T22:01:35Z: 9 sites, 9 appeared") {
 		t.Errorf("with a missing file: got status %d, output %q and stderr %q", status, stdout, stderr)
 	}
 
 	archive.files[path] = file
 	stdout, stderr, status = callWith(t, address, archive.arguments()...)
-	const want = `2026-11-24T22:01:35Z: 8 sites, 0 appeared, 1 disappeared, 0 changed, 0 warnings
+	const want = `2026-10-24T22:01:35Z: 8 sites, 0 appeared, 1 disappeared, 0 changed, 0 warnings
 Loaded 1 snapshot. The database holds the 2 snapshots of the archive.
 `
 	if stdout != want || stderr != "" || status != 0 {

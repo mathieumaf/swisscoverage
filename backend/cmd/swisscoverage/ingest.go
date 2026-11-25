@@ -30,6 +30,10 @@ Arguments:
 // How many warnings of one snapshot are printed in full.
 const printedWarnings = 20
 
+// A snapshot dated later than this from now is refused. Once loaded, it would
+// make every real snapshot look older than the latest one, and stop them all.
+const clockMargin = 24 * time.Hour
+
 // runIngest is the "ingest" command.
 func runIngest(
 	ctx context.Context, args []string, stdout, stderr io.Writer, getenv func(string) string,
@@ -45,7 +49,7 @@ func runIngest(
 	releasesURL := flags.String("releases", archive.DefaultReleasesURL,
 		"address under which the archive's files are found, as <release>/<file>")
 	allowDrop := flags.Bool("allow-drop", false,
-		"load a snapshot even when it has less than half the sites of the one before")
+		"load one snapshot even though it has less than half the sites of the one before")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -106,6 +110,9 @@ func ingest(
 	}
 	for _, snapshot := range pending {
 		published := snapshot.PublishedAt.Format(time.RFC3339)
+		if snapshot.PublishedAt.After(time.Now().Add(clockMargin)) {
+			return fmt.Errorf("the snapshot published at %s is dated in the future", published)
+		}
 		data, err := source.Download(ctx, snapshot)
 		if err != nil {
 			return err
@@ -120,11 +127,14 @@ func ingest(
 				published, sites, snapshot.Sites)
 		}
 		// A file cut short, or emptied, would end every site it lacks. That
-		// is recorded for good, so a person decides.
-		if sites*2 < previousSites && !allowDrop {
-			return fmt.Errorf("the snapshot published at %s has %d sites, less than half the %d "+
-				"of the one before: check the file, then run again with -allow-drop to load it",
-				published, sites, previousSites)
+		// is recorded for good, so a person decides, one file at a time.
+		if sites*2 < previousSites {
+			if !allowDrop {
+				return fmt.Errorf("the snapshot published at %s has %d sites, less than half the %d "+
+					"of the one before: check the file, then run again with -allow-drop to load it",
+					published, sites, previousSites)
+			}
+			allowDrop = false
 		}
 
 		result, err := database.LoadSnapshot(ctx, store.Snapshot{

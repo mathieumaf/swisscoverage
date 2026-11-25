@@ -148,7 +148,8 @@ personal data.
    - a loaded snapshot whose checksum changes in the index, and a snapshot
      older than what is loaded, stop the import;
    - a file with less than half the sites of the one before is not loaded
-     until a person allows it.
+     until a person allows it, one file at a time;
+   - a snapshot dated more than a day in the future is not loaded.
 
    What this does not cover: whoever can push to the archive can publish an
    index and a file that agree with each other. The checksum proves the file
@@ -164,8 +165,11 @@ personal data.
   protection law. Check each new column for personal data before publishing it.
 - **The address of the database is a credential.** `DATABASE_URL` holds a
   password. The program reads it from the environment only, never from an
-  argument, and does not print it: a test checks that a failed connection
-  does not show it.
+  argument, and never prints it itself. The errors of the driver are shown,
+  and the driver hides the password of an address it can read: tests check
+  it for a failed connection and for an address with a wrong port. A password
+  that is not percent-encoded can make the address unreadable in a way that
+  shows part of it, on the terminal of whoever typed it.
 - **Privileged actions.** Today: merging to `main`, changing workflows or
   repository settings, the archive workflow's pushes and release uploads in
   `swisscoverage-data` (`contents: write`), and running `migrate` or `ingest`,
