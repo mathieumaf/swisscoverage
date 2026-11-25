@@ -25,6 +25,15 @@ updates:
         patterns: ["*"]
         update-types: ["minor", "patch"]
 
+  # The database image of deploy/compose.yaml.
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
   # JavaScript dependencies (Bun reads package.json and bun.lock). Today that
   # is Biome only, which checks Markdown, JSON and YAML.
   - package-ecosystem: "bun"

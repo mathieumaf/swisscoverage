@@ -1,0 +1,16 @@
+# Turns queries.sql into the typed Go code of the query package. The schema
+# is read from the migrations, so a query that no longer matches the tables
+# fails here instead of at run time. Run `go generate ./...` in backend/.
+version: "2"
+sql:
+  - engine: postgresql
+    schema: migrations
+    queries: queries.sql
+    gen:
+      go:
+        package: query
+        out: query
+        sql_package: pgx/v5
+        overrides:
+          - db_type: timestamptz
+            go_type: time.Time

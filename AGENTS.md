@@ -3,8 +3,10 @@
 An open map, API and MCP server for mobile network antennas in Switzerland,
 built on OFCOM's open data. The project is at its beginning. Today the code is
 the start of the backend, in Go under `backend/`: the `swisscoverage` program
-with one command, `parse`, and the parser for OFCOM's file. The database, the
-API, the MCP server and a website in TypeScript are planned.
+with three commands, `parse`, `migrate` and `ingest`; the parser for OFCOM's
+file; and the database, PostgreSQL with PostGIS, with the import that loads
+the archive into it. The API, the MCP server and a website in TypeScript are
+planned.
 
 - `docs/architecture.md`: read before adding a module, a command or a
   dependency. It says what exists, what is planned, and where a change belongs.
@@ -18,22 +20,34 @@ Everything in the repository and on GitHub is written in English.
 
 ## Proof
 
-Run with the Go version of `backend/go.mod` and with Bun 1.4.5. The change is
-good when each command exits 0 and prints what is expected.
+Run with the Go version of `backend/go.mod`, Bun 1.4.5 and Docker. The change
+is good when each command exits 0 and prints what is expected.
 
-| Command             | Run in     | Proves                                      | Expected                     |
-| ------------------- | ---------- | ------------------------------------------- | ---------------------------- |
-| `go test ./...`     | `backend/` | the tests                                   | prints `ok` for each package |
-| `go vet ./...`      | `backend/` | no suspicious construct                     | prints nothing               |
-| `gofmt -l .`        | `backend/` | formatting of the Go code                   | prints nothing               |
-| `go mod tidy -diff` | `backend/` | `go.mod` and `go.sum` match the imports     | prints nothing               |
-| `bun run check`     | the root   | lint and formatting of Markdown, JSON, YAML | prints `No fixes applied.`   |
+Start the local database first. It is the one of `deploy/compose.yaml`, and
+it holds nothing that cannot be loaded again:
+
+```sh
+docker compose -f deploy/compose.yaml up -d --wait
+```
+
+| Command                 | Run in     | Proves                                      | Expected                     |
+| ----------------------- | ---------- | ------------------------------------------- | ---------------------------- |
+| `CI=true go test ./...` | `backend/` | the tests, those on the database included   | prints `ok` for each package |
+| `go vet ./...`          | `backend/` | no suspicious construct                     | prints nothing               |
+| `gofmt -l .`            | `backend/` | formatting of the Go code                   | prints nothing               |
+| `go mod tidy -diff`     | `backend/` | `go.mod` and `go.sum` match the imports     | prints nothing               |
+| `go generate ./...`     | `backend/` | the generated query code is current         | `git status` shows no change |
+| `bun run check`         | the root   | lint and formatting of Markdown, JSON, YAML | prints `No fixes applied.`   |
+
+Without `CI=true`, the tests that need the database are skipped when it does
+not answer, and `go test` still prints `ok`: that proves nothing about the
+database. With it, they fail instead. Each test gets a database of its own,
+created beside the local one and dropped when the test ends.
 
 `gofmt -l .` exits 0 even when it lists files: read its output. `gofmt -w .`
 fixes the Go formatting and `bun run format` fixes the rest.
 
-There is no service to run yet. To see a parser change against real data,
-parse today's public file:
+To see a parser change against real data, parse today's public file:
 
 ```sh
 (set -o pipefail; curl -sSf https://data.geo.admin.ch/ch.bakom.standorte-mobilfunkanlagen/standorte-mobilfunkanlagen/standorte-mobilfunkanlagen_2056.json | go run -C backend ./cmd/swisscoverage parse -)
@@ -53,19 +67,40 @@ two outputs.
 file from what the parser returns. Its diff is then part of the change: read
 it.
 
-Everything above is safe: the download is a public, read-only file, fetched
-once, and nothing is written outside the working tree. The repository holds no
-credentials, no database and no deployment today.
+To see a change to the schema or to the import against real data, load the
+archive into the local database:
+
+```sh
+export DATABASE_URL=postgres://swisscoverage:swisscoverage@127.0.0.1:54320/swisscoverage
+go run -C backend ./cmd/swisscoverage migrate
+go run -C backend ./cmd/swisscoverage ingest
+```
+
+`ingest` prints one line per snapshot it loads, with the sites that appeared,
+disappeared and changed, and exits 0. Run it again: it prints
+`Nothing to load` and changes nothing. It downloads each snapshot once, from
+the project's own archive. To start from nothing, throw the database away
+with `docker compose -f deploy/compose.yaml down -v` and start it again.
+
+Everything above is safe: the downloads are public, read-only files, and what
+is written goes to the working tree or to the local database. The repository
+holds no credentials beyond the ones of that local database, and there is no
+deployment today.
 
 Off limits:
 
 - Fetching data from any map, website or app other than the sources listed in
   `docs/data-sources.md`, including to build a fixture or to compare results.
-- Downloading the OFCOM file in a loop or in tests. Tests read `testdata/`.
+- Downloading the OFCOM file in a loop or in tests. Tests read `testdata/`,
+  and the tests of the import read an archive they serve themselves.
+- Setting `DATABASE_URL` or `SWISSCOVERAGE_TEST_DATABASE_URL` to anything but
+  the local database of `deploy/compose.yaml`. `migrate` changes a schema,
+  `ingest` writes, and the tests create and drop databases on the server they
+  are given.
 
-When a database, an API or a deployment is added, the pull request that adds it
-must extend this section: how to run it against throwaway data, and which
-commands touch production and are off limits.
+When an API or a deployment is added, the pull request that adds it must
+extend this section: how to run it against throwaway data, and which commands
+touch production and are off limits.
 
 ## Code Review Rules
 
@@ -93,12 +128,26 @@ Flag a change when:
 - **It opens a second path to the data.** The website or the MCP server
   imports backend code or connects to the database instead of calling the
   public API. Both are clients of the API, like any third party.
+- **It breaks the schema's promises.** A migration that is already merged is
+  edited instead of followed by a new one. Or a new migration removes,
+  renames or tightens something the previous version of the program relies
+  on: two versions run side by side during an update and after a rollback.
+- **It rewrites history.** The import changes a period that is already
+  recorded for anything but ending it, loads a snapshot out of order, or
+  writes a snapshot in more than one transaction.
+- **It trusts the archive.** A value from the archive's index is used before
+  it is checked, a file is parsed before its checksum is verified, or a
+  download has no bound. The archive is written by an unattended job.
+- **It builds SQL from strings.** Queries live in
+  `backend/internal/store/queries.sql`, with parameters.
 
 Skip third-party texts: `LICENSE` and `CODE_OF_CONDUCT.md`. For the samples
 under `**/testdata/` and `**/fixtures/`, check where they come from, not their
 formatting. A `*.golden.json` file records what the parser returns: review a
 change to it as a change to the parser's behaviour. Review `bun.lock` and
-`backend/go.sum`: they pick the dependency versions that run.
+`backend/go.sum`: they pick the dependency versions that run. The code under
+`backend/internal/store/query/` is generated: review `queries.sql` and the
+migrations it comes from, and check that it changed only with them.
 
 Cite file:line for every finding, and post at most 3 nits.
 
@@ -117,10 +166,13 @@ When paths overlap, the higher tier wins.
 - `docs/data-sources.md`: the list of sources the project may use. Adding one
   there is what allows its data in.
 - `LICENSE`: the terms of the whole project.
-- Planned, High from their first commit: `backend/internal/store/**` (schema
-  and migrations), `openapi.json` and `backend/internal/api/**` (the public API
-  contract), `web/package.json` and `web/bun.lock` (the dependencies that
-  run), `deploy/**` and any `Dockerfile` (what is released and how).
+- `backend/internal/store/**`: the schema, its migrations, and every query
+  that writes to the database.
+- `deploy/**` and any `Dockerfile`: what runs, locally today, and what is
+  released and how.
+- Planned, High from their first commit: `openapi.json` and
+  `backend/internal/api/**` (the public API contract), `web/package.json` and
+  `web/bun.lock` (the dependencies that run).
 
 **Low**
 

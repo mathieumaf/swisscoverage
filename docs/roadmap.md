@@ -19,14 +19,15 @@ in the same pull request, and in particular:
 
 ## Where we are
 
-| Done                                                                                                                        |
-| --------------------------------------------------------------------------------------------------------------------------- |
-| Repository, licence, contribution guide, CI, review rules, security policy                                                  |
-| Step 1: the `swisscoverage` program in Go, with its `parse` command and the parser for OFCOM's file, tested on real samples |
-| Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`)                                        |
-| Architecture and decisions written down                                                                                     |
+| Done                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository, licence, contribution guide, CI, review rules, security policy                                                                              |
+| Step 1: the `swisscoverage` program in Go, with its `parse` command and the parser for OFCOM's file, tested on real samples                             |
+| Step 2: the database, its schema, and the `migrate` and `ingest` commands, which load the archive and record what changed from one snapshot to the next |
+| Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`), with an index of its snapshots                                    |
+| Architecture and decisions written down                                                                                                                 |
 
-Next: [step 2](#step-2-database-and-import), the database and the import.
+Next: [step 3](#step-3-api), the API.
 
 Waiting on someone else: a Freedom of Information request for OFCOM's detailed
 antenna database was filed on 24 November 2026. Version 1.0 depends on the
@@ -71,22 +72,31 @@ The parser moved to Go, and the repository got its Go toolchain.
   - `swisscoverage parse` on the day's public file prints about 23,000
     stations and no warning.
 
-### Step 2. Database and import
+### Step 2. Database and import (done)
 
-- **Adds.**
-  - The schema and its migrations: `snapshot`, `station`, `station_state`.
+- **Added.**
+  - The schema and its first migration: `snapshot`, `station`,
+    `station_state`.
   - The `migrate` and `ingest` commands.
-  - Docker Compose with PostGIS, and tests that run against a real database.
-  - In the archive repository, an index of snapshots: one line per snapshot
-    with its publication time, its checksum, its number of sites and the name
-    of its original file. The snapshots already archived are added to it from
-    the repository's history.
+  - Docker Compose with PostGIS, and tests that run against a real database,
+    each test in a database of its own.
+  - `backend/internal/archive`, which reads the archive's index and files and
+    checks them.
+  - In the archive repository, the index of snapshots, `snapshots.ndjson`:
+    one line per snapshot with its publication time, its checksum, its number
+    of sites and the name of its original file. It is rebuilt from the
+    repository's history at each run, which also listed the snapshots archived
+    before it existed.
 - **How the import reads the archive.** It reads the index, downloads each
   original file it has not loaded yet from the archive's releases, verifies its
   checksum, parses it, compares it with the previous snapshot and writes the
   differences.
-- **Decides.** The SQL generator, the driver and the migration tool.
-- **Done when.**
+- **Settled.** `pgx` as the driver and `sqlc` as the generator
+  ([decision 7](decisions.md)); migrations as plain SQL files applied by a
+  runner of our own ([decision 20](decisions.md)); how history is stored
+  ([decision 18](decisions.md)); what the import refuses
+  ([decision 19](decisions.md)).
+- **Done when.** All are true:
   - Against the Compose database, `ingest` loads every snapshot of the index,
     in order.
   - Running it again changes nothing.

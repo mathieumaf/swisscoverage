@@ -4,31 +4,49 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 const usage = `Usage: swisscoverage <command> [arguments]
 
 Commands:
-  parse   Read a file of OFCOM's mobile stations and print what it contains.
+  migrate  Bring the database schema up to date.
+  ingest   Load the snapshots of the archive that the database does not hold yet.
+  parse    Read a file of OFCOM's mobile stations and print what it contains.
 
+migrate and ingest read the address of the database from DATABASE_URL.
 Run "swisscoverage <command> -h" for the arguments of a command.
 `
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	// An interruption cancels what is running, which rolls back the
+	// transaction in progress.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	status := run(ctx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr, os.Getenv)
+	stop()
+	os.Exit(status)
 }
 
 // run executes one command and returns the exit status: 0 when it succeeded,
 // 1 when it failed, 2 when it was called the wrong way.
-func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+func run(
+	ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer,
+	getenv func(string) string,
+) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
 	switch args[0] {
+	case "migrate":
+		return runMigrate(ctx, args[1:], stdout, stderr, getenv)
+	case "ingest":
+		return runIngest(ctx, args[1:], stdout, stderr, getenv)
 	case "parse":
 		return runParse(args[1:], stdin, stdout, stderr)
 	case "help", "-h", "-help", "--help":

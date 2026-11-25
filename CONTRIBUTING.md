@@ -13,15 +13,21 @@ documentation, issues and pull requests.
 
 ## Setup
 
-You need [Go](https://go.dev) 1.27.4 or later for the backend, and
-[Bun](https://bun.sh) 1.4.5 to run Biome, the tool that checks Markdown, JSON
-and YAML.
+You need [Go](https://go.dev) 1.27.4 or later for the backend,
+[Docker](https://docs.docker.com/get-started/get-docker/) for the database,
+and [Bun](https://bun.sh) 1.4.5 to run Biome, the tool that checks Markdown,
+JSON and YAML.
 
 ```sh
 git clone https://github.com/mathieumaf/swisscoverage.git
 cd swisscoverage
 bun install
+docker compose -f deploy/compose.yaml up -d --wait    # the local database
 ```
+
+The database is PostgreSQL with PostGIS. It listens on this machine only, on
+port 54320, and holds nothing that cannot be loaded again:
+`docker compose -f deploy/compose.yaml down -v` throws it away.
 
 ## Where things go
 
@@ -31,14 +37,28 @@ why it is built that way, and [docs/roadmap.md](docs/roadmap.md) what comes
 next.
 
 The short version: the backend is written in Go under `backend/`. Today it
-holds the `swisscoverage` program with its first command, `parse`, in
-`backend/cmd/swisscoverage`, and the parser for OFCOM's file in
-`backend/internal/ofcom`. The website is planned in TypeScript under `web/`.
+holds the `swisscoverage` program with its commands in
+`backend/cmd/swisscoverage`, and three packages under `backend/internal/`:
+`ofcom`, the parser for OFCOM's file; `archive`, which reads the daily
+archive; and `store`, the database. The website is planned in TypeScript
+under `web/`.
 
 The parser never touches the network, the file system, the environment, a
 database or the clock: it receives the bytes of a file from the command that
-calls it. Code that needs the database belongs in `backend/internal/store`,
-which is planned. The website reaches the data only by calling the public API.
+calls it. Code that needs the database belongs in `backend/internal/store`.
+The website reaches the data only by calling the public API.
+
+Two rules for the database:
+
+- **A change to the schema is a new file** in
+  `backend/internal/store/migrations`, numbered after the last one. A file
+  that is merged is never edited. The new schema must keep the previous
+  version of the program working, so add, with a default, rather than rename
+  or remove.
+- **Queries are written in `backend/internal/store/queries.sql`**, and
+  `go generate ./...` turns them into the Go code of `internal/store/query`.
+  Commit that code with the query. It fails when a query does not match the
+  schema, which is the point.
 
 ## Checks
 
@@ -48,12 +68,18 @@ Run these before you push. CI runs the same commands.
 cd backend
 gofmt -l .           # formatting: prints the files to fix, nothing when good
 go mod tidy -diff    # go.mod matches the imports: prints nothing when good
+go generate ./...    # the generated query code: git status shows no change
 go vet ./...
-go test ./...
+go test ./...        # needs the local database, see below
 
 cd ..
 bun run check        # lint and formatting of Markdown, JSON and YAML
 ```
+
+The tests that need the database are skipped when it is not running, and
+`go test` then still succeeds. Start it as shown under Setup, or run
+`CI=true go test ./...`, which fails instead of skipping. Each test creates a
+database of its own and drops it when it ends.
 
 `gofmt -w .` fixes the formatting of Go files and `bun run format` fixes the
 rest.
@@ -71,6 +97,14 @@ To try the parser on the real file, download it once and run
 `go run ./cmd/swisscoverage parse <file>` in `backend/`. It prints the number
 of stations, the counts per operator, kind and technology, and every value the
 parser did not recognise.
+
+To load the archive into the local database, in `backend/`:
+
+```sh
+export DATABASE_URL=postgres://swisscoverage:swisscoverage@127.0.0.1:54320/swisscoverage
+go run ./cmd/swisscoverage migrate    # creates the tables
+go run ./cmd/swisscoverage ingest     # loads every snapshot it does not hold yet
+```
 
 ## Data
 

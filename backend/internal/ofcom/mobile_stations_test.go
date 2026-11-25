@@ -447,6 +447,17 @@ func TestParseMobileStationsInput(t *testing.T) {
 		})
 	})
 
+	t.Run("keeps a data sheet whose date does not exist, without the date", func(t *testing.T) {
+		result := parse(t, documentWith(t, map[string]any{
+			"bewilligung_en": "Site data sheet 2021-02-30",
+		}))
+
+		wantEqual(t, result.Stations[0].Permit, &Permit{Type: PermitSiteDataSheet})
+		wantEqual(t, result.Warnings, []string{
+			`Swisscom BIFO: unrecognised permit "Site data sheet 2021-02-30"`,
+		})
+	})
+
 	t.Run("reads a limit value with decimals", func(t *testing.T) {
 		result := parse(t, documentWith(t, map[string]any{
 			"agw_en": "Installation limit value 4.5 V/m",

@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // This file parses OFCOM's public dataset of mobile phone base stations
@@ -100,6 +101,9 @@ var (
 	allStationKinds = [...]StationKind{
 		KindOutdoor, KindOutdoorLowPower, KindIndoor, KindTunnel, KindTemporary, KindUnknown,
 	}
+	allPowerClasses = [...]PowerClass{
+		PowerVeryLow, PowerLow, PowerMedium, PowerHigh, PowerUnknown,
+	}
 )
 
 // Operators returns every operator, in the order they are reported.
@@ -111,11 +115,15 @@ func Technologies() []Technology { return slices.Clone(allTechnologies[:]) }
 // StationKinds returns every kind of site, in the order they are reported.
 func StationKinds() []StationKind { return slices.Clone(allStationKinds[:]) }
 
+// PowerClasses returns every power class, from the lowest to unknown.
+func PowerClasses() []PowerClass { return slices.Clone(allPowerClasses[:]) }
+
 // Permit is the permit information of a site.
 type Permit struct {
 	Type PermitType `json:"type"`
 	// Date is the date OFCOM publishes for a site data sheet, as YYYY-MM-DD.
-	// It is empty for an exemption.
+	// It is empty for an exemption, and for a data sheet whose published
+	// date is not a day that exists.
 	Date string `json:"date,omitempty"`
 }
 
@@ -399,12 +407,18 @@ func listedTechnologies(label string) []string {
 }
 
 // parsePermit returns false when the label says something the parser does not
-// recognise. A blank label is recognised: it means no permit information.
+// recognise, with what it could still read. A blank label is recognised: it
+// means no permit information.
 func parsePermit(label string) (*Permit, bool) {
 	if label == "" {
 		return nil, true
 	}
 	if match := dataSheetPattern.FindStringSubmatch(label); match != nil {
+		// A date such as 2021-02-30 is kept out: what stores the result
+		// expects a real day. The data sheet itself is still recorded.
+		if _, err := time.Parse(time.DateOnly, match[1]); err != nil {
+			return &Permit{Type: PermitSiteDataSheet}, false
+		}
 		return &Permit{Type: PermitSiteDataSheet, Date: match[1]}, true
 	}
 	if strings.Contains(label, exemptMarker) {

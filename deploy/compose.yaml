@@ -1,0 +1,39 @@
+# The database for local work and for tests. It holds nothing that cannot be
+# loaded again from the archive: `docker compose down -v` throws it away.
+#
+#   docker compose -f deploy/compose.yaml up -d --wait
+#
+# The address to use is in AGENTS.md, under Proof.
+
+name: swisscoverage
+
+services:
+  db:
+    # The tag is for people, the digest is what runs.
+    image: postgis/postgis:18-3.6@sha256:4a43e3c3e5d55b9208240fc71db543b79c638766280c625a425bd0a2390989c4
+    # The image exists for this architecture only. Docker emulates it on
+    # other machines.
+    platform: linux/amd64
+    environment:
+      # Local credentials, for a database reachable from this machine only.
+      POSTGRES_USER: swisscoverage
+      POSTGRES_PASSWORD: swisscoverage
+      POSTGRES_DB: swisscoverage
+    ports:
+      - "127.0.0.1:54320:5432"
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      # Over TCP: while the image sets a new database up, a temporary server
+      # answers on the local socket only, and is not ready for anyone else.
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready --host 127.0.0.1 --username swisscoverage --dbname swisscoverage",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  db-data:
