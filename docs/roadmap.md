@@ -24,10 +24,11 @@ in the same pull request, and in particular:
 | Repository, licence, contribution guide, CI, review rules, security policy                                                                              |
 | Step 1: the `swisscoverage` program in Go, with its `parse` command and the parser for OFCOM's file, tested on real samples                             |
 | Step 2: the database, its schema, and the `migrate` and `ingest` commands, which load the archive and record what changed from one snapshot to the next |
+| Step 3: the public API, read-only, served by the `serve` command, and its contract in `openapi.json`                                                    |
 | Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`), with an index of its snapshots                                    |
 | Architecture and decisions written down                                                                                                                 |
 
-Next: [step 3](#step-3-api), the API.
+Next: [step 4](#step-4-website-and-map), the website and the map.
 
 Waiting on someone else: a Freedom of Information request for OFCOM's detailed
 antenna database was filed on 24 November 2026. Version 1.0 depends on the
@@ -103,22 +104,37 @@ The parser moved to Go, and the repository got its Go toolchain.
   - Tests cover a site that appears, one that disappears and one that changes,
     and a query returns each of them between two snapshots.
 
-### Step 3. API
+### Step 3. API (done)
 
-- **Adds.**
-  - The `serve` command, with these endpoints:
-    1. every current station in one cacheable response, which is what the map
-       loads ([decision 12](decisions.md));
-    2. the stations inside a rectangle or around a point, with filters;
-    3. one station, with its history;
-    4. counts per operator, technology, kind and power class;
-    5. the list of snapshots.
-  - The `openapi` command, the committed `openapi.json`, and the CI check that
-    fails when the two differ.
-  - Validation of every parameter, cache headers, and a limit on the size of
-    every response except the first, which the dataset itself bounds.
-- **Decides.** The OpenAPI library.
-- **Done when.**
+- **Added.**
+  - The `serve` command, which serves the public API under `/v1`, read-only,
+    with these endpoints:
+    1. `GET /v1/stations`: every current station in one cacheable GeoJSON
+       FeatureCollection, which is what the map loads
+       ([decision 12](decisions.md));
+    2. `GET /v1/stations/search`: the stations inside a rectangle or around a
+       point, filtered by operator, kind, power class and technology;
+    3. `GET /v1/stations/{id}`: one station, with its history
+       ([decision 22](decisions.md) for the identifier);
+    4. `GET /v1/stations/counts`: counts per operator, technology, kind and
+       power class;
+    5. `GET /v1/snapshots`: the list of snapshots.
+  - The `openapi` command, the committed `openapi.json`, and a test, run in
+    CI, that fails when the two differ.
+  - Validation of every parameter, unknown ones included; ETag and
+    `Cache-Control` headers, with 304 for a cache that revalidates
+    ([decision 23](decisions.md)); pages of at most 1,000 items for every list
+    except the first; gzip; CORS for any origin.
+  - Read-only database connections for the API, with a time limit on each
+    statement and on each request.
+  - A second migration: spatial indexes on the positions. Without them, a
+    search around a point within 50 km took 46 seconds instead of 0.2.
+- **Settled.** Huma as the OpenAPI library ([decision 21](decisions.md)); a
+  station's identifier ([decision 22](decisions.md)); how responses are
+  cached ([decision 23](decisions.md)).
+- **Measured.** On the snapshot of 24 November 2026, 22,761 sites: the list of
+  every station is 5.6 MB, and 670 KB with gzip.
+- **Done when.** Both are true:
   - Each endpoint above answers under `curl` against the Compose database
     loaded from the archive.
   - Each appears in the committed `openapi.json`.

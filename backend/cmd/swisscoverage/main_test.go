@@ -149,9 +149,9 @@ func TestParseFailures(t *testing.T) {
 		},
 		{
 			name:       "an unknown command",
-			args:       []string{"serve"},
+			args:       []string{"tiles"},
 			wantStatus: 2,
-			wantStderr: `swisscoverage: unknown command "serve"`,
+			wantStderr: `swisscoverage: unknown command "tiles"`,
 		},
 	}
 	for _, test := range tests {

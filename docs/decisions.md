@@ -187,8 +187,12 @@ Three facts shaped most choices:
   MapLibre clusters the points itself.
 - **Rejected for now.** Vector tiles produced by PostGIS: needed once the map
   shows cells and antenna beams, more than version 0.1 requires.
-- **Revisit when.** The response proves too heavy on a phone. It has not been
-  measured yet.
+- **Confirmed in roadmap step 3.** The response is a GeoJSON
+  FeatureCollection, which MapLibre loads and clusters as it is, with what the
+  map filters on and nothing more; the rest is in each station's own
+  response. On the snapshot of 24 November 2026, 22,761 sites, it is 5.6 MB,
+  and 670 KB with gzip.
+- **Revisit when.** The response proves too heavy on a phone.
 
 ### 13. The database runs inside the cluster
 
@@ -313,6 +317,75 @@ Three facts shaped most choices:
   building an index without blocking writes on a large table.
 - **Accepted.** 25 November 2026.
 
+### 21. Huma describes the API
+
+- **Decision.** The API is written with [Huma](https://huma.rocks), on the
+  standard library's router. Its routes and the Go types of their parameters
+  and responses are what Huma turns into the OpenAPI 3.1 contract
+  (decision 8), and what it validates each request against.
+- **Why.** One description gives the contract, the validation and the
+  documentation of each field, so they cannot disagree. Only Huma's own
+  packages are compiled into the program: its adapter for the standard
+  library's router needs no other module, and the formats, routers and
+  command-line helpers it can use are left out.
+- **Rejected.** Writing the contract by hand and checking the handlers
+  against it: decision 8 already rejected writing it first, and a generator of
+  our own would be more code than the API. Generators that start from the
+  contract (`ogen`, `oapi-codegen`): the same objection. Annotations in
+  comments (`swaggo`): OpenAPI 2 only, and nothing checks them against the
+  code.
+- **To know.** Huma marks lists as nullable by default; the API turns that
+  off, since every list it returns is a list, empty when there is nothing.
+  Its pages of documentation, which load scripts from a CDN, and the
+  `$schema` member it adds to responses are turned off too.
+- **Revisit when.** Huma stops being maintained, or a version breaks the
+  contract it generates.
+- **Accepted.** 25 November 2026.
+
+### 22. A station's identifier is its position and its label
+
+- **Decision.** The API identifies a site by `east_north_label`: its LV95
+  position as published, in metres, and its label, such as
+  `2683328_1247916_Sunrise ZH601-1`. That is the identity of decision 11,
+  written as one string.
+- **Why.** OFCOM publishes no identifier. The database numbers its rows, but
+  those numbers change when the archive is loaded again into an empty
+  database, which is how a parser fix reaches the past (decision 19). The
+  position and the label do not change, so a link to a station keeps working.
+  The identifier also reads back into the site without a table to look it up
+  in.
+- **Rejected.** The database's numbers: they change on a rebuild. A hash of
+  the label and the position: as stable, but opaque, and it needs a column
+  to search by.
+- **Limit.** The identifier is as long as the label, and holds what the label
+  holds: a client percent-encodes it in a path. A site moved by a few metres
+  gets a new identifier, as it becomes a new site (decision 11).
+- **Revisit when.** OFCOM publishes identifiers, or decision 11 changes.
+- **Accepted.** 25 November 2026.
+
+### 23. Responses are cached by what they contain
+
+- **Decision.** Every successful response carries an ETag computed from its
+  body and may be reused for five minutes. A request that sends that ETag
+  back gets 304 Not Modified. Errors are never cached. Every list is
+  paginated, at most 1,000 items at a time, except the list of every station.
+- **Why.** The data changes once a day, so nearly every request can be
+  answered by a cache: the browser's, Cloudflare's or any other
+  (decision 16). An ETag taken from the body changes exactly when the
+  response does, after an import or after a new version of the program writes
+  it differently, with no version number to remember to change. Five minutes
+  is short enough for a new snapshot to show quickly and long enough to spare
+  the database.
+- **Cost.** The API builds a response before it can tell that it did not
+  change: a 304 saves the transfer, not the work. Behind a cache that is
+  rarely felt; without one, the list of every station costs about half a
+  second of the database's time per request.
+- **Rejected.** An ETag from the latest snapshot alone: cheaper, but wrong
+  for a day after a deployment that changes a response.
+- **Revisit when.** The work behind each request becomes the bottleneck. The
+  API can then keep the latest response in memory.
+- **Accepted.** 25 November 2026.
+
 ## Open
 
 Not decided yet. Each has a recommendation and the step of the
@@ -328,4 +401,3 @@ Not decided yet. Each has a recommendation and the step of the
 | What does Cloudflare do: cache pages and API responses, or only CDN and protection? | Start with DNS, CDN for static files and protection. Decide on caching responses with real measurements.                                                      | Step 5     |
 | Cloudflare as a plain proxy, or as a tunnel into the cluster?                       | The plain proxy. A tunnel saves a load balancer and a public address, but makes the site depend on Cloudflare, which would reopen decision 16's guardrail.    | Step 5     |
 | Which source for cantons and municipalities?                                        | swisstopo's open boundaries dataset, loaded into PostGIS, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first.   | Step 8     |
-| Which Go library for OpenAPI?                                                       | Huma.                                                                                                                                                         | Step 3     |

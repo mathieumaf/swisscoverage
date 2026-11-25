@@ -1,5 +1,5 @@
 -- Every query the store runs. `go generate ./...` turns this file into the
--- Go code of the query package; store.go is the only caller of that package.
+-- Go code of the query package; the store package is its only caller.
 
 -- name: LockImport :exec
 -- One import at a time. The lock is released when the transaction ends.
@@ -111,3 +111,122 @@ WHERE (b.id IS NULL AND a.id IS NOT NULL)
            (a.kind, a.power_class, a.technologies, a.adaptive,
             a.permit_type, a.permit_date, a.installation_limit_value))
 ORDER BY s.name, s.east, s.north;
+
+-- The queries below are the API's. They only read, and each request runs
+-- them in one read-only transaction, so that it sees one snapshot.
+
+-- name: LatestSnapshot :many
+-- The snapshot whose stations are published now. No row before the first
+-- import.
+SELECT published_at, sha256, sites
+FROM snapshot
+ORDER BY published_at DESC
+LIMIT 1;
+
+-- name: ListSnapshotsPage :many
+-- The snapshots, newest first, with how many there are in all.
+SELECT published_at, sha256, sites, count(*) OVER () AS total
+FROM snapshot
+ORDER BY published_at DESC
+LIMIT @row_limit OFFSET @row_offset;
+
+-- name: ListCurrentStations :many
+-- Every site the latest snapshot shows, with what it shows of it.
+SELECT s.name, s.operator, s.code, s.east, s.north,
+       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
+       s.first_seen,
+       st.kind, st.power_class, st.technologies, st.adaptive,
+       st.permit_type, st.permit_date, st.installation_limit_value
+FROM station s
+JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+ORDER BY s.name, s.east, s.north;
+
+-- name: SearchStationsInBox :many
+-- The sites the latest snapshot shows inside a rectangle in WGS84, edges
+-- included, that match every filter. An empty filter matches every site; a
+-- site matches the technologies when it has one of them.
+SELECT s.name, s.operator, s.code, s.east, s.north,
+       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
+       s.first_seen,
+       st.kind, st.power_class, st.technologies, st.adaptive,
+       st.permit_type, st.permit_date, st.installation_limit_value,
+       count(*) OVER () AS total
+FROM station s
+JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+WHERE s.position && ST_MakeEnvelope(@west::float8, @south::float8, @east::float8, @north::float8, 4326)
+  AND (cardinality(@operators::text[]) = 0 OR s.operator = ANY (@operators::text[]))
+  AND (cardinality(@kinds::text[]) = 0 OR st.kind = ANY (@kinds::text[]))
+  AND (cardinality(@power_classes::text[]) = 0 OR st.power_class = ANY (@power_classes::text[]))
+  AND (cardinality(@technologies::text[]) = 0 OR st.technologies && @technologies::text[])
+ORDER BY s.name, s.east, s.north
+LIMIT @row_limit OFFSET @row_offset;
+
+-- name: SearchStationsAround :many
+-- The sites the latest snapshot shows within a distance of a point in WGS84,
+-- nearest first, that match every filter as in SearchStationsInBox.
+-- Distances are in metres, on the ellipsoid.
+SELECT s.name, s.operator, s.code, s.east, s.north,
+       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
+       s.first_seen,
+       st.kind, st.power_class, st.technologies, st.adaptive,
+       st.permit_type, st.permit_date, st.installation_limit_value,
+       ST_Distance(s.position::geography, center.point)::float8 AS distance,
+       count(*) OVER () AS total
+FROM station s
+JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+CROSS JOIN (
+    SELECT ST_SetSRID(ST_MakePoint(@longitude::float8, @latitude::float8), 4326)::geography AS point
+) center
+WHERE ST_DWithin(s.position::geography, center.point, @radius::float8)
+  AND (cardinality(@operators::text[]) = 0 OR s.operator = ANY (@operators::text[]))
+  AND (cardinality(@kinds::text[]) = 0 OR st.kind = ANY (@kinds::text[]))
+  AND (cardinality(@power_classes::text[]) = 0 OR st.power_class = ANY (@power_classes::text[]))
+  AND (cardinality(@technologies::text[]) = 0 OR st.technologies && @technologies::text[])
+ORDER BY distance, s.name, s.east, s.north
+LIMIT @row_limit OFFSET @row_offset;
+
+-- name: GetStation :many
+-- One site, found by its label and its position as published.
+SELECT s.id, s.name, s.operator, s.code, s.east, s.north,
+       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
+       s.first_seen,
+       EXISTS (
+           SELECT 1 FROM station_state st WHERE st.station_id = s.id AND st.valid_to IS NULL
+       ) AS published
+FROM station s
+WHERE s.name = @name AND s.east = @east AND s.north = @north;
+
+-- name: ListStationStates :many
+-- What was published of one site, period by period, the latest first, with
+-- how many periods there are in all.
+SELECT valid_from, valid_to, kind, power_class, technologies, adaptive,
+       permit_type, permit_date, installation_limit_value,
+       count(*) OVER () AS total
+FROM station_state
+WHERE station_id = @station_id
+ORDER BY valid_from DESC
+LIMIT @row_limit OFFSET @row_offset;
+
+-- name: CountCurrentStationsBy :many
+-- How many sites the latest snapshot shows for each operator, kind, power
+-- class and technology. Values no site has are absent. A site counts once
+-- for each of its technologies.
+SELECT 'operator'::text AS dimension, s.operator AS value, count(*) AS stations
+FROM station s
+JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+GROUP BY s.operator
+UNION ALL
+SELECT 'kind'::text, st.kind, count(*)
+FROM station_state st
+WHERE st.valid_to IS NULL
+GROUP BY st.kind
+UNION ALL
+SELECT 'power_class'::text, st.power_class, count(*)
+FROM station_state st
+WHERE st.valid_to IS NULL
+GROUP BY st.power_class
+UNION ALL
+SELECT 'technology'::text, technology, count(*)
+FROM station_state st, unnest(st.technologies) AS technology
+WHERE st.valid_to IS NULL
+GROUP BY technology;

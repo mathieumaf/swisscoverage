@@ -11,6 +11,8 @@ package store
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -23,7 +25,29 @@ type Store struct {
 // Open connects to the database at databaseURL, a PostgreSQL connection
 // string, and checks that it answers.
 func Open(ctx context.Context, databaseURL string) (*Store, error) {
-	pool, err := pgxpool.New(ctx, databaseURL)
+	config, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("reading the database address: %w", err)
+	}
+	return open(ctx, config)
+}
+
+// OpenReadOnly is Open for a program that only reads, such as the API. The
+// server refuses every write on its connections, whatever the role may do,
+// and stops any statement that runs longer than statementTimeout.
+func OpenReadOnly(ctx context.Context, databaseURL string, statementTimeout time.Duration) (*Store, error) {
+	config, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("reading the database address: %w", err)
+	}
+	params := config.ConnConfig.RuntimeParams
+	params["default_transaction_read_only"] = "on"
+	params["statement_timeout"] = strconv.FormatInt(statementTimeout.Milliseconds(), 10)
+	return open(ctx, config)
+}
+
+func open(ctx context.Context, config *pgxpool.Config) (*Store, error) {
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("reading the database address: %w", err)
 	}

@@ -20,18 +20,24 @@ into a map, a public API and an MCP server.
   GeoJSON file into a typed model (`mobile_stations.go`). It has no network,
   file system, database or environment access, and uses the standard library
   only.
-- `backend/cmd/swisscoverage`: the program, with three commands so far, all
-  run by hand or by a job, none listening on anything.
+- `backend/cmd/swisscoverage`: the program. One command listens on the
+  network, `serve`; the others are run by hand or by a job.
   - `parse` reads one file named by whoever runs it, or standard input, and
     prints what the parser makes of it. It writes no file and holds no
     credentials.
   - `migrate` changes the schema of the database named by `DATABASE_URL`.
   - `ingest` reads the archive over HTTPS and writes to that database.
+  - `serve` answers HTTP requests with the public, read-only API, from that
+    database. It listens on `127.0.0.1:8080` unless told otherwise.
+  - `openapi` prints the API's contract. It reads nothing.
 - `backend/internal/archive`: the client that reads the archive's index and
   files. It treats both as untrusted.
 - `backend/internal/store`: the schema, its migrations and the queries, for
   PostgreSQL with PostGIS. Queries are written in SQL with parameters and
   turned into Go code by a generator; none is built from strings.
+- `backend/internal/api`: the routes of the API, built with Huma, which
+  validates each request against the types the contract is generated from.
+  It reads through the store only.
 - `deploy/compose.yaml`: a PostgreSQL with PostGIS for local work and tests,
   reachable from the machine it runs on only, with credentials written in the
   file. It holds nothing that cannot be loaded again from the archive.
@@ -50,9 +56,9 @@ into a map, a public API and an MCP server.
 **What is planned** ([architecture](../architecture.md)). Everything in this
 list is an assumption until the code exists, and is marked _unverified_ below.
 
-- The rest of the backend, as two more commands of the same program that run
-  in production: `serve`, the public, read-only HTTP API, and `mcp`, the MCP
-  server. `ingest` and `migrate` exist, and are not deployed anywhere yet.
+- The rest of the backend: `mcp`, the MCP server, as another command of the
+  same program. `serve`, `ingest` and `migrate` exist, and are not deployed
+  anywhere yet.
 - The MCP server and a website. Both are clients of the public API over HTTP
   and have no access to the database. The website is a server exposed to the
   internet, not only a page in a browser.
@@ -88,19 +94,19 @@ personal data.
 
 ## Entry points and untrusted input
 
-| Entry point               | State          | Input                                                                                                                                                      | Handling                                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OFCOM file                | exists         | A GeoJSON document of about 28 MB                                                                                                                          | `ParseMobileStations` validates the shape and the reference system, reads strings as data, and reports unknown labels as warnings                                                                                                                                                                                                                                    |
-| Samples in the repository | exists         | JSON samples added by contributors, under `testdata/`                                                                                                      | Reviewed for provenance (`AGENTS.md`, Code Review Rules); parsed like any other file                                                                                                                                                                                                                                                                                 |
-| Pull requests from forks  | exists         | Code, workflows, lockfile                                                                                                                                  | CI runs on `pull_request` with `contents: read` and no secrets; changes to workflows and dependencies are High risk                                                                                                                                                                                                                                                  |
-| Dependencies              | exists         | The Go toolchain, the `pgx` driver and what it needs, `sqlc` run by `go generate`, the database image, GitHub actions, and Biome from the package registry | CI installs the Go version that `backend/go.mod` names and refuses to download another (`GOTOOLCHAIN=local`); Go modules are verified against `go.sum`; `sqlc` is pinned to a version; the database image is pinned to a digest; locked install of Biome (`bun install --frozen-lockfile`); actions pinned to a commit; Dependabot proposes updates as pull requests |
-| Daily archive job         | exists         | OFCOM's catalogue and file, fetched unattended                                                                                                             | In `swisscoverage-data`: checks the address, dates and checksum format before use, verifies the file's SHA-256 against the catalogue, and passes values to steps through the environment                                                                                                                                                                             |
-| Archive index and files   | exists         | The index of snapshots and the gzipped originals, fetched by `ingest` over HTTPS                                                                           | `backend/internal/archive` checks every value, bounds every download and verifies each file's SHA-256; `ingest` refuses what would rewrite or empty the history. See trust boundary 8                                                                                                                                                                                |
-| Database                  | exists locally | The address in `DATABASE_URL`; rows written by `ingest`                                                                                                    | Parameterised SQL only, generated from `queries.sql`; the schema constrains every value the parser can return; a snapshot is written in one transaction                                                                                                                                                                                                              |
-| Public API                | _unverified_   | Query parameters                                                                                                                                           | Must validate every parameter, use parameterised SQL, stay read-only, and bound the size of every response. One response is exempt by design: every current station at once, which the dataset itself bounds                                                                                                                                                         |
-| MCP server                | _unverified_   | Tool arguments chosen by an AI model                                                                                                                       | Must treat arguments as untrusted, reach data only through the public API, and return API data as data, never as instructions to follow                                                                                                                                                                                                                              |
-| Website server            | _unverified_   | Request paths, query parameters and the language in the address                                                                                            | Exists only if pages are rendered on the server, which is still open. It must then validate what it receives, and build its calls to the API only from a fixed base address, never from what a visitor sends                                                                                                                                                         |
-| Website in the browser    | _unverified_   | Station labels and other strings from the API                                                                                                              | Must render them as text, never as HTML                                                                                                                                                                                                                                                                                                                              |
+| Entry point               | State          | Input                                                                                                                                                                 | Handling                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OFCOM file                | exists         | A GeoJSON document of about 28 MB                                                                                                                                     | `ParseMobileStations` validates the shape and the reference system, reads strings as data, and reports unknown labels as warnings                                                                                                                                                                                                                                    |
+| Samples in the repository | exists         | JSON samples added by contributors, under `testdata/`                                                                                                                 | Reviewed for provenance (`AGENTS.md`, Code Review Rules); parsed like any other file                                                                                                                                                                                                                                                                                 |
+| Pull requests from forks  | exists         | Code, workflows, lockfile                                                                                                                                             | CI runs on `pull_request` with `contents: read` and no secrets; changes to workflows and dependencies are High risk                                                                                                                                                                                                                                                  |
+| Dependencies              | exists         | The Go toolchain, the `pgx` driver and Huma, and what they need, `sqlc` run by `go generate`, the database image, GitHub actions, and Biome from the package registry | CI installs the Go version that `backend/go.mod` names and refuses to download another (`GOTOOLCHAIN=local`); Go modules are verified against `go.sum`; `sqlc` is pinned to a version; the database image is pinned to a digest; locked install of Biome (`bun install --frozen-lockfile`); actions pinned to a commit; Dependabot proposes updates as pull requests |
+| Daily archive job         | exists         | OFCOM's catalogue and file, fetched unattended                                                                                                                        | In `swisscoverage-data`: checks the address, dates and checksum format before use, verifies the file's SHA-256 against the catalogue, and passes values to steps through the environment                                                                                                                                                                             |
+| Archive index and files   | exists         | The index of snapshots and the gzipped originals, fetched by `ingest` over HTTPS                                                                                      | `backend/internal/archive` checks every value, bounds every download and verifies each file's SHA-256; `ingest` refuses what would rewrite or empty the history. See trust boundary 8                                                                                                                                                                                |
+| Database                  | exists locally | The address in `DATABASE_URL`; rows written by `ingest`                                                                                                               | Parameterised SQL only, generated from `queries.sql`; the schema constrains every value the parser can return; a snapshot is written in one transaction                                                                                                                                                                                                              |
+| Public API                | exists locally | The path, the query parameters and the headers of anonymous requests                                                                                                  | Every parameter is validated against the contract, unknown ones refused; parameterised SQL only; read-only transactions on connections that refuse writes; every list paginated at 1,000 items, except every current station at once, which the dataset bounds; errors without internals. See trust boundary 4                                                       |
+| MCP server                | _unverified_   | Tool arguments chosen by an AI model                                                                                                                                  | Must treat arguments as untrusted, reach data only through the public API, and return API data as data, never as instructions to follow                                                                                                                                                                                                                              |
+| Website server            | _unverified_   | Request paths, query parameters and the language in the address                                                                                                       | Exists only if pages are rendered on the server, which is still open. It must then validate what it receives, and build its calls to the API only from a fixed base address, never from what a visitor sends                                                                                                                                                         |
+| Website in the browser    | _unverified_   | Station labels and other strings from the API                                                                                                                         | Must render them as text, never as HTML                                                                                                                                                                                                                                                                                                                              |
 
 ## Trust boundaries
 
@@ -117,10 +123,37 @@ personal data.
 3. **Repository → published artefact.** _Unverified._ A commit will cross when
    CI builds and publishes an image. The release workflow must run only on the
    protected branch, with the narrowest token that works.
-4. **Internet → API.** _Unverified._ Requests will cross into SQL queries.
-5. **API → database.** _Unverified._ `ingest` and `migrate` connect with
+4. **Internet → API.** Requests cross into SQL queries. Enforced today in
+   `backend/internal/api` and the `serve` command, and not yet exposed to the
+   internet, since nothing is deployed:
+   - every parameter is validated against the types the contract comes from:
+     ranges, vocabularies, lengths, and the pairs that go together, such as a
+     point's latitude and longitude. NaN and infinities are refused. An
+     unknown parameter is refused too;
+   - values reach SQL as parameters of the queries of `queries.sql`, never in
+     the text of a query;
+   - every list is paginated, at most 1,000 items, and a search around a point
+     reaches 50 km at most. The list of every current station is the one
+     unbounded response, by design: the dataset bounds it, at about 6 MB;
+   - the database stops a statement after 10 seconds, and the server a
+     request after 20. Headers have 10 seconds to arrive, and 16 KB at most;
+   - an error that the client cannot act on is logged and answered without
+     its details;
+   - responses are held in memory to compute their ETag, which their bounds
+     make safe.
+
+   What this does not cover: there is no rate limit. Each request that is not
+   answered by a cache is built in full, a 304 included, and the list of every
+   station costs about half a second of the database's time. Without a cache
+   in front, a client that asks for it in a loop can make the API slow for
+   everyone. Rate limits and the cache in front are for roadmap step 5, with
+   the deployment.
+5. **API → database.** `ingest`, `migrate` and `serve` connect with
    whatever role `DATABASE_URL` names; no deployment exists yet to give each
-   its own. The API should connect with a role that can only read. It is the only service exposed to the internet that connects
+   its own. The API's connections already refuse to write
+   (`default_transaction_read_only`), and it reads in read-only transactions,
+   but a role that can only read is what makes that hold against a bug in the
+   program: it comes with the deployment. It is the only service exposed to the internet that connects
    to the database. The import writes data and the migrations change the
    schema, each with its own role, and neither is reachable from the internet.
 6. **MCP server and website → API.** _Unverified._ Both call the public API
@@ -134,7 +167,8 @@ personal data.
    all visitor traffic, and a response it caches is served without reaching
    the cluster. Nothing private may ever be sent with a header that allows
    caching, and the cluster should accept traffic only from where it is meant
-   to come.
+   to come. The API sends `Cache-Control: public` on successful responses,
+   which hold public data only, and `no-store` on errors.
 8. **Archive → import.** The import reads the archive's index and files.
    That repository's workflow pushes to its `main` branch with a write token
    and without review, so the import treats the archive as untrusted input.

@@ -7,7 +7,13 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!bun.lock", "!**/testdata/*.golden.json", "!!**/dist"]
+    "includes": [
+      "**",
+      "!bun.lock",
+      "!**/testdata/*.golden.json",
+      "!openapi.json",
+      "!!**/dist"
+    ]
   },
   "formatter": {
     "enabled": true,

@@ -49,7 +49,7 @@ Reportable, with the highest severity first:
 - A way to make the project store or publish data that differs from its source,
   for example through a crafted source file or contributed record.
 - A way to run code, or SQL, through data: a source file, a fixture, or a
-  request to the API once it exists.
+  request to the API.
 - A way to read or change anything the public API does not expose, or to make
   the public instance unavailable with little effort, once it exists.
 

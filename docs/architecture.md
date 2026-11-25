@@ -76,39 +76,40 @@ a reader sees the day before or the day itself, never a mix.
 
 A typical day:
 
-| When (UTC)          | What happens                                                                                                 | State                                            |
-| ------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| around 22:00        | OFCOM replaces its file.                                                                                     |                                                  |
-| 04:17, 10:17, 16:17 | The archive copies it, verifies its checksum and commits it. The later runs find it archived and do nothing. | exists                                           |
-| 05:00               | The import loads it: it compares it with the day before and writes the differences.                          | exists as a command; scheduled in roadmap step 5 |
-| afterwards          | The API, the map and the MCP server serve the day's data.                                                    | planned                                          |
+| When (UTC)          | What happens                                                                                                 | State                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| around 22:00        | OFCOM replaces its file.                                                                                     |                                                        |
+| 04:17, 10:17, 16:17 | The archive copies it, verifies its checksum and commits it. The later runs find it archived and do nothing. | exists                                                 |
+| 05:00               | The import loads it: it compares it with the day before and writes the differences.                          | exists as a command; scheduled in roadmap step 5       |
+| afterwards          | The API serves the day's data as soon as the import commits it; the map and the MCP server read it there.    | the API exists; the map and the MCP server are planned |
 
 ## Parts
 
-| Part           | Where                                                                  | State   | Role                                                                                                                                                               |
-| -------------- | ---------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Archive        | [swisscoverage-data](https://github.com/mathieumaf/swisscoverage-data) | exists  | A separate repository. A scheduled workflow downloads OFCOM's file, checks it against the catalogue, commits it and lists it in the index of snapshots.            |
-| Backend        | `backend/` (Go)                                                        | started | One program, `swisscoverage`. See its commands below.                                                                                                              |
-| Parser         | `backend/internal/ofcom`                                               | exists  | Turns OFCOM's file into a typed model. Pure: no network, no file system, no database, no clock.                                                                    |
-| Archive reader | `backend/internal/archive`                                             | exists  | Reads the archive's index and files over HTTP, and checks everything it receives.                                                                                  |
-| Store          | `backend/internal/store`                                               | exists  | The schema, its migrations and the queries, for PostgreSQL with PostGIS. Records each snapshot and what it changed. PostGIS converts positions from LV95 to WGS84. |
-| API            | `backend/internal/api`, `openapi.json`                                 | planned | The public, read-only HTTP API and its contract.                                                                                                                   |
-| MCP server     | `backend/internal/mcp`                                                 | planned | Tools for AI assistants. A client of the public API over HTTP, with no access to the database.                                                                     |
-| Website        | `web/` (TypeScript)                                                    | planned | The map and the pages. A client of the public API over HTTP.                                                                                                       |
-| Deployment     | `deploy/`                                                              | started | Docker Compose for local work and tests, which exists; a Helm chart for Kubernetes in production, which is planned.                                                |
+| Part           | Where                                                                  | State   | Role                                                                                                                                                                                                                                           |
+| -------------- | ---------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Archive        | [swisscoverage-data](https://github.com/mathieumaf/swisscoverage-data) | exists  | A separate repository. A scheduled workflow downloads OFCOM's file, checks it against the catalogue, commits it and lists it in the index of snapshots.                                                                                        |
+| Backend        | `backend/` (Go)                                                        | started | One program, `swisscoverage`. See its commands below.                                                                                                                                                                                          |
+| Parser         | `backend/internal/ofcom`                                               | exists  | Turns OFCOM's file into a typed model. Pure: no network, no file system, no database, no clock.                                                                                                                                                |
+| Archive reader | `backend/internal/archive`                                             | exists  | Reads the archive's index and files over HTTP, and checks everything it receives.                                                                                                                                                              |
+| Store          | `backend/internal/store`                                               | exists  | The schema, its migrations and the queries, for PostgreSQL with PostGIS. Records each snapshot and what it changed, and reads them back for the API, each request in one read-only transaction. PostGIS converts positions from LV95 to WGS84. |
+| API            | `backend/internal/api`, `openapi.json`                                 | exists  | The public, read-only HTTP API and its contract. See [The API](#the-api).                                                                                                                                                                      |
+| MCP server     | `backend/internal/mcp`                                                 | planned | Tools for AI assistants. A client of the public API over HTTP, with no access to the database.                                                                                                                                                 |
+| Website        | `web/` (TypeScript)                                                    | planned | The map and the pages. A client of the public API over HTTP.                                                                                                                                                                                   |
+| Deployment     | `deploy/`                                                              | started | Docker Compose for local work and tests, which exists; a Helm chart for Kubernetes in production, which is planned.                                                                                                                            |
 
 The `swisscoverage` program has four commands that run in production and two
-that are tools for developers. `ingest`, `migrate` and `parse` exist today.
-`ingest` and `migrate` read the address of the database from `DATABASE_URL`.
+that are tools for developers. All exist today except `mcp`. `serve`,
+`ingest` and `migrate` read the address of the database from `DATABASE_URL`;
+`serve` opens connections that refuse every write.
 
 | Command   | What it does                                                                 | Runs as               | State   |
 | --------- | ---------------------------------------------------------------------------- | --------------------- | ------- |
-| `serve`   | Serves the public API.                                                       | a service             | planned |
+| `serve`   | Serves the public API.                                                       | a service             | exists  |
 | `mcp`     | Serves the MCP tools, by calling the public API.                             | a service             | planned |
 | `ingest`  | Loads the snapshots of the archive that the database does not hold yet.      | a daily job           | exists  |
 | `migrate` | Applies the schema migrations.                                               | a job before a deploy | exists  |
 | `parse`   | Reads a source file and prints what the parser makes of it. Touches nothing. | by hand               | exists  |
-| `openapi` | Prints the API contract, to write or to check `openapi.json`.                | by hand and in CI     | planned |
+| `openapi` | Prints the API contract, to write or to check `openapi.json`.                | by hand and in CI     | exists  |
 
 ## Repository layout
 
@@ -126,10 +127,10 @@ swisscoverage/
 │       │   ├── queries.sql    every query, written by hand
 │       │   └── query/         the Go code generated from them
 │       ├── testdb/            a database of its own for each test; exists
-│       ├── api/               REST routes and the contract they generate
+│       ├── api/               REST routes and the contract they generate; exists
 │       └── mcp/               MCP tools; calls the API over HTTP
 ├── web/                       TypeScript: website and map
-├── openapi.json               the API contract, generated and committed
+├── openapi.json               the API contract, generated and committed; exists
 ├── deploy/
 │   ├── compose.yaml           local work and tests; exists
 │   └── helm/                  production
@@ -153,12 +154,57 @@ Rules that keep it honest:
 ## The API contract
 
 `swisscoverage openapi` prints the contract from the code, and the result is
-committed as `openapi.json`. CI runs the command and fails when its output
-differs from the committed file. The website's types and the MCP server's
-client are generated from that file.
+committed as `openapi.json`. A test runs the command and fails when its output
+differs from the committed file, so CI fails too. After a change to the API,
+`go run ./cmd/swisscoverage openapi > ../openapi.json`, run in `backend/`,
+writes the file again, and its diff shows the change to the contract. The
+website's types and the MCP server's client will be generated from that file.
+Huma generates the contract from the routes and their Go types
+([decision 21](decisions.md)), and the API serves it at
+`/v1/openapi.json`.
 
 The contract is public API: changing it is a High-risk change (see
 `AGENTS.md`). The reasons are in [decision 8](decisions.md).
+
+## The API
+
+`swisscoverage serve` answers under `/v1`, read-only. `openapi.json` is the
+reference for each parameter and field; this is the outline.
+
+| Endpoint                  | Returns                                                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/stations`        | Every station of the latest snapshot, as one GeoJSON FeatureCollection, with what the map filters on. Not paginated.                                 |
+| `GET /v1/stations/search` | The stations in a rectangle (`bbox`) or within a radius of a point (`lat`, `lon`, `radius`), filtered by operator, kind, power class and technology. |
+| `GET /v1/stations/{id}`   | One station, published today or in the past, and its periods, the latest first.                                                                      |
+| `GET /v1/stations/counts` | How many stations, in all and for each operator, kind, power class and technology.                                                                   |
+| `GET /v1/snapshots`       | The snapshots loaded, the newest first.                                                                                                              |
+| `GET /v1/openapi.json`    | The contract.                                                                                                                                        |
+
+- **Positions** are given both as published, in LV95, and in WGS84 as PostGIS
+  computes them, to 7 decimals. Searches take WGS84, and distances are in
+  metres on the ellipsoid.
+- **A station's identifier** is `east_north_label`, its position and its
+  label ([decision 22](decisions.md)). It survives a rebuild of the database.
+- **Every response that carries data carries OFCOM's attribution**, which its
+  terms require, and the snapshot it comes from.
+- **Validation.** Every parameter is checked, and an unknown one is refused:
+  a typo answers 422 instead of a list that ignores it. Errors are
+  `application/problem+json` (RFC 9457) and say nothing of the server's
+  internals.
+- **Bounds.** Every list is paginated with `limit`, at most 1,000, and
+  `offset`, and says how many items there are in all. The list of every
+  station is the exception: the dataset bounds it.
+- **Caching** ([decision 23](decisions.md)). A successful response carries an
+  ETag computed from its body and `Cache-Control: public, max-age=300`, and a
+  request that sends the ETag back gets 304. Errors are not cached. Bodies
+  are compressed with gzip for clients that accept it, and any origin may
+  read the API from a browser.
+- **Consistency.** Each request reads in one read-only transaction, so it sees
+  one snapshot even while the import commits the next. Before the first
+  import, the endpoints that need a snapshot answer 503.
+- **Limits on time.** The database stops a statement after 10 seconds, the
+  server a request after 20, and an idle or slow client after the timeouts of
+  `serve`.
 
 ## Data model
 
@@ -190,6 +236,9 @@ reference.
   and its checksum. Its number of sites is counted in the file and must match
   the index.
 
+Two spatial indexes on `station`, one on `position` and one on the same point
+as a geography, serve the API's searches in a rectangle and around a point.
+
 A fourth table, `incoming_station`, is the import's workbench: it holds the
 stations of the snapshot being loaded while they are compared with what is
 known, and is empty the rest of the time.
@@ -203,7 +252,7 @@ them. Choices marked "open" are questions listed in
 | Role                 | Choice                                                                                | Notes                                                                                                          |
 | -------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | API, import, MCP     | Go                                                                                    | One static binary. The MCP server may move to another language if Go fits it badly.                            |
-| API description      | OpenAPI 3.1, generated from the Go code                                               | Huma is the candidate library.                                                                                 |
+| API description      | OpenAPI 3.1, generated from the Go code                                               | Huma, on the standard library's router ([decision 21](decisions.md)).                                          |
 | MCP server           | The official MCP SDK for Go                                                           | Read-only tools, served to assistants over Streamable HTTP.                                                    |
 | Database             | PostgreSQL with PostGIS                                                               | Spatial queries, history, and the rigorous LV95 to WGS84 transformation.                                       |
 | Database access      | SQL written by hand, typed code generated                                             | `pgx` is the driver and `sqlc` the generator.                                                                  |
@@ -216,8 +265,9 @@ them. Choices marked "open" are questions listed in
 | In front of the site | Cloudflare                                                                            | DNS and CDN. What it caches is open.                                                                           |
 | Releases             | GitHub Actions, GitHub container registry                                             | Deployment waits for the maintainer's approval.                                                                |
 
-The backend's only dependency is `pgx`, the PostgreSQL driver. Everything
-else, including the command line, the HTTP client that reads the archive and
+The backend has two dependencies: `pgx`, the PostgreSQL driver, and Huma,
+which describes and validates the API. Everything else, including the command
+line, the HTTP server and router, the HTTP client that reads the archive and
 the migration runner, is Go's standard library. The Go version is the `go`
 line of `backend/go.mod`, which CI installs. Until `web/` exists, the only
 JavaScript tool is Biome, run with Bun to check Markdown, JSON and YAML.

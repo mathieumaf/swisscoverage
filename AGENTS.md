@@ -2,11 +2,11 @@
 
 An open map, API and MCP server for mobile network antennas in Switzerland,
 built on OFCOM's open data. The project is at its beginning. Today the code is
-the start of the backend, in Go under `backend/`: the `swisscoverage` program
-with three commands, `parse`, `migrate` and `ingest`; the parser for OFCOM's
-file; and the database, PostgreSQL with PostGIS, with the import that loads
-the archive into it. The API, the MCP server and a website in TypeScript are
-planned.
+the backend, in Go under `backend/`: the `swisscoverage` program with five
+commands, `serve`, `openapi`, `parse`, `migrate` and `ingest`; the parser for
+OFCOM's file; the database, PostgreSQL with PostGIS, with the import that
+loads the archive into it; and the public, read-only API, with its contract
+in `openapi.json`. The MCP server and a website in TypeScript are planned.
 
 - `docs/architecture.md`: read before adding a module, a command or a
   dependency. It says what exists, what is planned, and where a change belongs.
@@ -30,14 +30,14 @@ it holds nothing that cannot be loaded again:
 docker compose -f deploy/compose.yaml up -d --wait
 ```
 
-| Command                 | Run in     | Proves                                      | Expected                     |
-| ----------------------- | ---------- | ------------------------------------------- | ---------------------------- |
-| `CI=true go test ./...` | `backend/` | the tests, those on the database included   | prints `ok` for each package |
-| `go vet ./...`          | `backend/` | no suspicious construct                     | prints nothing               |
-| `gofmt -l .`            | `backend/` | formatting of the Go code                   | prints nothing               |
-| `go mod tidy -diff`     | `backend/` | `go.mod` and `go.sum` match the imports     | prints nothing               |
-| `go generate ./...`     | `backend/` | the generated query code is current         | `git status` shows no change |
-| `bun run check`         | the root   | lint and formatting of Markdown, JSON, YAML | prints `No fixes applied.`   |
+| Command                 | Run in     | Proves                                                                        | Expected                     |
+| ----------------------- | ---------- | ----------------------------------------------------------------------------- | ---------------------------- |
+| `CI=true go test ./...` | `backend/` | the tests, those on the database included, and that `openapi.json` is current | prints `ok` for each package |
+| `go vet ./...`          | `backend/` | no suspicious construct                                                       | prints nothing               |
+| `gofmt -l .`            | `backend/` | formatting of the Go code                                                     | prints nothing               |
+| `go mod tidy -diff`     | `backend/` | `go.mod` and `go.sum` match the imports                                       | prints nothing               |
+| `go generate ./...`     | `backend/` | the generated query code is current                                           | `git status` shows no change |
+| `bun run check`         | the root   | lint and formatting of Markdown, JSON, YAML                                   | prints `No fixes applied.`   |
 
 Without `CI=true`, the tests that need the database are skipped when it does
 not answer, and `go test` still prints `ok`: that proves nothing about the
@@ -67,6 +67,12 @@ two outputs.
 file from what the parser returns. Its diff is then part of the change: read
 it.
 
+`openapi.json`, at the root, is the API's contract as
+`swisscoverage openapi` prints it, and a test fails when the two differ. After
+a change to the API, `go run ./cmd/swisscoverage openapi > ../openapi.json`,
+run in `backend/`, writes it again. Its diff is the change to the public
+contract: read it. It may add, never remove or change what exists.
+
 To see a change to the schema or to the import against real data, load the
 archive into the local database:
 
@@ -82,10 +88,34 @@ disappeared and changed, and exits 0. Run it again: it prints
 the project's own archive. To start from nothing, throw the database away
 with `docker compose -f deploy/compose.yaml down -v` and start it again.
 
-Everything above is safe: the downloads are public, read-only files, and what
-is written goes to the working tree or to the local database. The repository
-holds no credentials beyond the ones of that local database, and there is no
-deployment today.
+To see a change to the API against real data, load the archive as above,
+then serve it with the same `DATABASE_URL`:
+
+```sh
+go run -C backend ./cmd/swisscoverage serve
+```
+
+It prints `Serving the API on http://127.0.0.1:8080/v1/` and answers until it
+is interrupted. In another terminal, each endpoint answers 200:
+
+```sh
+curl -sS -o /dev/null -w '%{http_code} %{size_download}\n' http://127.0.0.1:8080/v1/stations
+curl -sS 'http://127.0.0.1:8080/v1/stations/search?lat=46.948&lon=7.4474&radius=300&limit=2'
+curl -sS 'http://127.0.0.1:8080/v1/stations/2683328_1247916_Sunrise%20ZE416-1'
+curl -sS http://127.0.0.1:8080/v1/stations/counts
+curl -sS http://127.0.0.1:8080/v1/snapshots
+```
+
+The first prints about `200 5600000`: every station, as GeoJSON. A search
+names a station's `id`, which reads it back once percent-encoded. A request
+with a parameter that is wrong or unknown answers 422. `serve` only reads:
+its connections refuse every write.
+
+Everything above is safe: the downloads are public, read-only files, what is
+written goes to the working tree or to the local database, and `serve`
+listens on this machine only. The repository holds no credentials beyond the
+ones of that local database, and there is no deployment today, so no command
+touches production.
 
 Off limits:
 
@@ -95,12 +125,14 @@ Off limits:
   and the tests of the import read an archive they serve themselves.
 - Setting `DATABASE_URL` or `SWISSCOVERAGE_TEST_DATABASE_URL` to anything but
   the local database of `deploy/compose.yaml`. `migrate` changes a schema,
-  `ingest` writes, and the tests create and drop databases on the server they
-  are given.
+  `ingest` writes, `serve` publishes what it reads, and the tests create and
+  drop databases on the server they are given.
+- Running `serve` on an address other machines can reach, such as
+  `-listen :8080`, outside a deployment.
 
-When an API or a deployment is added, the pull request that adds it must
-extend this section: how to run it against throwaway data, and which commands
-touch production and are off limits.
+When a deployment is added, the pull request that adds it must extend this
+section: how to run it against throwaway data, and which commands touch
+production and are off limits.
 
 ## Code Review Rules
 
@@ -140,12 +172,23 @@ Flag a change when:
   download has no bound. The archive is written by an unattended job.
 - **It builds SQL from strings.** Queries live in
   `backend/internal/store/queries.sql`, with parameters.
+- **It breaks the API's promises.** A change to `openapi.json` removes,
+  renames or changes the meaning of something it already describes: clients
+  built on the previous contract keep running. Or a response that carries
+  data loses OFCOM's attribution, a list loses its bound on size, a parameter
+  goes unvalidated, an error shows the server's internals, or an error is
+  sent with a header that lets it be cached.
+- **It lets the API write.** The API reads through
+  `store.OpenReadOnly` and read-only transactions only.
 
 Skip third-party texts: `LICENSE` and `CODE_OF_CONDUCT.md`. For the samples
 under `**/testdata/` and `**/fixtures/`, check where they come from, not their
 formatting. A `*.golden.json` file records what the parser returns: review a
 change to it as a change to the parser's behaviour. Review `bun.lock` and
-`backend/go.sum`: they pick the dependency versions that run. The code under
+`backend/go.sum`: they pick the dependency versions that run. `openapi.json`
+is generated: review it as the change to the public contract that it shows,
+and check that it changed only with `backend/internal/api` or with the
+parser's vocabularies, which it lists. The code under
 `backend/internal/store/query/` is generated: review `queries.sql` and the
 migrations it comes from, and check that it changed only with them.
 
@@ -168,10 +211,11 @@ When paths overlap, the higher tier wins.
 - `LICENSE`: the terms of the whole project.
 - `backend/internal/store/**`: the schema, its migrations, and every query
   that writes to the database.
+- `openapi.json` and `backend/internal/api/**`: the public API's contract, and
+  what answers requests from the internet.
 - `deploy/**` and any `Dockerfile`: what runs, locally today, and what is
   released and how.
-- Planned, High from their first commit: `openapi.json` and
-  `backend/internal/api/**` (the public API contract), `web/package.json` and
+- Planned, High from their first commit: `web/package.json` and
   `web/bun.lock` (the dependencies that run).
 
 **Low**

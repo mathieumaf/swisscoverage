@@ -5,7 +5,8 @@ MCP server over the same data.
 
 > **Status: early development.** Nothing is deployed yet. The repository holds
 > the foundations: the parser for the official dataset, the database and the
-> import that loads the daily archive into it, the architecture and the plan.
+> import that loads the daily archive into it, the public API that serves it,
+> the architecture and the plan.
 > Follow the [roadmap](docs/roadmap.md) to see what comes next.
 
 ## Why
@@ -66,10 +67,11 @@ Most of this is planned, not built. Today the repository holds:
 
 ```
 backend/     The `swisscoverage` program, in Go: the parser for the OFCOM
-             dataset, the database schema, and the import that records what
-             changed from one day to the next
+             dataset, the database schema, the import that records what
+             changed from one day to the next, and the read-only API
 deploy/      Docker Compose with the database, for local work and tests
 docs/        Architecture, decisions, roadmap, data sources, security
+openapi.json The API's contract, generated from the code
 ```
 
 - [docs/architecture.md](docs/architecture.md): how the pieces fit together
@@ -92,6 +94,7 @@ go test ./...                                         # the backend's tests
 export DATABASE_URL=postgres://swisscoverage:swisscoverage@127.0.0.1:54320/swisscoverage
 go run ./cmd/swisscoverage migrate                    # creates the tables
 go run ./cmd/swisscoverage ingest                     # loads the archive
+go run ./cmd/swisscoverage serve                      # the API, on http://127.0.0.1:8080/v1/
 
 cd ..
 bun install

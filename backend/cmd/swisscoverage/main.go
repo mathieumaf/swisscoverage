@@ -15,11 +15,13 @@ import (
 const usage = `Usage: swisscoverage <command> [arguments]
 
 Commands:
+  serve    Serve the public API, which only reads.
   migrate  Bring the database schema up to date.
   ingest   Load the snapshots of the archive that the database does not hold yet.
   parse    Read a file of OFCOM's mobile stations and print what it contains.
+  openapi  Print the contract of the API, as openapi.json holds it.
 
-migrate and ingest read the address of the database from DATABASE_URL.
+serve, migrate and ingest read the address of the database from DATABASE_URL.
 Run "swisscoverage <command> -h" for the arguments of a command.
 `
 
@@ -43,6 +45,10 @@ func run(
 		return 2
 	}
 	switch args[0] {
+	case "serve":
+		return runServe(ctx, args[1:], stdout, stderr, getenv)
+	case "openapi":
+		return runOpenAPI(args[1:], stdout, stderr)
 	case "migrate":
 		return runMigrate(ctx, args[1:], stdout, stderr, getenv)
 	case "ingest":
