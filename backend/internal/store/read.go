@@ -156,12 +156,22 @@ func (s *Store) read(ctx context.Context, fn func(*query.Queries) error) error {
 	if err != nil {
 		return fmt.Errorf("starting to read: %w", err)
 	}
-	defer tx.Rollback(context.WithoutCancel(ctx))
+	defer func() {
+		// Ended even once ctx is done, but within a bound: a stalled
+		// connection must not hold back the answer. pgx closes a connection
+		// whose rollback fails.
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), rollbackTimeout)
+		defer cancel()
+		tx.Rollback(cleanup)
+	}()
 	if err := fn(query.New(tx)); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
 }
+
+// How long ending a read may take once the request is over.
+const rollbackTimeout = time.Second
 
 func latestSnapshot(ctx context.Context, queries *query.Queries) (*Snapshot, error) {
 	rows, err := queries.LatestSnapshot(ctx)
