@@ -48,8 +48,9 @@ func runIngest(
 		"address of the archive's index")
 	releasesURL := flags.String("releases", archive.DefaultReleasesURL,
 		"address under which the archive's files are found, as <release>/<file>")
-	allowDrop := flags.Bool("allow-drop", false,
-		"load one snapshot even though it has less than half the sites of the one before")
+	allowDrop := flags.String("allow-drop", "",
+		"publication `time` of the one snapshot to load even though it has less than half\n"+
+			"the sites of the one before, as the refusal printed it")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -74,7 +75,7 @@ func runIngest(
 }
 
 func ingest(
-	ctx context.Context, source *archive.Client, allowDrop bool,
+	ctx context.Context, source *archive.Client, allowDrop string,
 	stdout, stderr io.Writer, getenv func(string) string,
 ) error {
 	database, err := openStore(ctx, getenv)
@@ -129,7 +130,7 @@ func ingest(
 			PublishedAt: snapshot.PublishedAt,
 			SHA256:      snapshot.SHA256,
 			Sites:       sites,
-		}, parsed.Stations, allowDrop)
+		}, parsed.Stations, allowDrop == published)
 		var tooFew *store.TooFewSitesError
 		switch {
 		case errors.Is(err, store.ErrAlreadyLoaded):
@@ -138,13 +139,9 @@ func ingest(
 			continue
 		case errors.As(err, &tooFew):
 			return fmt.Errorf("the snapshot published at %s has %w: check the file, "+
-				"then run again with -allow-drop to load it", published, err)
+				"then run again with -allow-drop %s to load it", published, err, published)
 		case err != nil:
 			return fmt.Errorf("the snapshot published at %s: %w", published, err)
-		}
-		// A person allowed one file, the one they looked at.
-		if result.Drop {
-			allowDrop = false
 		}
 		loadedNow++
 

@@ -403,6 +403,8 @@ func TestIngestRefusesAnArchiveItCannotTrust(t *testing.T) {
 	}
 }
 
+// A person allows one snapshot, the one they looked at, by its publication
+// time. The allowance does not carry over to another one.
 func TestIngestLoadsASmallerFileWhenTold(t *testing.T) {
 	address := migrated(t)
 	archive := newArchive(t)
@@ -410,20 +412,30 @@ func TestIngestLoadsASmallerFileWhenTold(t *testing.T) {
 	archive.add(24, sampleWith(t, func(features []map[string]any) []map[string]any {
 		return features[:4]
 	}))
-
-	// A second file that small is one nobody looked at yet.
 	archive.add(25, sampleWith(t, func(features []map[string]any) []map[string]any {
 		return features[:1]
 	}))
 
-	stdout, stderr, status := callWith(t, address, append(archive.arguments(), "-allow-drop")...)
+	_, stderr, status := callWith(t, address, archive.arguments()...)
+	if status != 1 || !strings.Contains(stderr, "then run again with -allow-drop 2026-10-24T22:01:35Z to load it") {
+		t.Fatalf("without the flag: got status %d and stderr %q", status, stderr)
+	}
 
+	// Allowing another snapshot allows nothing here.
+	_, stderr, status = callWith(t, address,
+		append(archive.arguments(), "-allow-drop", "2026-10-25T22:01:35Z")...)
+	if status != 1 || !strings.Contains(stderr, "has 4 sites, less than half the 9 of the one before") {
+		t.Errorf("allowing the wrong one: got status %d and stderr %q", status, stderr)
+	}
+
+	stdout, stderr, status := callWith(t, address,
+		append(archive.arguments(), "-allow-drop", "2026-10-24T22:01:35Z")...)
 	if !strings.Contains(stdout,
 		"2026-10-24T22:01:35Z: 4 sites, 0 appeared, 5 disappeared, 0 changed, 0 warnings\n") {
-		t.Errorf("the first smaller file was not loaded: output %q and stderr %q", stdout, stderr)
+		t.Errorf("the allowed file was not loaded: output %q and stderr %q", stdout, stderr)
 	}
 	if status != 1 || !strings.Contains(stderr, "has 1 sites, less than half the 4 of the one before") {
-		t.Errorf("the second one: got status %d and stderr %q, want it refused", status, stderr)
+		t.Errorf("the next one: got status %d and stderr %q, want it refused", status, stderr)
 	}
 }
 

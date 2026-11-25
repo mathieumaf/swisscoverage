@@ -33,9 +33,6 @@ type Loaded struct {
 	// Duplicates lists the sites the file contains more than once, each as
 	// its label and position. The first occurrence is the one kept.
 	Duplicates []string
-	// Drop is true when the snapshot has less than half the sites that were
-	// published before it, and was loaded because the caller allowed it.
-	Drop bool
 }
 
 // TooFewSitesError is returned by LoadSnapshot for a snapshot with less than
@@ -140,8 +137,7 @@ func (s *Store) LoadSnapshot(
 	if err != nil {
 		return Loaded{}, fmt.Errorf("counting the published sites: %w", err)
 	}
-	drop := int64(len(rows))*2 < current
-	if drop && !allowDrop {
+	if int64(len(rows))*2 < current && !allowDrop {
 		return Loaded{}, &TooFewSitesError{Sites: len(rows), Current: int(current)}
 	}
 
@@ -175,7 +171,7 @@ func (s *Store) LoadSnapshot(
 	}
 
 	// In a first snapshot, every site appears.
-	loaded := Loaded{Appeared: int(opened), Duplicates: duplicates, Drop: drop}
+	loaded := Loaded{Appeared: int(opened), Duplicates: duplicates}
 	if previous != nil {
 		changes, err := listChanges(ctx, queries, previous.PublishedAt, publishedAt)
 		if err != nil {

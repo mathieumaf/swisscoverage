@@ -51,6 +51,19 @@ func TestParseIndex(t *testing.T) {
 	}
 }
 
+// The archive accepts a publication time with any number of decimals. So
+// does the index: what is beyond the microsecond is dropped.
+func TestParseIndexReadsATimeWithManyDecimals(t *testing.T) {
+	snapshots, err := ParseIndex([]byte(line("published", `"2026-11-23T22:01:35.611529123456Z"`)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := time.Date(2026, 11, 23, 22, 1, 35, 611529000, time.UTC)
+	if !snapshots[0].PublishedAt.Equal(want) {
+		t.Errorf("got %s, want %s", snapshots[0].PublishedAt, want)
+	}
+}
+
 func TestParseIndexOfNothing(t *testing.T) {
 	snapshots, err := ParseIndex([]byte("\n"))
 	if err != nil || len(snapshots) != 0 {

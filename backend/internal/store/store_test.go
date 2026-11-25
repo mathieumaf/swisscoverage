@@ -492,7 +492,7 @@ func TestLoadRefusesASnapshotThatLostMostSites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantEqual(t, loaded, store.Loaded{Disappeared: 2, Drop: true})
+	wantEqual(t, loaded, store.Loaded{Disappeared: 2})
 }
 
 // Two imports of the same snapshot at once: one loads it, the other waits and
