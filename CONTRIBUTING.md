@@ -38,15 +38,22 @@ next.
 
 The short version: the backend is written in Go under `backend/`. Today it
 holds the `swisscoverage` program with its commands in
-`backend/cmd/swisscoverage`, and three packages under `backend/internal/`:
+`backend/cmd/swisscoverage`, and four packages under `backend/internal/`:
 `ofcom`, the parser for OFCOM's file; `archive`, which reads the daily
-archive; and `store`, the database. The website is planned in TypeScript
-under `web/`.
+archive; `store`, the database; and `api`, the public API. The website is
+planned in TypeScript under `web/`.
 
 The parser never touches the network, the file system, the environment, a
 database or the clock: it receives the bytes of a file from the command that
 calls it. Code that needs the database belongs in `backend/internal/store`.
 The website reaches the data only by calling the public API.
+
+The API's contract is `openapi.json`, at the root, generated from the code of
+`backend/internal/api`. After a change to the API, run
+`go run ./cmd/swisscoverage openapi > ../openapi.json` in `backend/` and
+commit the result with the change; a test fails until you do. The contract
+only grows: a change may add an endpoint, a parameter or a field, never
+remove or change one that exists, since clients built on it keep running.
 
 Two rules for the database:
 
@@ -104,6 +111,7 @@ To load the archive into the local database, in `backend/`:
 export DATABASE_URL=postgres://swisscoverage:swisscoverage@127.0.0.1:54320/swisscoverage
 go run ./cmd/swisscoverage migrate    # creates the tables
 go run ./cmd/swisscoverage ingest     # loads every snapshot it does not hold yet
+go run ./cmd/swisscoverage serve      # the API, on http://127.0.0.1:8080/v1/
 ```
 
 ## Data

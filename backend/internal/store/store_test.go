@@ -580,3 +580,20 @@ func TestOpenDoesNotShowThePassword(t *testing.T) {
 		}
 	}
 }
+
+// The API's connections refuse to write, whatever the role may do.
+func TestOpenReadOnlyRefusesWrites(t *testing.T) {
+	_, address := open(t)
+	reader, err := store.OpenReadOnly(context.Background(), address, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	_, err = reader.LoadSnapshot(context.Background(), snapshotAt(day1, 1), []ofcom.MobileStation{bifo}, false)
+	if err == nil || !strings.Contains(err.Error(), "read-only transaction") {
+		t.Errorf("got %v, want a refusal", err)
+	}
+	if got := testdb.Query(t, address, `SELECT count(*) FROM snapshot`); got[0][0] != "0" {
+		t.Errorf("the read-only store wrote %s snapshots", got[0][0])
+	}
+}

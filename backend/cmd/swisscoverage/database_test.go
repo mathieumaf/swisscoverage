@@ -44,19 +44,20 @@ func TestMigrateCommand(t *testing.T) {
 	address := testdb.New(t)
 
 	stdout, stderr, status := callWith(t, address, "migrate")
-	if stdout != "applied 0001_stations.sql\nThe schema is now at version 1.\n" ||
+	if stdout != "applied 0001_stations.sql\napplied 0002_station_position_indexes.sql\n"+
+		"The schema is now at version 2.\n" ||
 		stderr != "" || status != 0 {
 		t.Errorf("first run: got status %d, output %q and stderr %q", status, stdout, stderr)
 	}
 
 	stdout, stderr, status = callWith(t, address, "migrate")
-	if stdout != "The schema is up to date (version 1).\n" || stderr != "" || status != 0 {
+	if stdout != "The schema is up to date (version 2).\n" || stderr != "" || status != 0 {
 		t.Errorf("second run: got status %d, output %q and stderr %q", status, stdout, stderr)
 	}
 }
 
 func TestCommandsNeedADatabase(t *testing.T) {
-	for _, command := range []string{"migrate", "ingest"} {
+	for _, command := range []string{"migrate", "ingest", "serve"} {
 		stdout, stderr, status := call(t, "", command)
 		if status != 1 || stdout != "" || !strings.Contains(stderr, "DATABASE_URL is not set") {
 			t.Errorf("%s without DATABASE_URL: got status %d, output %q and stderr %q",

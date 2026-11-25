@@ -76,6 +76,119 @@ func (q *Queries) CountCurrentStations(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countCurrentStationsBy = `-- name: CountCurrentStationsBy :many
+SELECT 'operator'::text AS dimension, s.operator AS value, count(*) AS stations
+FROM station s
+JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+GROUP BY s.operator
+UNION ALL
+SELECT 'kind'::text, st.kind, count(*)
+FROM station_state st
+WHERE st.valid_to IS NULL
+GROUP BY st.kind
+UNION ALL
+SELECT 'power_class'::text, st.power_class, count(*)
+FROM station_state st
+WHERE st.valid_to IS NULL
+GROUP BY st.power_class
+UNION ALL
+SELECT 'technology'::text, technology, count(*)
+FROM station_state st, unnest(st.technologies) AS technology
+WHERE st.valid_to IS NULL
+GROUP BY technology
+`
+
+type CountCurrentStationsByRow struct {
+	Dimension string
+	Value     string
+	Stations  int64
+}
+
+// How many sites the latest snapshot shows for each operator, kind, power
+// class and technology. Values no site has are absent. A site counts once
+// for each of its technologies.
+func (q *Queries) CountCurrentStationsBy(ctx context.Context) ([]CountCurrentStationsByRow, error) {
+	rows, err := q.db.Query(ctx, countCurrentStationsBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountCurrentStationsByRow
+	for rows.Next() {
+		var i CountCurrentStationsByRow
+		if err := rows.Scan(&i.Dimension, &i.Value, &i.Stations); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getStation = `-- name: GetStation :many
+SELECT s.id, s.name, s.operator, s.code, s.east, s.north,
+       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
+       s.first_seen,
+       EXISTS (
+           SELECT 1 FROM station_state st WHERE st.station_id = s.id AND st.valid_to IS NULL
+       ) AS published
+FROM station s
+WHERE s.name = $1 AND s.east = $2 AND s.north = $3
+`
+
+type GetStationParams struct {
+	Name  string
+	East  float64
+	North float64
+}
+
+type GetStationRow struct {
+	ID        int64
+	Name      string
+	Operator  string
+	Code      string
+	East      float64
+	North     float64
+	Latitude  float64
+	Longitude float64
+	FirstSeen time.Time
+	Published bool
+}
+
+// One site, found by its label and its position as published.
+func (q *Queries) GetStation(ctx context.Context, arg GetStationParams) ([]GetStationRow, error) {
+	rows, err := q.db.Query(ctx, getStation, arg.Name, arg.East, arg.North)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetStationRow
+	for rows.Next() {
+		var i GetStationRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Operator,
+			&i.Code,
+			&i.East,
+			&i.North,
+			&i.Latitude,
+			&i.Longitude,
+			&i.FirstSeen,
+			&i.Published,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertNewStations = `-- name: InsertNewStations :execrows
 INSERT INTO station (name, operator, code, east, north, first_seen)
 SELECT i.name, i.operator, i.code, i.east, i.north, $1
@@ -110,6 +223,44 @@ type InsertSnapshotParams struct {
 func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) error {
 	_, err := q.db.Exec(ctx, insertSnapshot, arg.PublishedAt, arg.Sha256, arg.Sites)
 	return err
+}
+
+const latestSnapshot = `-- name: LatestSnapshot :many
+
+SELECT published_at, sha256, sites
+FROM snapshot
+ORDER BY published_at DESC
+LIMIT 1
+`
+
+type LatestSnapshotRow struct {
+	PublishedAt time.Time
+	Sha256      string
+	Sites       int32
+}
+
+// The queries below are the API's. They only read, and each request runs
+// them in one read-only transaction, so that it sees one snapshot.
+// The snapshot whose stations are published now. No row before the first
+// import.
+func (q *Queries) LatestSnapshot(ctx context.Context) ([]LatestSnapshotRow, error) {
+	rows, err := q.db.Query(ctx, latestSnapshot)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LatestSnapshotRow
+	for rows.Next() {
+		var i LatestSnapshotRow
+		if err := rows.Scan(&i.PublishedAt, &i.Sha256, &i.Sites); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listChanges = `-- name: ListChanges :many
@@ -188,6 +339,72 @@ func (q *Queries) ListChanges(ctx context.Context, arg ListChangesParams) ([]Lis
 	return items, nil
 }
 
+const listCurrentStations = `-- name: ListCurrentStations :many
+SELECT s.name, s.operator, s.code, s.east, s.north,
+       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
+       s.first_seen,
+       st.kind, st.power_class, st.technologies, st.adaptive,
+       st.permit_type, st.permit_date, st.installation_limit_value
+FROM station s
+JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+ORDER BY s.name, s.east, s.north
+`
+
+type ListCurrentStationsRow struct {
+	Name                   string
+	Operator               string
+	Code                   string
+	East                   float64
+	North                  float64
+	Latitude               float64
+	Longitude              float64
+	FirstSeen              time.Time
+	Kind                   string
+	PowerClass             string
+	Technologies           []string
+	Adaptive               pgtype.Bool
+	PermitType             pgtype.Text
+	PermitDate             pgtype.Date
+	InstallationLimitValue pgtype.Float8
+}
+
+// Every site the latest snapshot shows, with what it shows of it.
+func (q *Queries) ListCurrentStations(ctx context.Context) ([]ListCurrentStationsRow, error) {
+	rows, err := q.db.Query(ctx, listCurrentStations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCurrentStationsRow
+	for rows.Next() {
+		var i ListCurrentStationsRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.Operator,
+			&i.Code,
+			&i.East,
+			&i.North,
+			&i.Latitude,
+			&i.Longitude,
+			&i.FirstSeen,
+			&i.Kind,
+			&i.PowerClass,
+			&i.Technologies,
+			&i.Adaptive,
+			&i.PermitType,
+			&i.PermitDate,
+			&i.InstallationLimitValue,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSnapshots = `-- name: ListSnapshots :many
 SELECT published_at, sha256, sites, loaded_at
 FROM snapshot
@@ -219,13 +436,120 @@ func (q *Queries) ListSnapshots(ctx context.Context) ([]Snapshot, error) {
 	return items, nil
 }
 
+const listSnapshotsPage = `-- name: ListSnapshotsPage :many
+SELECT published_at, sha256, sites, count(*) OVER () AS total
+FROM snapshot
+ORDER BY published_at DESC
+LIMIT $2 OFFSET $1
+`
+
+type ListSnapshotsPageParams struct {
+	RowOffset int32
+	RowLimit  int32
+}
+
+type ListSnapshotsPageRow struct {
+	PublishedAt time.Time
+	Sha256      string
+	Sites       int32
+	Total       int64
+}
+
+// The snapshots, newest first, with how many there are in all.
+func (q *Queries) ListSnapshotsPage(ctx context.Context, arg ListSnapshotsPageParams) ([]ListSnapshotsPageRow, error) {
+	rows, err := q.db.Query(ctx, listSnapshotsPage, arg.RowOffset, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSnapshotsPageRow
+	for rows.Next() {
+		var i ListSnapshotsPageRow
+		if err := rows.Scan(
+			&i.PublishedAt,
+			&i.Sha256,
+			&i.Sites,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStationStates = `-- name: ListStationStates :many
+SELECT valid_from, valid_to, kind, power_class, technologies, adaptive,
+       permit_type, permit_date, installation_limit_value,
+       count(*) OVER () AS total
+FROM station_state
+WHERE station_id = $1
+ORDER BY valid_from DESC
+LIMIT $3 OFFSET $2
+`
+
+type ListStationStatesParams struct {
+	StationID int64
+	RowOffset int32
+	RowLimit  int32
+}
+
+type ListStationStatesRow struct {
+	ValidFrom              time.Time
+	ValidTo                pgtype.Timestamptz
+	Kind                   string
+	PowerClass             string
+	Technologies           []string
+	Adaptive               pgtype.Bool
+	PermitType             pgtype.Text
+	PermitDate             pgtype.Date
+	InstallationLimitValue pgtype.Float8
+	Total                  int64
+}
+
+// What was published of one site, period by period, the latest first, with
+// how many periods there are in all.
+func (q *Queries) ListStationStates(ctx context.Context, arg ListStationStatesParams) ([]ListStationStatesRow, error) {
+	rows, err := q.db.Query(ctx, listStationStates, arg.StationID, arg.RowOffset, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStationStatesRow
+	for rows.Next() {
+		var i ListStationStatesRow
+		if err := rows.Scan(
+			&i.ValidFrom,
+			&i.ValidTo,
+			&i.Kind,
+			&i.PowerClass,
+			&i.Technologies,
+			&i.Adaptive,
+			&i.PermitType,
+			&i.PermitDate,
+			&i.InstallationLimitValue,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockImport = `-- name: LockImport :exec
 
 SELECT pg_advisory_xact_lock(7765190042)
 `
 
 // Every query the store runs. `go generate ./...` turns this file into the
-// Go code of the query package; store.go is the only caller of that package.
+// Go code of the query package; the store package is its only caller.
 // One import at a time. The lock is released when the transaction ends.
 func (q *Queries) LockImport(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, lockImport)
@@ -257,4 +581,214 @@ func (q *Queries) OpenNewStates(ctx context.Context, publishedAt time.Time) (int
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const searchStationsAround = `-- name: SearchStationsAround :many
+SELECT s.name, s.operator, s.code, s.east, s.north,
+       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
+       s.first_seen,
+       st.kind, st.power_class, st.technologies, st.adaptive,
+       st.permit_type, st.permit_date, st.installation_limit_value,
+       ST_Distance(s.position::geography, center.point)::float8 AS distance,
+       count(*) OVER () AS total
+FROM station s
+JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+CROSS JOIN (
+    SELECT ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)::geography AS point
+) center
+WHERE ST_DWithin(s.position::geography, center.point, $3::float8)
+  AND (cardinality($4::text[]) = 0 OR s.operator = ANY ($4::text[]))
+  AND (cardinality($5::text[]) = 0 OR st.kind = ANY ($5::text[]))
+  AND (cardinality($6::text[]) = 0 OR st.power_class = ANY ($6::text[]))
+  AND (cardinality($7::text[]) = 0 OR st.technologies && $7::text[])
+ORDER BY distance, s.name, s.east, s.north
+LIMIT $9 OFFSET $8
+`
+
+type SearchStationsAroundParams struct {
+	Longitude    float64
+	Latitude     float64
+	Radius       float64
+	Operators    []string
+	Kinds        []string
+	PowerClasses []string
+	Technologies []string
+	RowOffset    int32
+	RowLimit     int32
+}
+
+type SearchStationsAroundRow struct {
+	Name                   string
+	Operator               string
+	Code                   string
+	East                   float64
+	North                  float64
+	Latitude               float64
+	Longitude              float64
+	FirstSeen              time.Time
+	Kind                   string
+	PowerClass             string
+	Technologies           []string
+	Adaptive               pgtype.Bool
+	PermitType             pgtype.Text
+	PermitDate             pgtype.Date
+	InstallationLimitValue pgtype.Float8
+	Distance               float64
+	Total                  int64
+}
+
+// The sites the latest snapshot shows within a distance of a point in WGS84,
+// nearest first, that match every filter as in SearchStationsInBox.
+// Distances are in metres, on the ellipsoid.
+func (q *Queries) SearchStationsAround(ctx context.Context, arg SearchStationsAroundParams) ([]SearchStationsAroundRow, error) {
+	rows, err := q.db.Query(ctx, searchStationsAround,
+		arg.Longitude,
+		arg.Latitude,
+		arg.Radius,
+		arg.Operators,
+		arg.Kinds,
+		arg.PowerClasses,
+		arg.Technologies,
+		arg.RowOffset,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchStationsAroundRow
+	for rows.Next() {
+		var i SearchStationsAroundRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.Operator,
+			&i.Code,
+			&i.East,
+			&i.North,
+			&i.Latitude,
+			&i.Longitude,
+			&i.FirstSeen,
+			&i.Kind,
+			&i.PowerClass,
+			&i.Technologies,
+			&i.Adaptive,
+			&i.PermitType,
+			&i.PermitDate,
+			&i.InstallationLimitValue,
+			&i.Distance,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchStationsInBox = `-- name: SearchStationsInBox :many
+SELECT s.name, s.operator, s.code, s.east, s.north,
+       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
+       s.first_seen,
+       st.kind, st.power_class, st.technologies, st.adaptive,
+       st.permit_type, st.permit_date, st.installation_limit_value,
+       count(*) OVER () AS total
+FROM station s
+JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+WHERE s.position && ST_MakeEnvelope($1::float8, $2::float8, $3::float8, $4::float8, 4326)
+  AND ST_X(s.position) BETWEEN $1::float8 AND $3::float8
+  AND ST_Y(s.position) BETWEEN $2::float8 AND $4::float8
+  AND (cardinality($5::text[]) = 0 OR s.operator = ANY ($5::text[]))
+  AND (cardinality($6::text[]) = 0 OR st.kind = ANY ($6::text[]))
+  AND (cardinality($7::text[]) = 0 OR st.power_class = ANY ($7::text[]))
+  AND (cardinality($8::text[]) = 0 OR st.technologies && $8::text[])
+ORDER BY s.name, s.east, s.north
+LIMIT $10 OFFSET $9
+`
+
+type SearchStationsInBoxParams struct {
+	West         float64
+	South        float64
+	East         float64
+	North        float64
+	Operators    []string
+	Kinds        []string
+	PowerClasses []string
+	Technologies []string
+	RowOffset    int32
+	RowLimit     int32
+}
+
+type SearchStationsInBoxRow struct {
+	Name                   string
+	Operator               string
+	Code                   string
+	East                   float64
+	North                  float64
+	Latitude               float64
+	Longitude              float64
+	FirstSeen              time.Time
+	Kind                   string
+	PowerClass             string
+	Technologies           []string
+	Adaptive               pgtype.Bool
+	PermitType             pgtype.Text
+	PermitDate             pgtype.Date
+	InstallationLimitValue pgtype.Float8
+	Total                  int64
+}
+
+// The sites the latest snapshot shows inside a rectangle in WGS84, edges
+// included, that match every filter. An empty filter matches every site; a
+// site matches the technologies when it has one of them.
+// The index finds the boxes that overlap, which it rounds outward; the
+// coordinates then decide exactly. A rectangle may be a line or a point.
+func (q *Queries) SearchStationsInBox(ctx context.Context, arg SearchStationsInBoxParams) ([]SearchStationsInBoxRow, error) {
+	rows, err := q.db.Query(ctx, searchStationsInBox,
+		arg.West,
+		arg.South,
+		arg.East,
+		arg.North,
+		arg.Operators,
+		arg.Kinds,
+		arg.PowerClasses,
+		arg.Technologies,
+		arg.RowOffset,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchStationsInBoxRow
+	for rows.Next() {
+		var i SearchStationsInBoxRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.Operator,
+			&i.Code,
+			&i.East,
+			&i.North,
+			&i.Latitude,
+			&i.Longitude,
+			&i.FirstSeen,
+			&i.Kind,
+			&i.PowerClass,
+			&i.Technologies,
+			&i.Adaptive,
+			&i.PermitType,
+			&i.PermitDate,
+			&i.InstallationLimitValue,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

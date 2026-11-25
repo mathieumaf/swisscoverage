@@ -11,8 +11,10 @@ import (
 func openStore(ctx context.Context, getenv func(string) string) (*store.Store, error) {
 	databaseURL := getenv("DATABASE_URL")
 	if databaseURL == "" {
-		return nil, errors.New("DATABASE_URL is not set: it holds the address of the database, " +
-			"such as postgres://user:password@host:5432/name, with the password percent-encoded")
+		return nil, errDatabaseURL
 	}
 	return store.Open(ctx, databaseURL)
 }
+
+var errDatabaseURL = errors.New("DATABASE_URL is not set: it holds the address of the database, " +
+	"such as postgres://user:password@host:5432/name, with the password percent-encoded")
