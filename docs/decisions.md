@@ -60,8 +60,8 @@ Three facts shaped most choices:
   the fastest route to a first version, but a faster-moving ecosystem to keep
   up with. Python: the best tools for geodata and analysis, which nothing needs
   before coverage modelling, and a heavier runtime.
-- **Cost.** The parser that already exists in TypeScript is ported to Go. The
-  repository has two toolchains.
+- **Cost.** The parser, first written in TypeScript, was ported to Go in
+  roadmap step 1. The repository has two toolchains.
 - **Revisit when.** The priority becomes contributor reach over upkeep, or the
   backend turns out to need analysis libraries that only Python has.
 

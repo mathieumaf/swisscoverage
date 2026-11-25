@@ -1,0 +1,181 @@
+{
+  "stations": [
+    {
+      "name": "Swisscom BIFO",
+      "operator": "swisscom",
+      "code": "BIFO",
+      "kind": "outdoor",
+      "powerClass": "medium",
+      "technologies": [
+        "4G",
+        "5G"
+      ],
+      "adaptive": true,
+      "permit": {
+        "type": "site_data_sheet",
+        "date": "2021-06-03"
+      },
+      "installationLimitValue": 5,
+      "lv95": {
+        "east": 2676878,
+        "north": 1246069
+      }
+    },
+    {
+      "name": "Salt TI_3787A",
+      "operator": "salt",
+      "code": "TI_3787A",
+      "kind": "outdoor",
+      "powerClass": "high",
+      "technologies": [
+        "3G",
+        "4G",
+        "5G"
+      ],
+      "adaptive": false,
+      "permit": {
+        "type": "site_data_sheet",
+        "date": "2022-10-27"
+      },
+      "installationLimitValue": 5,
+      "lv95": {
+        "east": 2705499,
+        "north": 1132611
+      }
+    },
+    {
+      "name": "Sunrise BN375-1",
+      "operator": "sunrise",
+      "code": "BN375-1",
+      "kind": "unknown",
+      "powerClass": "medium",
+      "technologies": [
+        "4G",
+        "5G"
+      ],
+      "adaptive": true,
+      "permit": null,
+      "installationLimitValue": null,
+      "lv95": {
+        "east": 2586513,
+        "north": 1182612
+      }
+    },
+    {
+      "name": "SBB AU-WAE-02202",
+      "operator": "sbb",
+      "code": "AU-WAE-02202",
+      "kind": "outdoor_low_power",
+      "powerClass": "very_low",
+      "technologies": [
+        "2G"
+      ],
+      "adaptive": false,
+      "permit": {
+        "type": "site_data_sheet",
+        "date": "2009-11-02"
+      },
+      "installationLimitValue": null,
+      "lv95": {
+        "east": 2692356,
+        "north": 1233045
+      }
+    },
+    {
+      "name": "DB-BSBB",
+      "operator": "other",
+      "code": "DB-BSBB",
+      "kind": "unknown",
+      "powerClass": "low",
+      "technologies": [
+        "2G"
+      ],
+      "adaptive": false,
+      "permit": {
+        "type": "exempt"
+      },
+      "installationLimitValue": null,
+      "lv95": {
+        "east": 2612981,
+        "north": 1268207
+      }
+    },
+    {
+      "name": "Salt FR_7401A",
+      "operator": "salt",
+      "code": "FR_7401A",
+      "kind": "tunnel",
+      "powerClass": "very_low",
+      "technologies": [
+        "3G",
+        "4G",
+        "5G"
+      ],
+      "adaptive": false,
+      "permit": {
+        "type": "exempt"
+      },
+      "installationLimitValue": null,
+      "lv95": {
+        "east": 2576900,
+        "north": 1197750
+      }
+    },
+    {
+      "name": "Swisscom BEAL",
+      "operator": "swisscom",
+      "code": "BEAL",
+      "kind": "indoor",
+      "powerClass": "very_low",
+      "technologies": [
+        "4G",
+        "5G"
+      ],
+      "adaptive": true,
+      "permit": null,
+      "installationLimitValue": null,
+      "lv95": {
+        "east": 2602300,
+        "north": 1200820
+      }
+    },
+    {
+      "name": "Swisscom XTHR",
+      "operator": "swisscom",
+      "code": "XTHR",
+      "kind": "temporary",
+      "powerClass": "very_low",
+      "technologies": [
+        "4G"
+      ],
+      "adaptive": false,
+      "permit": null,
+      "installationLimitValue": null,
+      "lv95": {
+        "east": 2637195,
+        "north": 1160361
+      }
+    },
+    {
+      "name": "Swisscom DIBH",
+      "operator": "swisscom",
+      "code": "DIBH",
+      "kind": "outdoor",
+      "powerClass": "low",
+      "technologies": [
+        "4G"
+      ],
+      "adaptive": false,
+      "permit": {
+        "type": "site_data_sheet",
+        "date": "2018-09-18"
+      },
+      "installationLimitValue": 6,
+      "lv95": {
+        "east": 2688636,
+        "north": 1252973
+      }
+    }
+  ],
+  "warnings": []
+}

@@ -6,8 +6,8 @@
 
 ## Evidence
 
-<!-- How you checked it: the commands you ran and what they returned. `bun run check` is the
-minimum. For a parser change, say which real file you ran it against. -->
+<!-- How you checked it: the commands you ran and what they returned. The checks listed in
+CONTRIBUTING.md are the minimum. For a parser change, say which real file you ran it against. -->
 
 ## Risk
 
