@@ -417,19 +417,25 @@ func TestIngestLoadsASmallerFileWhenTold(t *testing.T) {
 	}))
 
 	_, stderr, status := callWith(t, address, archive.arguments()...)
-	if status != 1 || !strings.Contains(stderr, "then run again with -allow-drop 2026-10-24T22:01:35Z to load it") {
+	if status != 1 || !strings.Contains(stderr, "then run again with -allow-drop 2026-10-24T22:01:35.611529Z to load it") {
 		t.Fatalf("without the flag: got status %d and stderr %q", status, stderr)
 	}
 
-	// Allowing another snapshot allows nothing here.
-	_, stderr, status = callWith(t, address,
-		append(archive.arguments(), "-allow-drop", "2026-10-25T22:01:35Z")...)
-	if status != 1 || !strings.Contains(stderr, "has 4 sites, less than half the 9 of the one before") {
-		t.Errorf("allowing the wrong one: got status %d and stderr %q", status, stderr)
+	// Allowing another snapshot allows nothing here, and neither does the
+	// same second without its fraction.
+	for _, other := range []string{"2026-10-25T22:01:35.611529Z", "2026-10-24T22:01:35Z"} {
+		_, stderr, status = callWith(t, address, append(archive.arguments(), "-allow-drop", other)...)
+		if status != 1 || !strings.Contains(stderr, "has 4 sites, less than half the 9 of the one before") {
+			t.Errorf("allowing %s: got status %d and stderr %q", other, status, stderr)
+		}
+	}
+	_, stderr, status = callWith(t, address, append(archive.arguments(), "-allow-drop", "yes")...)
+	if status != 2 || !strings.Contains(stderr, "-allow-drop takes a publication time") {
+		t.Errorf("a value that is not a time: got status %d and stderr %q", status, stderr)
 	}
 
 	stdout, stderr, status := callWith(t, address,
-		append(archive.arguments(), "-allow-drop", "2026-10-24T22:01:35Z")...)
+		append(archive.arguments(), "-allow-drop", "2026-10-24T22:01:35.611529Z")...)
 	if !strings.Contains(stdout,
 		"2026-10-24T22:01:35Z: 4 sites, 0 appeared, 5 disappeared, 0 changed, 0 warnings\n") {
 		t.Errorf("the allowed file was not loaded: output %q and stderr %q", stdout, stderr)

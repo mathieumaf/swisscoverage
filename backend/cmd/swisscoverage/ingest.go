@@ -48,7 +48,7 @@ func runIngest(
 		"address of the archive's index")
 	releasesURL := flags.String("releases", archive.DefaultReleasesURL,
 		"address under which the archive's files are found, as <release>/<file>")
-	allowDrop := flags.String("allow-drop", "",
+	allowDropAt := flags.String("allow-drop", "",
 		"publication `time` of the one snapshot to load even though it has less than half\n"+
 			"the sites of the one before, as the refusal printed it")
 	if err := flags.Parse(args); err != nil {
@@ -61,21 +61,34 @@ func runIngest(
 		flags.Usage()
 		return 2
 	}
+	// The zero time, which no snapshot has, allows nothing.
+	var allowDrop time.Time
+	if *allowDropAt != "" {
+		parsed, err := time.Parse(time.RFC3339Nano, *allowDropAt)
+		if err != nil {
+			fmt.Fprintf(stderr, "swisscoverage ingest: -allow-drop takes a publication time such as "+
+				"2026-11-24T22:01:55.936174Z, not %q\n", *allowDropAt)
+			return 2
+		}
+		allowDrop = parsed
+	}
 
 	source := &archive.Client{
 		IndexURL:    *indexURL,
 		ReleasesURL: *releasesURL,
 		HTTP:        &http.Client{Timeout: 5 * time.Minute},
 	}
-	if err := ingest(ctx, source, *allowDrop, stdout, stderr, getenv); err != nil {
+	if err := ingest(ctx, source, allowDrop, stdout, stderr, getenv); err != nil {
 		fmt.Fprintf(stderr, "swisscoverage ingest: %v\n", err)
 		return 1
 	}
 	return 0
 }
 
+// ingest loads what is pending. allowDrop is the publication time of the one
+// snapshot that may have less than half the sites of the one before.
 func ingest(
-	ctx context.Context, source *archive.Client, allowDrop string,
+	ctx context.Context, source *archive.Client, allowDrop time.Time,
 	stdout, stderr io.Writer, getenv func(string) string,
 ) error {
 	database, err := openStore(ctx, getenv)
@@ -130,7 +143,7 @@ func ingest(
 			PublishedAt: snapshot.PublishedAt,
 			SHA256:      snapshot.SHA256,
 			Sites:       sites,
-		}, parsed.Stations, allowDrop == published)
+		}, parsed.Stations, snapshot.PublishedAt.Equal(allowDrop))
 		var tooFew *store.TooFewSitesError
 		switch {
 		case errors.Is(err, store.ErrAlreadyLoaded):
@@ -138,8 +151,10 @@ func ingest(
 			fmt.Fprintf(stdout, "%s: already loaded by another run\n", published)
 			continue
 		case errors.As(err, &tooFew):
+			// The whole time, to the microsecond: it names one snapshot.
 			return fmt.Errorf("the snapshot published at %s has %w: check the file, "+
-				"then run again with -allow-drop %s to load it", published, err, published)
+				"then run again with -allow-drop %s to load it", published, err,
+				snapshot.PublishedAt.Format(time.RFC3339Nano))
 		case err != nil:
 			return fmt.Errorf("the snapshot published at %s: %w", published, err)
 		}
