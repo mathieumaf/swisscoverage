@@ -35,8 +35,8 @@ func runOpenAPI(args []string, stdout, stderr io.Writer) int {
 		flags.Usage()
 		return 2
 	}
-	// The routes are only described: nothing is read.
-	contract, err := api.New(nil, slog.New(slog.DiscardHandler)).OpenAPI()
+	// The routes are only described: nothing is read, nothing is served.
+	contract, err := api.New(nil, slog.New(slog.DiscardHandler), 0).OpenAPI()
 	if err == nil {
 		_, err = stdout.Write(contract)
 	}

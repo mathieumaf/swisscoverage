@@ -324,10 +324,11 @@ Three facts shaped most choices:
   and responses are what Huma turns into the OpenAPI 3.1 contract
   (decision 8), and what it validates each request against.
 - **Why.** One description gives the contract, the validation and the
-  documentation of each field, so they cannot disagree. Only Huma's own
-  packages are compiled into the program: its adapter for the standard
-  library's router needs no other module, and the formats, routers and
-  command-line helpers it can use are left out.
+  documentation of each field, so they cannot disagree. Huma brings no other
+  module into the program: its adapter for the standard library's router
+  needs only Huma's own packages and `golang.org/x/text`, which `pgx`
+  already uses, and the formats, routers and command-line helpers it can use
+  are left out.
 - **Rejected.** Writing the contract by hand and checking the handlers
   against it: decision 8 already rejected writing it first, and a generator of
   our own would be more code than the API. Generators that start from the
@@ -337,7 +338,9 @@ Three facts shaped most choices:
 - **To know.** Huma marks lists as nullable by default; the API turns that
   off, since every list it returns is a list, empty when there is nothing.
   Its pages of documentation, which load scripts from a CDN, and the
-  `$schema` member it adds to responses are turned off too.
+  `$schema` member it adds to responses are turned off too. The API serves
+  the contract itself, as `openapi.json` holds it, rather than through Huma's
+  routes, which also serve YAML and OpenAPI 3.0 variants.
 - **Revisit when.** Huma stops being maintained, or a version breaks the
   contract it generates.
 - **Accepted.** 25 November 2026.

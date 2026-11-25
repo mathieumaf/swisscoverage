@@ -188,7 +188,9 @@ reference for each parameter and field; this is the outline.
 - **Every response that carries data carries OFCOM's attribution**, which its
   terms require, and the snapshot it comes from.
 - **Validation.** Every parameter is checked, and an unknown one is refused:
-  a typo answers 422 instead of a list that ignores it. Errors are
+  a typo answers 422 instead of a list that ignores it. So is a parameter
+  given twice or left empty, which would otherwise count as given once or not
+  at all: a list is written once, with commas. Errors are
   `application/problem+json` (RFC 9457) and say nothing of the server's
   internals.
 - **Bounds.** Every list is paginated with `limit`, at most 1,000, and
@@ -198,13 +200,14 @@ reference for each parameter and field; this is the outline.
   ETag computed from its body and `Cache-Control: public, max-age=300`, and a
   request that sends the ETag back gets 304. Errors are not cached. Bodies
   are compressed with gzip for clients that accept it, and any origin may
-  read the API from a browser.
+  read the API from a browser, including with `If-None-Match`, for which it
+  answers the preflight.
 - **Consistency.** Each request reads in one read-only transaction, so it sees
   one snapshot even while the import commits the next. Before the first
   import, the endpoints that need a snapshot answer 503.
-- **Limits on time.** The database stops a statement after 10 seconds, the
-  server a request after 20, and an idle or slow client after the timeouts of
-  `serve`.
+- **Limits on time.** The database stops a statement after 10 seconds, and
+  the API a request after 20, with a 503 like any other error. `serve` also
+  drops an idle or slow client.
 
 ## Data model
 

@@ -94,7 +94,7 @@ func newAPI(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(reader.Close)
-	server := httptest.NewServer(api.New(reader, slog.New(slog.NewTextHandler(io.Discard, nil))))
+	server := httptest.NewServer(api.New(reader, slog.New(slog.NewTextHandler(io.Discard, nil)), time.Minute))
 	t.Cleanup(server.Close)
 	return &fixture{t: t, database: writer, server: server}
 }
@@ -244,6 +244,37 @@ func TestCaching(t *testing.T) {
 	refused, _ := f.get("/v1/stations", "Accept-Encoding", "gzip;q=0")
 	wantEqual(t, "Content-Encoding when refused", refused.Header.Get("Content-Encoding"), "")
 
+	// The preflight of a browser that sends If-None-Match itself.
+	preflight, err := http.NewRequest(http.MethodOptions, f.server.URL+"/v1/stations", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preflight.Header.Set("Origin", "https://example.org")
+	preflight.Header.Set("Access-Control-Request-Method", "GET")
+	preflight.Header.Set("Access-Control-Request-Headers", "if-none-match")
+	allowed, err := http.DefaultClient.Do(preflight)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allowed.Body.Close()
+	wantEqual(t, "preflight", []string{allowed.Status, allowed.Header.Get("Access-Control-Allow-Origin"),
+		allowed.Header.Get("Access-Control-Allow-Headers")},
+		[]string{"204 No Content", "*", "If-None-Match"})
+
+	// gzip only when it is named, with a quality above zero.
+	for header, want := range map[string]string{
+		"gzip":              "gzip",
+		"GZIP; q=0.1":       "gzip",
+		"*":                 "",
+		"*, gzip;q=0":       "",
+		"*;q=0, gzip;q=1":   "gzip",
+		"gzip;\tq=0":        "",
+		"identity, deflate": "",
+	} {
+		response, _ := f.get("/v1/stations", "Accept-Encoding", header)
+		wantEqual(t, "Accept-Encoding "+header, response.Header.Get("Content-Encoding"), want)
+	}
+
 	// A new snapshot is a new response.
 	f.load(day2, append(many, zurich)...)
 	changed, _ := f.get("/v1/stations", "If-None-Match", etag)
@@ -360,13 +391,66 @@ func TestSearchRefusesWhatItCannotAnswer(t *testing.T) {
 		"lat=46.9&lon=7.4&powerClass=huge",
 		"lat=46.9&lon=7.4&operators=salt",
 		"lat=north&lon=7.4",
+		// Empty, which would count as absent: here, as zero.
+		"lat=&lon=",
+		"lat=46.9&lon=",
+		"bbox=&lat=46.9&lon=7.4",
+		"lat=46.9&lon=7.4&operator=",
+		// Twice, of which only the first would count.
+		"lat=46.9&lon=7.4&operator=salt&operator=sunrise",
+		// Not a number JSON can carry back in the error.
+		"lat=Inf&lon=7.4",
+		"lat=46.9&lon=-Inf",
+		"lat=46.9&lon=7.4&radius=Inf",
+		"bbox=NaN,46,8",
+		"bbox=7,46,8,Inf",
+		// A query string that does not decode.
+		"lat=46.9&lon=7.4&%zz=1",
 	} {
 		response, body := f.get("/v1/stations/search?" + query)
+		var problem map[string]any
 		if response.StatusCode != http.StatusUnprocessableEntity ||
-			response.Header.Get("Content-Type") != "application/problem+json" {
+			response.Header.Get("Content-Type") != "application/problem+json" ||
+			json.Unmarshal(body, &problem) != nil || problem["status"] != 422.0 {
 			t.Errorf("%q: got status %d (%s): %s", query, response.StatusCode,
 				response.Header.Get("Content-Type"), body)
 		}
+	}
+	// The other routes check their parameters too.
+	for _, path := range []string{
+		"/v1/stations?bbox=1,2,3,4", "/v1/stations/counts?x=1", "/v1/snapshots?limit=",
+	} {
+		response, body := f.get(path)
+		if response.StatusCode != http.StatusUnprocessableEntity {
+			t.Errorf("%s: got status %d: %s", path, response.StatusCode, body)
+		}
+	}
+}
+
+// slowData answers nothing until the request gives up.
+type slowData struct{ api.Data }
+
+func (slowData) Counts(ctx context.Context) (store.Counts, error) {
+	<-ctx.Done()
+	return store.Counts{}, ctx.Err()
+}
+
+// A request that takes too long is stopped, and answered like any error.
+func TestTimeout(t *testing.T) {
+	server := httptest.NewServer(api.New(slowData{}, slog.New(slog.DiscardHandler), 50*time.Millisecond))
+	defer server.Close()
+	response, err := http.Get(server.URL + "/v1/stations/counts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	body, _ := io.ReadAll(response.Body)
+	wantEqual(t, "status", response.StatusCode, http.StatusServiceUnavailable)
+	wantEqual(t, "Content-Type", response.Header.Get("Content-Type"), "application/problem+json")
+	wantEqual(t, "Cache-Control", response.Header.Get("Cache-Control"), "no-store")
+	wantEqual(t, "CORS", response.Header.Get("Access-Control-Allow-Origin"), "*")
+	if !strings.Contains(string(body), "the request took too long") {
+		t.Errorf("got %s", body)
 	}
 }
 
@@ -492,20 +576,19 @@ func TestContract(t *testing.T) {
 	f.load(day1, bernA)
 	response, body := f.get("/v1/openapi.json")
 	wantEqual(t, "status", response.StatusCode, http.StatusOK)
-	contract, err := api.New(nil, slog.New(slog.DiscardHandler)).OpenAPI()
+	wantEqual(t, "Content-Type", response.Header.Get("Content-Type"), "application/openapi+json")
+	contract, err := api.New(nil, slog.New(slog.DiscardHandler), 0).OpenAPI()
 	if err != nil {
 		t.Fatal(err)
 	}
-	var served, printed any
-	if err := json.Unmarshal(body, &served); err != nil {
-		t.Fatal(err)
+	if !bytes.Equal(body, contract) {
+		t.Error("the served contract is not the one `swisscoverage openapi` prints")
 	}
-	if err := json.Unmarshal(contract, &printed); err != nil {
-		t.Fatal(err)
-	}
-	wantEqual(t, "the served contract", served, printed)
 
-	for _, path := range []string{"/", "/docs", "/schemas/Snapshot.json", "/v1/", "/v1/nothing"} {
+	for _, path := range []string{
+		"/", "/docs", "/schemas/Snapshot.json", "/v1/", "/v1/nothing",
+		"/v1/openapi.yaml", "/v1/openapi-3.0.json",
+	} {
 		response, _ := f.get(path)
 		wantEqual(t, path, response.StatusCode, http.StatusNotFound)
 	}

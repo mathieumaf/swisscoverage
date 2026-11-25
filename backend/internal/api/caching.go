@@ -40,6 +40,15 @@ func withCaching(next http.Handler) http.Handler {
 		header.Set("Access-Control-Allow-Origin", "*")
 		header.Set("Access-Control-Expose-Headers", "ETag")
 		header.Set("X-Content-Type-Options", "nosniff")
+		if r.Method == http.MethodOptions {
+			// The preflight of a browser that sends If-None-Match itself.
+			header.Set("Access-Control-Allow-Methods", "GET, HEAD")
+			header.Set("Access-Control-Allow-Headers", "If-None-Match")
+			header.Set("Access-Control-Max-Age", "86400")
+			header.Set("Cache-Control", "no-store")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			header.Set("Cache-Control", "no-store")
 			next.ServeHTTP(w, r)
@@ -75,7 +84,7 @@ func withCaching(next http.Handler) http.Handler {
 			return
 		}
 
-		if len(body) >= minCompressed && acceptsGzip(r.Header.Get("Accept-Encoding")) {
+		if len(body) >= minCompressed && acceptsGzip(r.Header.Values("Accept-Encoding")) {
 			var compressed bytes.Buffer
 			writer, _ := gzip.NewWriterLevel(&compressed, gzip.BestSpeed)
 			writer.Write(body)
@@ -125,20 +134,25 @@ func matches(ifNoneMatch, etag string) bool {
 	return false
 }
 
-// acceptsGzip says whether an Accept-Encoding header allows gzip.
-func acceptsGzip(acceptEncoding string) bool {
-	for part := range strings.SplitSeq(acceptEncoding, ",") {
-		coding, params, _ := strings.Cut(part, ";")
-		coding = strings.ToLower(strings.TrimSpace(coding))
-		if coding != "gzip" && coding != "*" {
-			continue
-		}
-		quality, found := strings.CutPrefix(strings.ReplaceAll(strings.ToLower(params), " ", ""), "q=")
-		if !found {
+// acceptsGzip says whether Accept-Encoding names gzip with a quality above
+// zero. A wildcard is not taken as a request for gzip: every client that
+// wants it names it.
+func acceptsGzip(acceptEncoding []string) bool {
+	for _, field := range acceptEncoding {
+		for part := range strings.SplitSeq(field, ",") {
+			coding, params, _ := strings.Cut(part, ";")
+			if !strings.EqualFold(strings.TrimSpace(coding), "gzip") {
+				continue
+			}
+			for param := range strings.SplitSeq(params, ";") {
+				name, value, _ := strings.Cut(param, "=")
+				if strings.EqualFold(strings.TrimSpace(name), "q") {
+					quality, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+					return err == nil && quality > 0
+				}
+			}
 			return true
 		}
-		value, err := strconv.ParseFloat(quality, 64)
-		return err == nil && value > 0
 	}
 	return false
 }

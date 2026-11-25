@@ -129,14 +129,15 @@ personal data.
    - every parameter is validated against the types the contract comes from:
      ranges, vocabularies, lengths, and the pairs that go together, such as a
      point's latitude and longitude. NaN and infinities are refused. An
-     unknown parameter is refused too;
+     unknown parameter is refused too, and so are one given twice, one left
+     empty and a query string that does not decode;
    - values reach SQL as parameters of the queries of `queries.sql`, never in
      the text of a query;
    - every list is paginated, at most 1,000 items, and a search around a point
      reaches 50 km at most. The list of every current station is the one
      unbounded response, by design: the dataset bounds it, at about 6 MB;
-   - the database stops a statement after 10 seconds, and the server a
-     request after 20. Headers have 10 seconds to arrive, and 16 KB at most;
+   - the database stops a statement after 10 seconds, and the API a request
+     after 20. Headers have 10 seconds to arrive, and 16 KB at most;
    - an error that the client cannot act on is logged and answered without
      its details;
    - responses are held in memory to compute their ETag, which their bounds

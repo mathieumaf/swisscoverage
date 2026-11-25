@@ -10,11 +10,15 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"math"
 	"net/http"
+	neturl "net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 
@@ -37,6 +41,36 @@ func init() {
 	// Every list the API returns is a list, empty rather than null. Huma
 	// reads this setting when it describes a type.
 	huma.DefaultArrayNullable = false
+
+	// Huma puts the value it refused into the error, and JSON has no
+	// infinity nor NaN: such a value is written as text instead, or the
+	// error could not be sent.
+	newError := huma.NewError
+	huma.NewError = func(status int, message string, errs ...error) huma.StatusError {
+		for _, err := range errs {
+			if detail, ok := err.(*huma.ErrorDetail); ok {
+				detail.Value = encodable(detail.Value)
+			}
+		}
+		return newError(status, message, errs...)
+	}
+}
+
+// encodable returns value, or its text when JSON cannot encode it.
+func encodable(value any) any {
+	switch number := value.(type) {
+	case float64:
+		if math.IsInf(number, 0) || math.IsNaN(number) {
+			return strconv.FormatFloat(number, 'g', -1, 64)
+		}
+	case []float64:
+		for _, item := range number {
+			if math.IsInf(item, 0) || math.IsNaN(item) {
+				return fmt.Sprint(number)
+			}
+		}
+	}
+	return value
 }
 
 // Data is what the API reads. *store.Store is the implementation.
@@ -55,15 +89,17 @@ type API struct {
 }
 
 // New returns the API, reading from data. Errors the client cannot act on
-// are logged to logger and answered without their details.
-func New(data Data, logger *slog.Logger) *API {
+// are logged to logger and answered without their details. A request that
+// takes longer than timeout is stopped and answered 503.
+func New(data Data, logger *slog.Logger, timeout time.Duration) *API {
 	config := huma.DefaultConfig("swisscoverage", Version)
 	// No $schema member in the responses, nor documentation pages that load
 	// scripts from elsewhere: the API serves data and its contract only.
 	config.CreateHooks = nil
 	config.DocsPath = ""
 	config.SchemasPath = ""
-	config.OpenAPIPath = "/v1/openapi"
+	// The contract is served below, as openapi.json holds it.
+	config.OpenAPIPath = ""
 	config.RejectUnknownQueryParameters = true
 	config.Info.Description = "The mobile network sites of Switzerland that OFCOM publishes, " +
 		"as they are today and as they were since the archive began. Read-only, and free to use. " +
@@ -77,6 +113,7 @@ func New(data Data, logger *slog.Logger) *API {
 
 	mux := http.NewServeMux()
 	humaAPI := humago.New(mux, config)
+	humaAPI.UseMiddleware(checkQuery(humaAPI))
 	h := handlers{data: data, logger: logger}
 
 	huma.Register(humaAPI, huma.Operation{
@@ -88,7 +125,7 @@ func New(data Data, logger *slog.Logger) *API {
 			"which is what the map loads. It is not paginated: the dataset bounds it, at about " +
 			"23,000 sites. For a station's details, read it by its id.",
 		Tags:   []string{"Stations"},
-		Errors: []int{http.StatusServiceUnavailable},
+		Errors: []int{http.StatusUnprocessableEntity, http.StatusServiceUnavailable},
 	}, h.listStations)
 
 	huma.Register(humaAPI, huma.Operation{
@@ -114,7 +151,7 @@ func New(data Data, logger *slog.Logger) *API {
 			"kind, power class and technology. Every value is listed, with zero when no site has " +
 			"it. A site counts once for each of its technologies.",
 		Tags:   []string{"Stations"},
-		Errors: []int{http.StatusServiceUnavailable},
+		Errors: []int{http.StatusUnprocessableEntity, http.StatusServiceUnavailable},
 	}, h.countStations)
 
 	huma.Register(humaAPI, huma.Operation{
@@ -126,7 +163,7 @@ func New(data Data, logger *slog.Logger) *API {
 			"about it: one period for each stretch of time during which nothing changed, the latest " +
 			"first.",
 		Tags:   []string{"Stations"},
-		Errors: []int{http.StatusNotFound, http.StatusUnprocessableEntity},
+		Errors: []int{http.StatusNotFound, http.StatusUnprocessableEntity, http.StatusServiceUnavailable},
 	}, h.getStation)
 
 	huma.Register(humaAPI, huma.Operation{
@@ -137,11 +174,22 @@ func New(data Data, logger *slog.Logger) *API {
 		Description: "The files published by OFCOM that the data comes from, one per day since the " +
 			"archive began, the newest first.",
 		Tags:   []string{"Snapshots"},
-		Errors: []int{http.StatusUnprocessableEntity},
+		Errors: []int{http.StatusUnprocessableEntity, http.StatusServiceUnavailable},
 	}, h.listSnapshots)
 
 	describeCaching(humaAPI.OpenAPI())
-	return &API{huma: humaAPI, handler: withCaching(mux)}
+	result := &API{huma: humaAPI}
+	contract, err := result.OpenAPI()
+	if err != nil {
+		// The contract is made of the types above: it always encodes.
+		panic(err)
+	}
+	mux.HandleFunc("GET /v1/openapi.json", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/openapi+json")
+		w.Write(contract)
+	})
+	result.handler = withCaching(withTimeout(mux, timeout))
+	return result
 }
 
 // ServeHTTP answers a request.
@@ -165,10 +213,56 @@ type handlers struct {
 
 // internal logs an error the client cannot act on and answers without it.
 func (h handlers) internal(ctx context.Context, err error) error {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return huma.Error503ServiceUnavailable("the request took too long")
+	}
 	if ctx.Err() == nil {
 		h.logger.Error("answering a request", "error", err)
 	}
 	return huma.Error500InternalServerError("the request could not be answered")
+}
+
+// withTimeout stops what a request waits for after timeout. The handlers
+// then answer 503 through Huma, with the headers of any other error.
+func withTimeout(next http.Handler, timeout time.Duration) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// checkQuery refuses a query string that the parameters would read wrong:
+// one that does not decode, a parameter given twice, of which only the first
+// would count, and a parameter left empty, which would count as absent.
+// Lists are written once, with commas.
+func checkQuery(api huma.API) func(huma.Context, func(huma.Context)) {
+	return func(ctx huma.Context, next func(huma.Context)) {
+		url := ctx.URL()
+		values, err := neturl.ParseQuery(url.RawQuery)
+		if err != nil {
+			huma.WriteErr(api, ctx, http.StatusUnprocessableEntity, "validation failed",
+				&huma.ErrorDetail{Message: "the query string does not decode", Location: "query"})
+			return
+		}
+		var errs []error
+		for _, name := range slices.Sorted(maps.Keys(values)) {
+			switch {
+			case len(values[name]) > 1:
+				errs = append(errs, &huma.ErrorDetail{
+					Message:  "given more than once: separate several values with commas",
+					Location: "query." + name,
+				})
+			case values[name][0] == "":
+				errs = append(errs, &huma.ErrorDetail{Message: "empty", Location: "query." + name})
+			}
+		}
+		if len(errs) > 0 {
+			huma.WriteErr(api, ctx, http.StatusUnprocessableEntity, "validation failed", errs...)
+			return
+		}
+		next(ctx)
+	}
 }
 
 // noSnapshot is the answer before the first import.
@@ -446,9 +540,6 @@ type searchStationsInput struct {
 	PowerClass []PowerClass `query:"powerClass" maxItems:"5" doc:"Keeps the sites of one of these power classes."`
 	Technology []Technology `query:"technology" maxItems:"4" doc:"Keeps the sites that have one of these technologies."`
 	Paging
-
-	// Whether lat and lon were given: zero is a value like another.
-	hasLatitude, hasLongitude bool
 }
 
 // Paging says which page of a list to return. Huma reads the parameters of
@@ -465,10 +556,12 @@ func (p Paging) page() store.Page {
 // Resolve checks what the tags on the fields cannot say.
 func (input *searchStationsInput) Resolve(ctx huma.Context) []error {
 	var errs []error
+	// Whether lat and lon were given: zero is a value like another. An
+	// empty one is refused before.
 	url := ctx.URL()
 	query := url.Query()
-	input.hasLatitude, input.hasLongitude = query.Has("lat"), query.Has("lon")
-	center := input.hasLatitude || input.hasLongitude
+	hasLatitude, hasLongitude := query.Has("lat"), query.Has("lon")
+	center := hasLatitude || hasLongitude
 	switch {
 	case input.BBox == nil && !center:
 		errs = append(errs, &huma.ErrorDetail{
@@ -480,9 +573,9 @@ func (input *searchStationsInput) Resolve(ctx huma.Context) []error {
 			Message:  "give either bbox, or lat and lon, not both",
 			Location: "query.bbox",
 		})
-	case center && !input.hasLatitude:
+	case center && !hasLatitude:
 		errs = append(errs, &huma.ErrorDetail{Message: "lon requires lat", Location: "query.lat"})
-	case center && !input.hasLongitude:
+	case center && !hasLongitude:
 		errs = append(errs, &huma.ErrorDetail{Message: "lat requires lon", Location: "query.lon"})
 	}
 	// NaN passes every minimum and maximum.

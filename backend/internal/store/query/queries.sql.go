@@ -697,7 +697,7 @@ SELECT s.name, s.operator, s.code, s.east, s.north,
        count(*) OVER () AS total
 FROM station s
 JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
-WHERE s.position && ST_MakeEnvelope($1::float8, $2::float8, $3::float8, $4::float8, 4326)
+WHERE ST_Intersects(s.position, ST_MakeEnvelope($1::float8, $2::float8, $3::float8, $4::float8, 4326))
   AND (cardinality($5::text[]) = 0 OR s.operator = ANY ($5::text[]))
   AND (cardinality($6::text[]) = 0 OR st.kind = ANY ($6::text[]))
   AND (cardinality($7::text[]) = 0 OR st.power_class = ANY ($7::text[]))
@@ -741,6 +741,7 @@ type SearchStationsInBoxRow struct {
 // The sites the latest snapshot shows inside a rectangle in WGS84, edges
 // included, that match every filter. An empty filter matches every site; a
 // site matches the technologies when it has one of them.
+// ST_Intersects compares the exact points; the index only narrows them down.
 func (q *Queries) SearchStationsInBox(ctx context.Context, arg SearchStationsInBoxParams) ([]SearchStationsInBoxRow, error) {
 	rows, err := q.db.Query(ctx, searchStationsInBox,
 		arg.West,

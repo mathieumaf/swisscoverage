@@ -88,9 +88,8 @@ func serve(
 	}
 
 	logger := slog.New(slog.NewTextHandler(stderr, nil))
-	handler := api.New(database, logger)
 	server := &http.Server{
-		Handler: http.TimeoutHandler(handler, requestTimeout, "the request took too long"),
+		Handler: api.New(database, logger, requestTimeout),
 		// The API reads no request body: headers are all it receives.
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       10 * time.Second,
