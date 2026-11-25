@@ -31,7 +31,10 @@ Attribution to use: "Source: Federal Office of Communications OFCOM".
 
 OFCOM replaces the file every day and keeps no history. Every version since
 23 November 2026 is kept in
-[swisscoverage-data](https://github.com/mathieumaf/swisscoverage-data).
+[swisscoverage-data](https://github.com/mathieumaf/swisscoverage-data), which
+lists them in `ofcom/mobile-stations/snapshots.ndjson`. The import
+(`swisscoverage ingest`) reads that list and loads the original files; it
+never downloads from OFCOM itself.
 
 ### Fields
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"strings"
@@ -13,12 +14,15 @@ const (
 	goldenPath = "../../internal/ofcom/testdata/mobile-stations.golden.json"
 )
 
+// noEnvironment stands for an environment where nothing is set.
+func noEnvironment(string) string { return "" }
+
 // call runs the program with args and returns what it printed and its exit
 // status.
 func call(t *testing.T, stdin string, args ...string) (stdout, stderr string, status int) {
 	t.Helper()
 	var out, errs bytes.Buffer
-	status = run(args, strings.NewReader(stdin), &out, &errs)
+	status = run(context.Background(), args, strings.NewReader(stdin), &out, &errs, noEnvironment)
 	return out.String(), errs.String(), status
 }
 
@@ -187,7 +191,7 @@ func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("the pipe
 func TestParseReportsAFailedWrite(t *testing.T) {
 	for _, args := range [][]string{{"parse", samplePath}, {"parse", "-json", samplePath}} {
 		var stderr bytes.Buffer
-		status := run(args, strings.NewReader(""), failingWriter{}, &stderr)
+		status := run(context.Background(), args, strings.NewReader(""), failingWriter{}, &stderr, noEnvironment)
 
 		if status != 1 || !strings.Contains(stderr.String(), "the pipe is closed") {
 			t.Errorf("%v: got status %d and stderr %q, want 1 and the write error",

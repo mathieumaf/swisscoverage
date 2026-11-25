@@ -4,9 +4,9 @@ An open map of mobile network antennas in Switzerland, with a public API and an
 MCP server over the same data.
 
 > **Status: early development.** Nothing is deployed yet. The repository holds
-> the foundations: the start of the backend with the parser for the official
-> dataset, the architecture and the plan. Follow the
-> [roadmap](docs/roadmap.md) to see what comes next.
+> the foundations: the parser for the official dataset, the database and the
+> import that loads the daily archive into it, the architecture and the plan.
+> Follow the [roadmap](docs/roadmap.md) to see what comes next.
 
 ## Why
 
@@ -66,7 +66,9 @@ Most of this is planned, not built. Today the repository holds:
 
 ```
 backend/     The `swisscoverage` program, in Go: the parser for the OFCOM
-             dataset and the `parse` command that shows what it reads
+             dataset, the database schema, and the import that records what
+             changed from one day to the next
+deploy/      Docker Compose with the database, for local work and tests
 docs/        Architecture, decisions, roadmap, data sources, security
 ```
 
@@ -77,20 +79,23 @@ docs/        Architecture, decisions, roadmap, data sources, security
 
 ## Development
 
-You need [Go](https://go.dev) 1.27.4 or later for the backend, and
+You need [Go](https://go.dev) 1.27.4 or later, Docker for the database, and
 [Bun](https://bun.sh) 1.4.5 for the tool that checks the documentation.
 
 ```sh
 git clone https://github.com/mathieumaf/swisscoverage.git
 cd swisscoverage
+docker compose -f deploy/compose.yaml up -d --wait    # PostgreSQL with PostGIS
 
 cd backend
-go test ./...                                 # the backend's tests
-go run ./cmd/swisscoverage parse internal/ofcom/testdata/mobile-stations.sample.json
+go test ./...                                         # the backend's tests
+export DATABASE_URL=postgres://swisscoverage:swisscoverage@127.0.0.1:54320/swisscoverage
+go run ./cmd/swisscoverage migrate                    # creates the tables
+go run ./cmd/swisscoverage ingest                     # loads the archive
 
 cd ..
 bun install
-bun run check                                 # Markdown, JSON and YAML
+bun run check                                         # Markdown, JSON and YAML
 ```
 
 [CONTRIBUTING.md](CONTRIBUTING.md) lists every check that CI runs.

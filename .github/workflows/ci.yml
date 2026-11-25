@@ -35,12 +35,11 @@ jobs:
         with:
           persist-credentials: false
 
-      # Reads the version from the `go` line of go.mod. The module has no
-      # dependency yet, so there is nothing to cache.
+      # Reads the version from the `go` line of go.mod.
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: backend/go.mod
-          cache: false
+          cache-dependency-path: backend/go.sum
 
       - name: Formatting
         run: |
@@ -54,9 +53,28 @@ jobs:
       - name: Module files are tidy
         run: go mod tidy -diff
 
+      # The query code is generated from queries.sql and the migrations. This
+      # fails when the committed code is not what they produce.
+      - name: Generated code is current
+        run: |
+          go generate ./...
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Run 'go generate ./...' in backend/ and commit the result:"
+            git status --short
+            git diff
+            exit 1
+          fi
+
       - name: Vet
         run: go vet ./...
 
+      # The database of deploy/compose.yaml, the one used locally.
+      - name: Start the database
+        working-directory: .
+        run: docker compose -f deploy/compose.yaml up -d --wait
+
+      # GitHub sets CI, which makes a test fail, instead of being skipped,
+      # when it cannot reach the database.
       - name: Tests
         run: go test ./...
 

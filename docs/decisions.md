@@ -109,8 +109,11 @@ Three facts shaped most choices:
 - **Why.** PostGIS is driven in SQL. A layer that hides SQL gets in the way as
   soon as a query becomes spatial, and hand-written queries are easy to review.
 - **Rejected.** An object-relational mapper.
-- **Revisit when.** Nothing foreseeable. The driver and the generator (`pgx`
-  and `sqlc` are the candidates) are confirmed when the store is built.
+- **Confirmed in roadmap step 2.** The driver is `pgx` and the generator is
+  `sqlc`. `sqlc` reads the schema from the migrations and needs no database
+  to run. It is not a dependency of the program: `go generate` runs a pinned
+  version of it, and the code it writes is committed.
+- **Revisit when.** Nothing foreseeable.
 
 ### 8. A generated API contract, committed to the repository
 
@@ -251,19 +254,78 @@ Three facts shaped most choices:
   commercial use.
 - **Revisit when.** Nothing foreseeable.
 
+### 18. A site's history is a list of periods between snapshots
+
+- **Decision.** A snapshot is identified by its publication time. For each
+  site the database keeps one row per period during which its published
+  values stayed the same, bounded by the publication times of the snapshot
+  that first showed them and of the first snapshot that no longer did. Whether
+  a site is published today follows from its periods: it is when one of them
+  has no end.
+- **Why.** The file changes little from one day to the next: a few hundred
+  sites out of 23,000. One row per site and per day would be 8 million rows a
+  year that say nothing new. With periods, what was published at any moment is
+  one comparison of dates, and what changed between two moments is one query.
+- **Rejected.** One row per site and per snapshot. Numbering the snapshots
+  and referring to the numbers: every question about a date would need the
+  snapshot table. A "last seen" column on the site: one write per site and per
+  day for something the periods already say.
+- **Revisit when.** The detailed data of version 1.0 arrives: antennas and
+  cells will need the same treatment, and may show its limits.
+- **Accepted.** 25 November 2026.
+
+### 19. The import only moves forward, and trusts nothing
+
+- **Decision.** The import loads snapshots in the order they were published.
+  What is loaded must be the beginning of the archive's index, snapshot for
+  snapshot. The import therefore refuses a snapshot older than one that is
+  loaded, an index that no longer lists a loaded snapshot, and a loaded
+  snapshot whose checksum changed. It also refuses a file that is not the one
+  the index describes, a snapshot dated more than a day in the future, and a
+  file with less than half the sites published before it, unless a person
+  allows that one file.
+- **Why.** Each snapshot is recorded as differences from the one before, so
+  inserting one in the middle would mean rewriting what follows. And the
+  archive is written by an unattended job: a wrong or truncated file would
+  otherwise end thousands of sites in a history that is meant to be kept.
+- **Consequence.** To take in a snapshot found later, or to apply a parser fix
+  to the past, load the archive into an empty database. That takes seconds
+  per snapshot, and decision 1 is what makes it possible.
+- **Rejected.** Rewriting periods in place when an older snapshot arrives:
+  far more code, for a case the archive is built to avoid.
+- **Revisit when.** Rebuilding takes too long to be the answer.
+- **Accepted.** 25 November 2026.
+
+### 20. Migrations are plain SQL files applied by the program
+
+- **Decision.** The schema is a numbered list of SQL files, embedded in the
+  program and applied by `swisscoverage migrate`, each in its own transaction.
+  There is no way back: a change is a new file, and a merged file is never
+  edited. The runner is about a hundred lines of our own.
+- **Why.** The files are the single description of the schema: `sqlc` checks
+  the queries against them. Rolling back is done by running the previous
+  version of the program, which the schema must keep working with
+  (decision 10), not by undoing a migration.
+- **Rejected.** A migration library (golang-migrate, goose, tern): a
+  dependency to follow for something this small, most of it for the way back
+  we do not use.
+- **Revisit when.** A migration must run outside a transaction, such as
+  building an index without blocking writes on a large table.
+- **Accepted.** 25 November 2026.
+
 ## Open
 
 Not decided yet. Each has a recommendation and the step of the
 [roadmap](roadmap.md) that settles it.
 
-| Question                                                                            | Recommendation                                                                                                                                                | Settled in    |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| A page per station, found by search engines, or only a map?                         | Pages, rendered on the server. Without them the site is a browser-only application and the `web` image serves static files.                                   | Step 4        |
-| Which base map?                                                                     | The official swisstopo base map if its terms allow it, otherwise OpenFreeMap. The terms are not checked yet.                                                  | Step 4        |
-| Which service turns an address into coordinates, and who calls it?                  | swisstopo's public search service, called from the browser, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first. | Step 4        |
-| The API on `api.swisscoverage.ch` or under `swisscoverage.ch/api`?                  | The subdomain: the API's address then does not depend on the website.                                                                                         | Step 5        |
-| Two small cluster nodes, or one?                                                    | Two, so that a cluster update does not interrupt the site. Prices are not checked yet.                                                                        | Step 5        |
-| What does Cloudflare do: cache pages and API responses, or only CDN and protection? | Start with DNS, CDN for static files and protection. Decide on caching responses with real measurements.                                                      | Step 5        |
-| Cloudflare as a plain proxy, or as a tunnel into the cluster?                       | The plain proxy. A tunnel saves a load balancer and a public address, but makes the site depend on Cloudflare, which would reopen decision 16's guardrail.    | Step 5        |
-| Which source for cantons and municipalities?                                        | swisstopo's open boundaries dataset, loaded into PostGIS, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first.   | Step 8        |
-| Which Go libraries for OpenAPI, SQL generation and migrations?                      | Huma, `sqlc` with `pgx`, and plain SQL migration files.                                                                                                       | Steps 2 and 3 |
+| Question                                                                            | Recommendation                                                                                                                                                | Settled in |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| A page per station, found by search engines, or only a map?                         | Pages, rendered on the server. Without them the site is a browser-only application and the `web` image serves static files.                                   | Step 4     |
+| Which base map?                                                                     | The official swisstopo base map if its terms allow it, otherwise OpenFreeMap. The terms are not checked yet.                                                  | Step 4     |
+| Which service turns an address into coordinates, and who calls it?                  | swisstopo's public search service, called from the browser, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first. | Step 4     |
+| The API on `api.swisscoverage.ch` or under `swisscoverage.ch/api`?                  | The subdomain: the API's address then does not depend on the website.                                                                                         | Step 5     |
+| Two small cluster nodes, or one?                                                    | Two, so that a cluster update does not interrupt the site. Prices are not checked yet.                                                                        | Step 5     |
+| What does Cloudflare do: cache pages and API responses, or only CDN and protection? | Start with DNS, CDN for static files and protection. Decide on caching responses with real measurements.                                                      | Step 5     |
+| Cloudflare as a plain proxy, or as a tunnel into the cluster?                       | The plain proxy. A tunnel saves a load balancer and a public address, but makes the site depend on Cloudflare, which would reopen decision 16's guardrail.    | Step 5     |
+| Which source for cantons and municipalities?                                        | swisstopo's open boundaries dataset, loaded into PostGIS, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first.   | Step 8     |
+| Which Go library for OpenAPI?                                                       | Huma.                                                                                                                                                         | Step 3     |
