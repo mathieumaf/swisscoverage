@@ -13,9 +13,9 @@ documentation, issues and pull requests.
 
 ## Setup
 
-You need [Go](https://go.dev) 1.27.4 or later for the backend. An older Go
-downloads that version by itself. [Bun](https://bun.sh) 1.4.5 runs Biome, the
-tool that checks Markdown, JSON and YAML.
+You need [Go](https://go.dev) 1.27.4 or later for the backend, and
+[Bun](https://bun.sh) 1.4.5 to run Biome, the tool that checks Markdown, JSON
+and YAML.
 
 ```sh
 git clone https://github.com/mathieumaf/swisscoverage.git

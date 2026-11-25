@@ -65,6 +65,11 @@ The parser moved to Go, and the repository got its Go toolchain.
   - Biome stays at the root, run with Bun, so that Markdown, JSON and YAML
     keep being checked until `web/` brings TypeScript back in step 4. Node is
     no longer needed.
+- **Done when.** Both are true:
+  - `go test ./...` passes in `backend/`, including the comparison with the
+    golden file.
+  - `swisscoverage parse` on the day's public file prints about 23,000
+    stations and no warning.
 
 ### Step 2. Database and import
 

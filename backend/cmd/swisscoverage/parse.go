@@ -107,10 +107,10 @@ func writeSummary(output io.Writer, parsed ofcom.MobileStations) {
 
 	fmt.Fprintf(output, "%d stations, %d warnings\n", len(parsed.Stations), len(parsed.Warnings))
 
-	writeCounts(output, "Per operator", ofcom.Operators, perOperator)
-	writeCounts(output, "Per kind", ofcom.StationKinds, perKind)
+	writeCounts(output, "Per operator", ofcom.Operators(), perOperator)
+	writeCounts(output, "Per kind", ofcom.StationKinds(), perKind)
 	writeCounts(output, "Per technology (a station counts once for each one it carries)",
-		ofcom.Technologies, perTechnology)
+		ofcom.Technologies(), perTechnology)
 
 	if len(parsed.Warnings) > 0 {
 		fmt.Fprint(output, "\nWarnings\n")

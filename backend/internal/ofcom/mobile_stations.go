@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"regexp"
 	"slices"
 	"strconv"
@@ -92,16 +91,25 @@ const (
 // Every value of each vocabulary, in the order they are reported. Technologies
 // are in generation order, which is also the order of a station's list.
 var (
-	Operators = []Operator{
+	allOperators = [...]Operator{
 		OperatorSwisscom, OperatorSunrise, OperatorSalt, OperatorSBB, OperatorOther,
 	}
-	Technologies = []Technology{
+	allTechnologies = [...]Technology{
 		Technology2G, Technology3G, Technology4G, Technology5G,
 	}
-	StationKinds = []StationKind{
+	allStationKinds = [...]StationKind{
 		KindOutdoor, KindOutdoorLowPower, KindIndoor, KindTunnel, KindTemporary, KindUnknown,
 	}
 )
+
+// Operators returns every operator, in the order they are reported.
+func Operators() []Operator { return slices.Clone(allOperators[:]) }
+
+// Technologies returns every technology, in generation order.
+func Technologies() []Technology { return slices.Clone(allTechnologies[:]) }
+
+// StationKinds returns every kind of site, in the order they are reported.
+func StationKinds() []StationKind { return slices.Clone(allStationKinds[:]) }
 
 // Permit is the permit information of a site.
 type Permit struct {
@@ -306,7 +314,7 @@ func parseFeature(raw json.RawMessage, index int, warnings *[]string) (MobileSta
 	// unknown item beside known ones or another separator, adds a warning.
 	listed := listedTechnologies(technologyLabel)
 	technologies := []Technology{}
-	for _, technology := range Technologies {
+	for _, technology := range allTechnologies {
 		if slices.Contains(listed, string(technology)) {
 			technologies = append(technologies, technology)
 		}
@@ -380,7 +388,7 @@ func splitName(name string) (Operator, string) {
 func listedTechnologies(label string) []string {
 	list, found := strings.CutPrefix(label, technologyPrefix)
 	// A list is one line of text.
-	if !found || list == "" || strings.ContainsAny(list, "\n\r  ") {
+	if !found || list == "" || strings.ContainsAny(list, "\n\r\u2028\u2029") {
 		return nil
 	}
 	items := strings.Split(list, ",")
@@ -472,8 +480,9 @@ func finiteNumber(value any) (float64, bool) {
 	if !ok {
 		return 0, false
 	}
+	// Fails only for a number too large to hold.
 	parsed, err := strconv.ParseFloat(number.String(), 64)
-	if err != nil || math.IsInf(parsed, 0) || math.IsNaN(parsed) {
+	if err != nil {
 		return 0, false
 	}
 	return parsed, true
