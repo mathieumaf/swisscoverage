@@ -250,6 +250,19 @@ func TestClientReportsAnIndexItCannotRead(t *testing.T) {
 	}
 }
 
+func TestClientStopsReadingAtTheLimit(t *testing.T) {
+	client := serve(t, map[string][]byte{"/index": []byte("123456")})
+	url := client.IndexURL
+
+	if data, err := client.get(context.Background(), url, 6); err != nil || string(data) != "123456" {
+		t.Errorf("at the limit: got %q and %v", data, err)
+	}
+	if _, err := client.get(context.Background(), url, 5); err == nil ||
+		!strings.Contains(err.Error(), "more than 5 bytes") {
+		t.Errorf("over the limit: got %v", err)
+	}
+}
+
 func TestReadAtMost(t *testing.T) {
 	data, err := readAtMost(strings.NewReader("12345"), 5)
 	if err != nil || string(data) != "12345" {

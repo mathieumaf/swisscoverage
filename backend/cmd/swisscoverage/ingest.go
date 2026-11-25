@@ -104,14 +104,12 @@ func ingest(
 		return nil
 	}
 
-	previousSites := 0
-	if len(loaded) > 0 {
-		previousSites = loaded[len(loaded)-1].Sites
-	}
+	loadedNow := 0
 	for _, snapshot := range pending {
 		published := snapshot.PublishedAt.Format(time.RFC3339)
 		if snapshot.PublishedAt.After(time.Now().Add(clockMargin)) {
-			return fmt.Errorf("the snapshot published at %s is dated in the future", published)
+			return fmt.Errorf("the snapshot published at %s is dated more than a day in the future",
+				published)
 		}
 		data, err := source.Download(ctx, snapshot)
 		if err != nil {
@@ -126,26 +124,29 @@ func ingest(
 			return fmt.Errorf("the snapshot published at %s has %d sites, and the index says %d",
 				published, sites, snapshot.Sites)
 		}
-		// A file cut short, or emptied, would end every site it lacks. That
-		// is recorded for good, so a person decides, one file at a time.
-		if sites*2 < previousSites {
-			if !allowDrop {
-				return fmt.Errorf("the snapshot published at %s has %d sites, less than half the %d "+
-					"of the one before: check the file, then run again with -allow-drop to load it",
-					published, sites, previousSites)
-			}
-			allowDrop = false
-		}
 
 		result, err := database.LoadSnapshot(ctx, store.Snapshot{
 			PublishedAt: snapshot.PublishedAt,
 			SHA256:      snapshot.SHA256,
 			Sites:       sites,
-		}, parsed.Stations)
-		if err != nil {
+		}, parsed.Stations, allowDrop)
+		var tooFew *store.TooFewSitesError
+		switch {
+		case errors.Is(err, store.ErrAlreadyLoaded):
+			// Another run loaded it since this one read the database.
+			fmt.Fprintf(stdout, "%s: already loaded by another run\n", published)
+			continue
+		case errors.As(err, &tooFew):
+			return fmt.Errorf("the snapshot published at %s has %w: check the file, "+
+				"then run again with -allow-drop to load it", published, err)
+		case err != nil:
 			return fmt.Errorf("the snapshot published at %s: %w", published, err)
 		}
-		previousSites = sites
+		// A person allowed one file, the one they looked at.
+		if result.Drop {
+			allowDrop = false
+		}
+		loadedNow++
 
 		fmt.Fprintf(stdout, "%s: %d sites, %d appeared, %d disappeared, %d changed, %d warnings\n",
 			published, sites, result.Appeared, result.Disappeared, result.Changed,
@@ -153,7 +154,7 @@ func ingest(
 		printWarnings(stderr, published, parsed.Warnings, result.Duplicates)
 	}
 	fmt.Fprintf(stdout, "Loaded %s. The database holds the %s of the archive.\n",
-		count(len(pending), "snapshot"), count(len(index), "snapshot"))
+		count(loadedNow, "snapshot"), count(len(index), "snapshot"))
 	return nil
 }
 
@@ -166,32 +167,33 @@ func count(number int, noun string) string {
 }
 
 // pendingSnapshots returns the snapshots of the index that are not loaded,
-// oldest first. It fails when the index and the database tell two stories:
-// a loaded snapshot with another checksum, or a snapshot that is missing from
-// the database while later ones are loaded.
+// oldest first. What is loaded must be the beginning of the index, snapshot
+// for snapshot: it fails when the index lists a snapshot the database lacks
+// before one it holds, when it no longer lists a loaded one, and when a
+// loaded one has another checksum there.
 func pendingSnapshots(index []archive.Snapshot, loaded []store.Snapshot) ([]archive.Snapshot, error) {
-	checksums := make(map[int64]string, len(loaded))
-	for _, snapshot := range loaded {
-		checksums[snapshot.PublishedAt.UnixMicro()] = snapshot.SHA256
-	}
-	var pending []archive.Snapshot
-	for _, snapshot := range index {
-		published := snapshot.PublishedAt.Format(time.RFC3339Nano)
-		checksum, isLoaded := checksums[snapshot.PublishedAt.UnixMicro()]
+	for position, held := range loaded {
+		heldAt := held.PublishedAt.Format(time.RFC3339Nano)
+		if position == len(index) {
+			return nil, fmt.Errorf("the database holds the snapshot published at %s, and the "+
+				"archive's index, which lists %s, does not", heldAt, count(len(index), "snapshot"))
+		}
+		listed := index[position]
+		listedAt := listed.PublishedAt.Format(time.RFC3339Nano)
 		switch {
-		case isLoaded && checksum != snapshot.SHA256:
-			return nil, fmt.Errorf("the snapshot published at %s is loaded with checksum %s, "+
-				"and the archive's index now says %s", published, checksum, snapshot.SHA256)
-		case isLoaded:
-			continue
-		case len(loaded) > 0 && snapshot.PublishedAt.Before(loaded[len(loaded)-1].PublishedAt):
+		case listed.PublishedAt.Before(held.PublishedAt):
 			return nil, fmt.Errorf("the snapshot published at %s is in the archive's index but not "+
 				"in the database, which holds later ones. Snapshots are loaded in order: "+
-				"to include it, load the archive into an empty database", published)
+				"to include it, load the archive into an empty database", listedAt)
+		case listed.PublishedAt.After(held.PublishedAt):
+			return nil, fmt.Errorf("the database holds the snapshot published at %s, and the "+
+				"archive's index does not list it", heldAt)
+		case listed.SHA256 != held.SHA256:
+			return nil, fmt.Errorf("the snapshot published at %s is loaded with checksum %s, "+
+				"and the archive's index now says %s", heldAt, held.SHA256, listed.SHA256)
 		}
-		pending = append(pending, snapshot)
 	}
-	return pending, nil
+	return index[len(loaded):], nil
 }
 
 // printWarnings reports what the parser did not recognise in a snapshot, and

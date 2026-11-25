@@ -145,10 +145,12 @@ personal data.
      to a fixed size;
    - a file is parsed only when its SHA-256 is the one the index gives, and
      loaded only when its number of sites is too;
-   - a loaded snapshot whose checksum changes in the index, and a snapshot
-     older than what is loaded, stop the import;
-   - a file with less than half the sites of the one before is not loaded
-     until a person allows it, one file at a time;
+   - what is loaded must be the beginning of the index: a loaded snapshot
+     whose checksum changes there, one that the index no longer lists, and a
+     snapshot older than what is loaded each stop the import;
+   - a file with less than half the sites published before it is not loaded
+     until a person allows it, one file at a time. Sites are counted once
+     each, so repeating a site does not hide a loss;
    - a snapshot dated more than a day in the future is not loaded.
 
    What this does not cover: whoever can push to the archive can publish an

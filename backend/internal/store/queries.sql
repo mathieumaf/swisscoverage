@@ -10,6 +10,10 @@ SELECT published_at, sha256, sites, loaded_at
 FROM snapshot
 ORDER BY published_at;
 
+-- name: CountCurrentStations :one
+-- The sites that the latest snapshot loaded shows.
+SELECT count(*) FROM station_state WHERE valid_to IS NULL;
+
 -- name: InsertSnapshot :exec
 INSERT INTO snapshot (published_at, sha256, sites)
 VALUES (@published_at, @sha256, @sites);

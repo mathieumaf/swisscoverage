@@ -36,6 +36,18 @@ const (
 // in CI or when SWISSCOVERAGE_TEST_DATABASE_URL names one.
 func New(t *testing.T) string {
 	t.Helper()
+	return create(t, template)
+}
+
+// NewBare is New for a database without PostGIS, as a server gives one
+// before anyone prepared it.
+func NewBare(t *testing.T) string {
+	t.Helper()
+	return create(t, "template0")
+}
+
+func create(t *testing.T, from string) string {
+	t.Helper()
 	address, named := os.LookupEnv("SWISSCOVERAGE_TEST_DATABASE_URL")
 	if !named {
 		address = composeURL
@@ -53,15 +65,17 @@ func New(t *testing.T) string {
 	}
 	defer admin.Close(ctx)
 
-	if err := ensureTemplate(ctx, admin, address); err != nil {
-		t.Fatalf("preparing the template of the test databases: %v", err)
+	if from == template {
+		if err := ensureTemplate(ctx, admin, address); err != nil {
+			t.Fatalf("preparing the template of the test databases: %v", err)
+		}
 	}
 	suffix := make([]byte, 8)
 	if _, err := rand.Read(suffix); err != nil {
 		t.Fatal(err)
 	}
 	name := "test_" + hex.EncodeToString(suffix)
-	if _, err := admin.Exec(ctx, `CREATE DATABASE `+name+` TEMPLATE `+template); err != nil {
+	if _, err := admin.Exec(ctx, `CREATE DATABASE `+name+` TEMPLATE `+from); err != nil {
 		t.Fatalf("creating the test database: %v", err)
 	}
 	t.Cleanup(func() {
@@ -77,7 +91,11 @@ func New(t *testing.T) string {
 			t.Errorf("dropping the test database: %v", err)
 		}
 	})
-	return withDatabase(t, address, name)
+	created, err := withDatabase(address, name)
+	if err != nil {
+		t.Fatalf("the test database's address is not a URL: %v", err)
+	}
+	return created
 }
 
 // ensureTemplate creates the template once per server. Test binaries run
@@ -102,12 +120,11 @@ func ensureTemplate(ctx context.Context, admin *pgx.Conn, address string) error 
 	if _, err := admin.Exec(ctx, `CREATE DATABASE `+building); err != nil {
 		return err
 	}
-	parsed, err := url.Parse(address)
+	buildingAddress, err := withDatabase(address, building)
 	if err != nil {
 		return err
 	}
-	parsed.Path = "/" + building
-	inside, err := pgx.Connect(ctx, parsed.String())
+	inside, err := pgx.Connect(ctx, buildingAddress)
 	if err != nil {
 		return err
 	}
@@ -120,14 +137,20 @@ func ensureTemplate(ctx context.Context, admin *pgx.Conn, address string) error 
 	return err
 }
 
-func withDatabase(t *testing.T, address, name string) string {
-	t.Helper()
+// withDatabase returns address pointed at another database of the same
+// server. An address can also name its database in a parameter, which would
+// win over the path: it is removed, so that nothing is written elsewhere.
+func withDatabase(address, name string) (string, error) {
 	parsed, err := url.Parse(address)
 	if err != nil {
-		t.Fatalf("the test database's address is not a URL: %v", err)
+		return "", err
 	}
 	parsed.Path = "/" + name
-	return parsed.String()
+	values := parsed.Query()
+	values.Del("dbname")
+	values.Del("database")
+	parsed.RawQuery = values.Encode()
+	return parsed.String(), nil
 }
 
 // Query runs one statement in the database at address and returns its rows,

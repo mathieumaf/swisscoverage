@@ -33,6 +33,23 @@ type Loaded struct {
 	// Duplicates lists the sites the file contains more than once, each as
 	// its label and position. The first occurrence is the one kept.
 	Duplicates []string
+	// Drop is true when the snapshot has less than half the sites that were
+	// published before it, and was loaded because the caller allowed it.
+	Drop bool
+}
+
+// TooFewSitesError is returned by LoadSnapshot for a snapshot with less than
+// half the sites that were published before it. A file cut short, or emptied,
+// would end every site it lacks, and that is recorded for good: a person
+// decides.
+type TooFewSitesError struct {
+	// Sites is the number of distinct sites in the snapshot, and Current the
+	// number of sites published before it.
+	Sites, Current int
+}
+
+func (e *TooFewSitesError) Error() string {
+	return fmt.Sprintf("%d sites, less than half the %d of the one before", e.Sites, e.Current)
 }
 
 // ErrAlreadyLoaded is returned by LoadSnapshot for a snapshot the database
@@ -68,8 +85,11 @@ func listSnapshots(ctx context.Context, queries *query.Queries) ([]Snapshot, err
 // Snapshots are loaded in the order they were published. One that is older
 // than the latest loaded is refused, because the periods already recorded
 // would have to be rewritten.
+//
+// A snapshot with less than half the sites published before it is refused
+// with a *TooFewSitesError, unless allowDrop is true.
 func (s *Store) LoadSnapshot(
-	ctx context.Context, snapshot Snapshot, stations []ofcom.MobileStation,
+	ctx context.Context, snapshot Snapshot, stations []ofcom.MobileStation, allowDrop bool,
 ) (Loaded, error) {
 	// PostgreSQL keeps microseconds: the same precision here, so that a time
 	// read back equals the one that was written.
@@ -114,6 +134,17 @@ func (s *Store) LoadSnapshot(
 			formatTime(publishedAt), formatTime(previous.PublishedAt))
 	}
 
+	// Sites are counted as the database will see them: a file that repeats
+	// one site a thousand times holds one.
+	current, err := queries.CountCurrentStations(ctx)
+	if err != nil {
+		return Loaded{}, fmt.Errorf("counting the published sites: %w", err)
+	}
+	drop := int64(len(rows))*2 < current
+	if drop && !allowDrop {
+		return Loaded{}, &TooFewSitesError{Sites: len(rows), Current: int(current)}
+	}
+
 	err = queries.InsertSnapshot(ctx, query.InsertSnapshotParams{
 		PublishedAt: publishedAt,
 		Sha256:      snapshot.SHA256,
@@ -144,7 +175,7 @@ func (s *Store) LoadSnapshot(
 	}
 
 	// In a first snapshot, every site appears.
-	loaded := Loaded{Appeared: int(opened), Duplicates: duplicates}
+	loaded := Loaded{Appeared: int(opened), Duplicates: duplicates, Drop: drop}
 	if previous != nil {
 		changes, err := listChanges(ctx, queries, previous.PublishedAt, publishedAt)
 		if err != nil {

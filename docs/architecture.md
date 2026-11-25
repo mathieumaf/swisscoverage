@@ -69,7 +69,8 @@ original file.
 The import trusts nothing the archive says. It checks every value of the index
 before using it, bounds what it downloads, and loads a file only when its
 checksum and its number of sites are the ones the index gives. It loads
-snapshots in the order they were published and never rewrites what is loaded
+snapshots in the order they were published, never rewrites what is loaded,
+and stops when the index and the database no longer tell the same story
 ([decision 19](decisions.md)). Each snapshot is loaded in one transaction, so
 a reader sees the day before or the day itself, never a mix.
 

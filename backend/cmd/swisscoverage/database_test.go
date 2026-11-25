@@ -335,12 +335,40 @@ func TestIngestRefusesAnArchiveItCannotTrust(t *testing.T) {
 			want: "the snapshot published at 2026-10-22T22:01:35.611529Z is in the archive's index but not in the database",
 		},
 		{
+			name: "a file that repeats one site to look as large",
+			spoil: func(t *testing.T, archive *testArchive) {
+				archive.add(24, sampleWith(t, func(features []map[string]any) []map[string]any {
+					for index := range features {
+						features[index] = features[0]
+					}
+					return features
+				}))
+			},
+			want: "has 1 sites, less than half the 9 of the one before",
+		},
+		{
+			name: "an index that no longer lists what is loaded",
+			spoil: func(t *testing.T, archive *testArchive) {
+				archive.add(24, sampleWith(t, unchanged))
+				archive.index = archive.index[1:]
+			},
+			want: "the database holds the snapshot published at 2026-10-23T22:01:35.611529Z, " +
+				"and the archive's index does not list it",
+		},
+		{
+			name: "an empty index",
+			spoil: func(t *testing.T, archive *testArchive) {
+				archive.index = nil
+			},
+			want: "the archive's index, which lists 0 snapshots, does not",
+		},
+		{
 			name: "a snapshot dated in the future",
 			spoil: func(t *testing.T, archive *testArchive) {
 				archive.add(24, sampleWith(t, unchanged))
 				archive.index[1] = strings.Replace(archive.index[1], `"published":"2026-`, `"published":"2999-`, 1)
 			},
-			want: "the snapshot published at 2999-10-24T22:01:35Z is dated in the future",
+			want: "the snapshot published at 2999-10-24T22:01:35Z is dated more than a day in the future",
 		},
 		{
 			name: "an index that is not one",

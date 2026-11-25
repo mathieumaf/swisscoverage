@@ -65,7 +65,7 @@ func load(
 	t *testing.T, database *store.Store, publishedAt time.Time, stations ...ofcom.MobileStation,
 ) store.Loaded {
 	t.Helper()
-	loaded, err := database.LoadSnapshot(context.Background(), snapshotAt(publishedAt, len(stations)), stations)
+	loaded, err := database.LoadSnapshot(context.Background(), snapshotAt(publishedAt, len(stations)), stations, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,8 +106,10 @@ var (
 	sbb  = station("SBB AU-WAE-02202", 2600000, 1200000)
 )
 
+// The first migration runs on a database nobody prepared: it creates PostGIS
+// itself, where the role is allowed to.
 func TestMigrate(t *testing.T) {
-	address := testdb.New(t)
+	address := testdb.NewBare(t)
 	database, err := store.Open(context.Background(), address)
 	if err != nil {
 		t.Fatal(err)
@@ -444,19 +446,19 @@ func TestLoadRefusesWhatWouldRewriteHistory(t *testing.T) {
 	ctx := context.Background()
 	load(t, database, day2, bifo)
 
-	_, err := database.LoadSnapshot(ctx, snapshotAt(day2, 1), []ofcom.MobileStation{bifo})
+	_, err := database.LoadSnapshot(ctx, snapshotAt(day2, 1), []ofcom.MobileStation{bifo}, false)
 	if !errors.Is(err, store.ErrAlreadyLoaded) {
 		t.Errorf("the same snapshot again: got %v, want ErrAlreadyLoaded", err)
 	}
 
 	other := snapshotAt(day2, 1)
 	other.SHA256 = strings.Repeat("f", 64)
-	_, err = database.LoadSnapshot(ctx, other, []ofcom.MobileStation{bifo, dibh})
+	_, err = database.LoadSnapshot(ctx, other, []ofcom.MobileStation{bifo, dibh}, false)
 	if err == nil || !strings.Contains(err.Error(), "already loaded with another checksum") {
 		t.Errorf("the same time with another checksum: got %v", err)
 	}
 
-	_, err = database.LoadSnapshot(ctx, snapshotAt(day1, 1), []ofcom.MobileStation{dibh})
+	_, err = database.LoadSnapshot(ctx, snapshotAt(day1, 1), []ofcom.MobileStation{dibh}, false)
 	if err == nil || !strings.Contains(err.Error(), "older than the latest one loaded") {
 		t.Errorf("an older snapshot: got %v", err)
 	}
@@ -464,6 +466,66 @@ func TestLoadRefusesWhatWouldRewriteHistory(t *testing.T) {
 	wantEqual(t, testdb.Query(t, address,
 		`SELECT (SELECT count(*) FROM snapshot), (SELECT count(*) FROM station)`),
 		[][]string{{"1", "1"}})
+}
+
+// Sites are counted as the database sees them, so a file cannot hide that it
+// lost most of them by repeating the ones it kept.
+func TestLoadRefusesASnapshotThatLostMostSites(t *testing.T) {
+	database, address := open(t)
+	ctx := context.Background()
+	load(t, database, day1, bifo, dibh, salt, sbb)
+	padded := []ofcom.MobileStation{bifo, bifo, bifo, bifo}
+
+	_, err := database.LoadSnapshot(ctx, snapshotAt(day2, 4), padded, false)
+
+	var tooFew *store.TooFewSitesError
+	if !errors.As(err, &tooFew) || tooFew.Sites != 1 || tooFew.Current != 4 {
+		t.Fatalf("got %v, want a TooFewSitesError for 1 site out of 4", err)
+	}
+	wantEqual(t, testdb.Query(t, address, `SELECT count(*) FROM snapshot`), [][]string{{"1"}})
+
+	// Exactly half is not a drop.
+	wantEqual(t, load(t, database, day2, bifo, dibh), store.Loaded{Disappeared: 2})
+
+	// And a person can allow one.
+	loaded, err := database.LoadSnapshot(ctx, snapshotAt(day3, 0), nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantEqual(t, loaded, store.Loaded{Disappeared: 2, Drop: true})
+}
+
+// Two imports of the same snapshot at once: one loads it, the other waits and
+// then finds it loaded.
+func TestLoadFromSeveralProgramsAtOnce(t *testing.T) {
+	_, address := open(t)
+	results := make(chan error, 4)
+	for range cap(results) {
+		go func() {
+			database, err := store.Open(context.Background(), address)
+			if err != nil {
+				results <- err
+				return
+			}
+			defer database.Close()
+			_, err = database.LoadSnapshot(context.Background(), snapshotAt(day1, 2),
+				[]ofcom.MobileStation{bifo, dibh}, false)
+			results <- err
+		}()
+	}
+	loaded := 0
+	for range cap(results) {
+		switch err := <-results; {
+		case err == nil:
+			loaded++
+		case !errors.Is(err, store.ErrAlreadyLoaded):
+			t.Errorf("got %v, want the snapshot loaded or ErrAlreadyLoaded", err)
+		}
+	}
+	wantEqual(t, loaded, 1)
+	wantEqual(t, testdb.Query(t, address,
+		`SELECT (SELECT count(*) FROM snapshot), (SELECT count(*) FROM station_state)`),
+		[][]string{{"1", "2"}})
 }
 
 // A failure leaves no trace: the snapshot, its sites and their states are
@@ -474,7 +536,7 @@ func TestLoadIsAllOrNothing(t *testing.T) {
 
 	broken := with(dibh, func(s *ofcom.MobileStation) { s.Kind = "balloon" })
 	_, err := database.LoadSnapshot(context.Background(), snapshotAt(day2, 2),
-		[]ofcom.MobileStation{broken, salt})
+		[]ofcom.MobileStation{broken, salt}, false)
 	if err == nil {
 		t.Fatal("a value the schema does not know was accepted")
 	}
@@ -493,7 +555,7 @@ func TestLoadRefusesAPermitDateThatIsNotADate(t *testing.T) {
 		s.Permit = &ofcom.Permit{Type: ofcom.PermitSiteDataSheet, Date: "2021-02-30"}
 	})
 
-	_, err := database.LoadSnapshot(context.Background(), snapshotAt(day1, 1), []ofcom.MobileStation{wrong})
+	_, err := database.LoadSnapshot(context.Background(), snapshotAt(day1, 1), []ofcom.MobileStation{wrong}, false)
 
 	if err == nil || !strings.Contains(err.Error(), `the permit date "2021-02-30" is not a date`) {
 		t.Errorf("got %v", err)

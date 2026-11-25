@@ -277,10 +277,13 @@ Three facts shaped most choices:
 ### 19. The import only moves forward, and trusts nothing
 
 - **Decision.** The import loads snapshots in the order they were published.
-  It refuses a snapshot older than the latest one loaded, a loaded snapshot
-  whose checksum changed in the archive, a file that is not the one the
-  index describes, a snapshot dated in the future, and a file with less than
-  half the sites of the one before unless a person allows it.
+  What is loaded must be the beginning of the archive's index, snapshot for
+  snapshot. The import therefore refuses a snapshot older than one that is
+  loaded, an index that no longer lists a loaded snapshot, and a loaded
+  snapshot whose checksum changed. It also refuses a file that is not the one
+  the index describes, a snapshot dated more than a day in the future, and a
+  file with less than half the sites published before it, unless a person
+  allows that one file.
 - **Why.** Each snapshot is recorded as differences from the one before, so
   inserting one in the middle would mean rewriting what follows. And the
   archive is written by an unattended job: a wrong or truncated file would

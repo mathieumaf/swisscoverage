@@ -64,6 +64,18 @@ type CopyIncomingStationsParams struct {
 	InstallationLimitValue pgtype.Float8
 }
 
+const countCurrentStations = `-- name: CountCurrentStations :one
+SELECT count(*) FROM station_state WHERE valid_to IS NULL
+`
+
+// The sites that the latest snapshot loaded shows.
+func (q *Queries) CountCurrentStations(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countCurrentStations)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const insertNewStations = `-- name: InsertNewStations :execrows
 INSERT INTO station (name, operator, code, east, north, first_seen)
 SELECT i.name, i.operator, i.code, i.east, i.north, $1
