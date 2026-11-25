@@ -324,11 +324,11 @@ Three facts shaped most choices:
   and responses are what Huma turns into the OpenAPI 3.1 contract
   (decision 8), and what it validates each request against.
 - **Why.** One description gives the contract, the validation and the
-  documentation of each field, so they cannot disagree. Huma brings no other
-  module into the program: its adapter for the standard library's router
-  needs only Huma's own packages and `golang.org/x/text`, which `pgx`
-  already uses, and the formats, routers and command-line helpers it can use
-  are left out.
+  documentation of each field, so they cannot disagree. Its adapter for the
+  standard library's router compiles only Huma's own packages: the formats,
+  routers and command-line helpers it can use are left out. Adding it raised
+  the versions of `golang.org/x/text` and `golang.org/x/sync`, which `pgx`
+  uses, because Huma asks for newer ones.
 - **Rejected.** Writing the contract by hand and checking the handlers
   against it: decision 8 already rejected writing it first, and a generator of
   our own would be more code than the API. Generators that start from the

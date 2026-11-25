@@ -5,8 +5,10 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -353,6 +355,21 @@ func TestSearchInABox(t *testing.T) {
 	wantEqual(t, "Bern", ids(found["stations"]), []string{
 		"2600680_1199620_Salt BE_0001A", "2600640_1199640_Swisscom BMAO",
 	})
+
+	// Edges are included, exactly: a rectangle reduced to the point of a
+	// site finds it, and one that stops just short of it does not.
+	published, err := f.database.Published(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	exact := published.Stations[0]
+	lon, lat := exact.Position.Longitude, exact.Position.Latitude
+	format := func(value float64) string { return strconv.FormatFloat(value, 'g', -1, 64) }
+	point := fmt.Sprintf("/v1/stations/search?bbox=%s,%s,%s,%s", format(lon), format(lat), format(lon), format(lat))
+	wantEqual(t, "a point", ids(f.getJSON(point, http.StatusOK)["stations"]), []string{api.ID(exact.Site)})
+	short := fmt.Sprintf("/v1/stations/search?bbox=%s,%s,%s,%s",
+		format(lon-1), format(lat), format(math.Nextafter(lon, 0)), format(lat))
+	wantEqual(t, "just short", ids(f.getJSON(short, http.StatusOK)["stations"]), []string{})
 
 	// Pages, and a page past the end that still says how many there are.
 	page := f.getJSON(country+"&limit=1&offset=2", http.StatusOK)

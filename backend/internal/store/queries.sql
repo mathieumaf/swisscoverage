@@ -153,8 +153,11 @@ SELECT s.name, s.operator, s.code, s.east, s.north,
        count(*) OVER () AS total
 FROM station s
 JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
--- ST_Intersects compares the exact points; the index only narrows them down.
-WHERE ST_Intersects(s.position, ST_MakeEnvelope(@west::float8, @south::float8, @east::float8, @north::float8, 4326))
+-- The index finds the boxes that overlap, which it rounds outward; the
+-- coordinates then decide exactly. A rectangle may be a line or a point.
+WHERE s.position && ST_MakeEnvelope(@west::float8, @south::float8, @east::float8, @north::float8, 4326)
+  AND ST_X(s.position) BETWEEN @west::float8 AND @east::float8
+  AND ST_Y(s.position) BETWEEN @south::float8 AND @north::float8
   AND (cardinality(@operators::text[]) = 0 OR s.operator = ANY (@operators::text[]))
   AND (cardinality(@kinds::text[]) = 0 OR st.kind = ANY (@kinds::text[]))
   AND (cardinality(@power_classes::text[]) = 0 OR st.power_class = ANY (@power_classes::text[]))

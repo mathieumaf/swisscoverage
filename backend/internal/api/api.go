@@ -90,7 +90,7 @@ type API struct {
 
 // New returns the API, reading from data. Errors the client cannot act on
 // are logged to logger and answered without their details. A request that
-// takes longer than timeout is stopped and answered 503.
+// takes longer than timeout is stopped and answered 503; zero sets no limit.
 func New(data Data, logger *slog.Logger, timeout time.Duration) *API {
 	config := huma.DefaultConfig("swisscoverage", Version)
 	// No $schema member in the responses, nor documentation pages that load
@@ -214,6 +214,7 @@ type handlers struct {
 // internal logs an error the client cannot act on and answers without it.
 func (h handlers) internal(ctx context.Context, err error) error {
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		h.logger.Warn("a request took too long", "error", err)
 		return huma.Error503ServiceUnavailable("the request took too long")
 	}
 	if ctx.Err() == nil {
@@ -225,6 +226,9 @@ func (h handlers) internal(ctx context.Context, err error) error {
 // withTimeout stops what a request waits for after timeout. The handlers
 // then answer 503 through Huma, with the headers of any other error.
 func withTimeout(next http.Handler, timeout time.Duration) http.Handler {
+	if timeout <= 0 {
+		return next
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
