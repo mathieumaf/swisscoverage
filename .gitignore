@@ -10,6 +10,8 @@ node_modules/
 # Build and test outputs
 dist/
 coverage/
+# The program, when built with `go build ./cmd/swisscoverage` in backend/
+/backend/swisscoverage
 
 # Local data: downloaded snapshots and database volumes never belong in git
 data/

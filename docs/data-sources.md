@@ -25,7 +25,7 @@ The base dataset of the project.
 | Update       | Daily                                                                                                                         |
 | Terms        | Open government data: free use, [the source must be given](https://opendata.swiss/en/terms-of-use/#terms_by)                  |
 | Explanations | [OFCOM's notes on the overview map](https://www.bakom.admin.ch/en/explanations-on-overview-map)                               |
-| Parser       | `packages/core/src/ofcom/mobile-stations.ts`                                                                                  |
+| Parser       | `backend/internal/ofcom/mobile_stations.go`                                                                                   |
 
 Attribution to use: "Source: Federal Office of Communications OFCOM".
 

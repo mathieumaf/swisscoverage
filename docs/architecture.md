@@ -80,9 +80,8 @@ A typical day:
 | Part       | Where                                                                  | State   | Role                                                                                                                           |
 | ---------- | ---------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Archive    | [swisscoverage-data](https://github.com/mathieumaf/swisscoverage-data) | exists  | A separate repository. A scheduled workflow downloads OFCOM's file once a day, checks it against the catalogue and commits it. |
-| Parser     | `packages/core` (TypeScript)                                           | exists  | Turns OFCOM's file into a typed model. It is the reference for the Go port and is removed once the port gives the same result. |
-| Backend    | `backend/` (Go)                                                        | planned | One program, `swisscoverage`. See its commands below.                                                                          |
-| Parser     | `backend/internal/ofcom`                                               | planned | The Go port of the parser. Pure: no network, no database, no clock.                                                            |
+| Backend    | `backend/` (Go)                                                        | started | One program, `swisscoverage`. See its commands below.                                                                          |
+| Parser     | `backend/internal/ofcom`                                               | exists  | Turns OFCOM's file into a typed model. Pure: no network, no file system, no database, no clock.                                |
 | Store      | `backend/internal/store`                                               | planned | SQL queries and migrations for PostgreSQL with PostGIS. Converts positions from LV95 to WGS84.                                 |
 | API        | `backend/internal/api`, `openapi.json`                                 | planned | The public, read-only HTTP API and its contract.                                                                               |
 | MCP server | `backend/internal/mcp`                                                 | planned | Tools for AI assistants. A client of the public API over HTTP, with no access to the database.                                 |
@@ -90,7 +89,7 @@ A typical day:
 | Deployment | `deploy/`                                                              | planned | Docker Compose for local work and tests; a Helm chart for Kubernetes in production.                                            |
 
 The `swisscoverage` program has four commands that run in production and two
-that are tools for developers:
+that are tools for developers. Only `parse` exists today.
 
 | Command   | What it does                                                                 | Runs as               |
 | --------- | ---------------------------------------------------------------------------- | --------------------- |
@@ -103,14 +102,14 @@ that are tools for developers:
 
 ## Repository layout
 
-Planned. Only `packages/core` and `docs/` exist today.
+Planned, except what is marked as existing.
 
 ```
 swisscoverage/
-├── backend/                   Go
-│   ├── cmd/swisscoverage/     the program and its commands
+├── backend/                   Go; exists
+│   ├── cmd/swisscoverage/     the program and its commands; exists
 │   └── internal/
-│       ├── ofcom/             parser for the source file; pure
+│       ├── ofcom/             parser for the source file; pure; exists
 │       ├── store/             SQL queries and migrations
 │       ├── api/               REST routes and the contract they generate
 │       └── mcp/               MCP tools; calls the API over HTTP
@@ -119,13 +118,14 @@ swisscoverage/
 ├── deploy/
 │   ├── compose.yaml           local work and tests
 │   └── helm/                  production
-└── docs/
+└── docs/                      exists
 ```
 
 Rules that keep it honest:
 
 - **The parser stays pure.** No network, no file system, no database, no
-  environment, no clock. Its tests read fixtures and nothing else.
+  environment, no clock. It receives the bytes of a file from the command
+  that calls it. Its tests read the samples in `testdata/` and nothing else.
 - **`web/` and `internal/mcp` never use server code and never open a database
   connection.** They know the API through its contract only. Two things
   enforce it for the MCP server, which lives in the same program as the API: a
@@ -169,24 +169,26 @@ Choices marked "candidate" are confirmed in the roadmap step that introduces
 them. Choices marked "open" are questions listed in
 [decisions.md](decisions.md).
 
-| Role                 | Choice                                    | Notes                                                                                |
-| -------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------ |
-| API, import, MCP     | Go                                        | One static binary. The MCP server may move to another language if Go fits it badly.  |
-| API description      | OpenAPI 3.1, generated from the Go code   | Huma is the candidate library.                                                       |
-| MCP server           | The official MCP SDK for Go               | Read-only tools, served to assistants over Streamable HTTP.                          |
-| Database             | PostgreSQL with PostGIS                   | Spatial queries, history, and the rigorous LV95 to WGS84 transformation.             |
-| Database access      | SQL written by hand, typed code generated | `pgx` and `sqlc` are the candidates.                                                 |
-| Migrations           | Versioned SQL files                       | Applied by `migrate`. They stay compatible with the previous version of the program. |
-| Website              | TypeScript; Astro with React for the map  | Server-rendered pages are the recommended baseline; still open.                      |
-| Map                  | MapLibre GL                               | The base map is open.                                                                |
-| Checks               | `go vet`, `go test`; Biome; `tsc`         | One CI job per part, gathered by the job named `check`, the only required one.       |
-| Local work and tests | Docker Compose                            |                                                                                      |
-| Production           | Kubernetes, Helm, CloudNativePG           | Meant for a managed cluster in Switzerland; must work on a self-managed one.         |
-| In front of the site | Cloudflare                                | DNS and CDN. What it caches is open.                                                 |
-| Releases             | GitHub Actions, GitHub container registry | Deployment waits for the maintainer's approval.                                      |
+| Role                 | Choice                                                        | Notes                                                                                |
+| -------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| API, import, MCP     | Go                                                            | One static binary. The MCP server may move to another language if Go fits it badly.  |
+| API description      | OpenAPI 3.1, generated from the Go code                       | Huma is the candidate library.                                                       |
+| MCP server           | The official MCP SDK for Go                                   | Read-only tools, served to assistants over Streamable HTTP.                          |
+| Database             | PostgreSQL with PostGIS                                       | Spatial queries, history, and the rigorous LV95 to WGS84 transformation.             |
+| Database access      | SQL written by hand, typed code generated                     | `pgx` and `sqlc` are the candidates.                                                 |
+| Migrations           | Versioned SQL files                                           | Applied by `migrate`. They stay compatible with the previous version of the program. |
+| Website              | TypeScript; Astro with React for the map                      | Server-rendered pages are the recommended baseline; still open.                      |
+| Map                  | MapLibre GL                                                   | The base map is open.                                                                |
+| Checks               | `gofmt`, `go vet`, `go test`; Biome; `tsc` once `web/` exists | One CI job per part, gathered by the job named `check`, the only required one.       |
+| Local work and tests | Docker Compose                                                |                                                                                      |
+| Production           | Kubernetes, Helm, CloudNativePG                               | Meant for a managed cluster in Switzerland; must work on a self-managed one.         |
+| In front of the site | Cloudflare                                                    | DNS and CDN. What it caches is open.                                                 |
+| Releases             | GitHub Actions, GitHub container registry                     | Deployment waits for the maintainer's approval.                                      |
 
-Until the Go backend lands, the only toolchain in the repository is the
-TypeScript one that `packages/core` uses: Bun, Biome and `tsc`.
+The backend uses Go's standard library only, including for its command line,
+until a step needs more. The Go version is the `go` line of `backend/go.mod`,
+which CI installs. Until `web/` exists, the only JavaScript tool is Biome, run
+with Bun to check Markdown, JSON and YAML.
 
 ## Deployment
 
@@ -274,14 +276,14 @@ Recommended hostnames, to confirm when the site goes online:
 ## Where a change belongs
 
 - **Understanding a source file** (a new label, a new field, a new dataset):
-  the parser, with a test that uses a real sample of the file. Today that is
-  `packages/core`; after the port, `backend/internal/ofcom`.
+  the parser, `backend/internal/ofcom`, with a test that uses a real sample of
+  the file.
 - **Anything that needs the database**: `backend/internal/store`.
 - **A new question the data should answer**: the API first, with its contract,
   then the website or the MCP server on top of it.
 - **How it runs in production**: `deploy/`, and this page.
 
-How the parser treats what it does not expect, which the Go port must keep:
+How the parser treats what it does not expect:
 
 - **A label it does not recognise** never stops the run. The station is kept,
   what the parser does recognise is kept, the rest is set to unknown, null or

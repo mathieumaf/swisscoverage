@@ -13,7 +13,9 @@ documentation, issues and pull requests.
 
 ## Setup
 
-You need [Bun](https://bun.sh) 1.4.5 and Node 26 (`.nvmrc`).
+You need [Go](https://go.dev) 1.27.4 or later for the backend, and
+[Bun](https://bun.sh) 1.4.5 to run Biome, the tool that checks Markdown, JSON
+and YAML.
 
 ```sh
 git clone https://github.com/mathieumaf/swisscoverage.git
@@ -28,27 +30,47 @@ section on where a change belongs. [docs/decisions.md](docs/decisions.md) says
 why it is built that way, and [docs/roadmap.md](docs/roadmap.md) what comes
 next.
 
-The short version: today the only code is the parser in `packages/core`, plain
-TypeScript with its tests beside it. The backend is planned in Go under
-`backend/` and the website in TypeScript under `web/`.
+The short version: the backend is written in Go under `backend/`. Today it
+holds the `swisscoverage` program with its first command, `parse`, in
+`backend/cmd/swisscoverage`, and the parser for OFCOM's file in
+`backend/internal/ofcom`. The website is planned in TypeScript under `web/`.
 
 The parser never touches the network, the file system, the environment, a
-database or the clock. Code that needs the database belongs in the backend.
-The website reaches the data only by calling the public API.
+database or the clock: it receives the bytes of a file from the command that
+calls it. Code that needs the database belongs in `backend/internal/store`,
+which is planned. The website reaches the data only by calling the public API.
 
 ## Checks
 
-Run this before you push. CI runs the same command.
+Run these before you push. CI runs the same commands.
 
 ```sh
-bun run check    # lint, formatting, types, tests
+cd backend
+gofmt -l .           # formatting: prints the files to fix, nothing when good
+go mod tidy -diff    # go.mod matches the imports: prints nothing when good
+go vet ./...
+go test ./...
+
+cd ..
+bun run check        # lint and formatting of Markdown, JSON and YAML
 ```
 
-`bun run format` fixes formatting and import order.
+`gofmt -w .` fixes the formatting of Go files and `bun run format` fixes the
+rest.
 
 A change to behaviour comes with a test that fails without it. A parser change
-comes with a real sample of the file it reads, kept small, under a `fixtures`
-directory beside the test.
+comes with a real sample of the file it reads, kept small, under the
+`testdata` directory beside the test.
+
+The parser's result for the sample is recorded in a golden file,
+`testdata/mobile-stations.golden.json`. When a change alters that result on
+purpose, `go test ./internal/ofcom -update` rewrites the file. Read its diff
+before you commit it: it is the change in behaviour.
+
+To try the parser on the real file, download it once and run
+`go run ./cmd/swisscoverage parse <file>` in `backend/`. It prints the number
+of stations, the counts per operator, kind and technology, and every value the
+parser did not recognise.
 
 ## Data
 

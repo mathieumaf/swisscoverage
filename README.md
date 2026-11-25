@@ -4,8 +4,9 @@ An open map of mobile network antennas in Switzerland, with a public API and an
 MCP server over the same data.
 
 > **Status: early development.** Nothing is deployed yet. The repository holds
-> the foundations: the parser for the official dataset, the architecture and
-> the plan. Follow the [roadmap](docs/roadmap.md) to see what comes next.
+> the foundations: the start of the backend with the parser for the official
+> dataset, the architecture and the plan. Follow the
+> [roadmap](docs/roadmap.md) to see what comes next.
 
 ## Why
 
@@ -64,8 +65,8 @@ the project stands.
 Most of this is planned, not built. Today the repository holds:
 
 ```
-packages/
-  core/      Parser for the OFCOM dataset, in TypeScript; to be ported to Go
+backend/     The `swisscoverage` program, in Go: the parser for the OFCOM
+             dataset and the `parse` command that shows what it reads
 docs/        Architecture, decisions, roadmap, data sources, security
 ```
 
@@ -76,14 +77,23 @@ docs/        Architecture, decisions, roadmap, data sources, security
 
 ## Development
 
-You need [Bun](https://bun.sh) 1.4.5 and Node 26 (`.nvmrc`).
+You need [Go](https://go.dev) 1.27.4 or later for the backend, and
+[Bun](https://bun.sh) 1.4.5 for the tool that checks the documentation.
 
 ```sh
 git clone https://github.com/mathieumaf/swisscoverage.git
 cd swisscoverage
+
+cd backend
+go test ./...                                 # the backend's tests
+go run ./cmd/swisscoverage parse internal/ofcom/testdata/mobile-stations.sample.json
+
+cd ..
 bun install
-bun run check    # lint, formatting, types, tests
+bun run check                                 # Markdown, JSON and YAML
 ```
+
+[CONTRIBUTING.md](CONTRIBUTING.md) lists every check that CI runs.
 
 ## Contributing
 

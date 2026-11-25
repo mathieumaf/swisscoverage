@@ -16,11 +16,17 @@ into a map, a public API and an MCP server.
 
 **What exists today**
 
-- `packages/core`: a pure TypeScript library that parses OFCOM's public GeoJSON
-  file into a typed model (`packages/core/src/ofcom/mobile-stations.ts`). It
-  has no network, file system, database or environment access.
-- Continuous integration (`.github/workflows/ci.yml`): lint, types and tests on
-  every pull request and on `main`, with read-only permissions.
+- `backend/internal/ofcom`: a pure Go package that parses OFCOM's public
+  GeoJSON file into a typed model (`mobile_stations.go`). It has no network,
+  file system, database or environment access, and uses the standard library
+  only.
+- `backend/cmd/swisscoverage`: the program, with one command so far. `parse`
+  reads one file named by whoever runs it, or standard input, and prints what
+  the parser makes of it. It is a tool run by hand: it listens on nothing,
+  writes no file and holds no credentials.
+- Continuous integration (`.github/workflows/ci.yml`): formatting, `go vet`
+  and tests for the backend, and lint for the documentation, on every pull
+  request and on `main`, with read-only permissions.
 - The daily archive, in a separate repository,
   [`mathieumaf/swisscoverage-data`](https://github.com/mathieumaf/swisscoverage-data).
   A scheduled workflow there downloads OFCOM's file once a day, commits it in a
@@ -31,10 +37,10 @@ into a map, a public API and an MCP server.
 **What is planned** ([architecture](../architecture.md)). Everything in this
 list is an assumption until the code exists, and is marked _unverified_ below.
 
-- A backend in Go, one program with four commands in production: `serve`, the
-  public, read-only HTTP API; `mcp`, the MCP server; `ingest`, the import that
-  loads snapshots into PostgreSQL with PostGIS; and `migrate`, which changes
-  the schema.
+- The rest of the backend, as four more commands of the same program that run
+  in production: `serve`, the public, read-only HTTP API; `mcp`, the MCP
+  server; `ingest`, the import that loads snapshots into PostgreSQL with
+  PostGIS; and `migrate`, which changes the schema.
 - The MCP server and a website. Both are clients of the public API over HTTP
   and have no access to the database. The website is a server exposed to the
   internet, not only a page in a browser.
@@ -70,23 +76,26 @@ personal data.
 
 ## Entry points and untrusted input
 
-| Entry point                | State        | Input                                                           | Handling                                                                                                                                                                                                     |
-| -------------------------- | ------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| OFCOM file                 | exists       | A GeoJSON document of about 28 MB                               | `parseMobileStations` validates the shape and the reference system, reads strings as data, and reports unknown labels as warnings                                                                            |
-| Fixtures in the repository | exists       | JSON samples added by contributors                              | Reviewed for provenance (`AGENTS.md`, Code Review Rules); parsed like any other file                                                                                                                         |
-| Pull requests from forks   | exists       | Code, workflows, lockfile                                       | CI runs on `pull_request` with `contents: read` and no secrets; changes to workflows and dependencies are High risk                                                                                          |
-| Dependencies               | exists       | Packages from the registry, GitHub actions                      | Locked install (`bun install --frozen-lockfile`); actions pinned to a commit; Dependabot proposes updates as pull requests                                                                                   |
-| Daily archive job          | exists       | OFCOM's catalogue and file, fetched unattended                  | In `swisscoverage-data`: checks the address, dates and checksum format before use, verifies the file's SHA-256 against the catalogue, and passes values to steps through the environment                     |
-| Public API                 | _unverified_ | Query parameters                                                | Must validate every parameter, use parameterised SQL, stay read-only, and bound the size of every response. One response is exempt by design: every current station at once, which the dataset itself bounds |
-| MCP server                 | _unverified_ | Tool arguments chosen by an AI model                            | Must treat arguments as untrusted, reach data only through the public API, and return API data as data, never as instructions to follow                                                                      |
-| Website server             | _unverified_ | Request paths, query parameters and the language in the address | Exists only if pages are rendered on the server, which is still open. It must then validate what it receives, and build its calls to the API only from a fixed base address, never from what a visitor sends |
-| Website in the browser     | _unverified_ | Station labels and other strings from the API                   | Must render them as text, never as HTML                                                                                                                                                                      |
+| Entry point               | State        | Input                                                                                                       | Handling                                                                                                                                                                                                                                          |
+| ------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OFCOM file                | exists       | A GeoJSON document of about 28 MB                                                                           | `ParseMobileStations` validates the shape and the reference system, reads strings as data, and reports unknown labels as warnings                                                                                                                 |
+| Samples in the repository | exists       | JSON samples added by contributors, under `testdata/`                                                       | Reviewed for provenance (`AGENTS.md`, Code Review Rules); parsed like any other file                                                                                                                                                              |
+| Pull requests from forks  | exists       | Code, workflows, lockfile                                                                                   | CI runs on `pull_request` with `contents: read` and no secrets; changes to workflows and dependencies are High risk                                                                                                                               |
+| Dependencies              | exists       | The Go toolchain, GitHub actions, and Biome from the package registry. The backend has no Go dependency yet | CI installs the Go version that `backend/go.mod` names and refuses to download another (`GOTOOLCHAIN=local`); locked install of Biome (`bun install --frozen-lockfile`); actions pinned to a commit; Dependabot proposes updates as pull requests |
+| Daily archive job         | exists       | OFCOM's catalogue and file, fetched unattended                                                              | In `swisscoverage-data`: checks the address, dates and checksum format before use, verifies the file's SHA-256 against the catalogue, and passes values to steps through the environment                                                          |
+| Public API                | _unverified_ | Query parameters                                                                                            | Must validate every parameter, use parameterised SQL, stay read-only, and bound the size of every response. One response is exempt by design: every current station at once, which the dataset itself bounds                                      |
+| MCP server                | _unverified_ | Tool arguments chosen by an AI model                                                                        | Must treat arguments as untrusted, reach data only through the public API, and return API data as data, never as instructions to follow                                                                                                           |
+| Website server            | _unverified_ | Request paths, query parameters and the language in the address                                             | Exists only if pages are rendered on the server, which is still open. It must then validate what it receives, and build its calls to the API only from a fixed base address, never from what a visitor sends                                      |
+| Website in the browser    | _unverified_ | Station labels and other strings from the API                                                               | Must render them as text, never as HTML                                                                                                                                                                                                           |
 
 ## Trust boundaries
 
 1. **Source file → parser.** The file crosses from the network into the
-   project's model. Enforced today in `packages/core`: nothing from the file is
-   evaluated, and a file in another reference system is rejected.
+   project's model. Enforced today in `backend/internal/ofcom`: nothing from
+   the file is evaluated, and a file in another reference system is rejected.
+   The parser holds the whole file in memory, which is fine for a file someone
+   chose to read by hand. The import must bound the size of what it downloads
+   before it parses it.
 2. **Fork → repository.** A pull request crosses when it is merged. Enforced by
    the maintainer's review and by the `check` job. Branch protection on `main`
    is what makes both mandatory. It is a repository setting, not a file: it

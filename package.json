@@ -3,25 +3,13 @@
   "private": true,
   "description": "Open map, API and MCP server for mobile network antennas in Switzerland.",
   "license": "AGPL-3.0-only",
-  "type": "module",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "check": "bun run lint && bun run typecheck && bun run test",
+    "check": "bun run lint",
     "lint": "biome check --error-on-warnings .",
-    "format": "biome check --write .",
-    "typecheck": "tsc --noEmit",
-    "test": "bun test"
-  },
-  "engines": {
-    "node": ">=26"
+    "format": "biome check --write ."
   },
   "packageManager": "bun@1.4.5",
   "devDependencies": {
-    "@biomejs/biome": "2.6.9",
-    "@types/bun": "1.4.5",
-    "typescript": "7.0.2"
+    "@biomejs/biome": "2.6.9"
   }
 }

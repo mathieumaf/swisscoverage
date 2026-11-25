@@ -19,12 +19,14 @@ in the same pull request, and in particular:
 
 ## Where we are
 
-| Done                                                                                 |
-| ------------------------------------------------------------------------------------ |
-| Repository, licence, contribution guide, CI, review rules, security policy           |
-| Parser for OFCOM's file, in TypeScript (`packages/core`), tested on real samples     |
-| Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`) |
-| Architecture and decisions written down                                              |
+| Done                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------- |
+| Repository, licence, contribution guide, CI, review rules, security policy                                                  |
+| Step 1: the `swisscoverage` program in Go, with its `parse` command and the parser for OFCOM's file, tested on real samples |
+| Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`)                                        |
+| Architecture and decisions written down                                                                                     |
+
+Next: [step 2](#step-2-database-and-import), the database and the import.
 
 Waiting on someone else: a Freedom of Information request for OFCOM's detailed
 antenna database was filed on 24 November 2026. Version 1.0 depends on the
@@ -34,40 +36,36 @@ answer. See [data-sources.md](data-sources.md).
 
 The public OFCOM dataset on a map, with filters, behind a public API.
 
-### Step 1. Go foundation
+### Step 1. Go foundation (done)
 
-The parser moves to Go, and the repository gets its Go toolchain.
+The parser moved to Go, and the repository got its Go toolchain.
 
-- **Settings.** Go 1.27, pinned in `backend/go.mod` and read from there by CI.
-  Module path `github.com/mathieumaf/swisscoverage/backend`.
-- **Adds.**
+- **Added.**
   - `backend/` with the `swisscoverage` program and its first command,
     `parse`: it reads a source file and prints the number of stations, the
-    warnings, and the counts per operator, kind and technology. With a flag it
-    prints every station as JSON.
+    counts per operator, kind and technology, and the warnings. With `-json`
+    it prints every station as JSON.
   - The parser in `backend/internal/ofcom`, with the tests of the TypeScript
-    parser ported one for one.
-  - The fixture in `backend/internal/ofcom/testdata/`, Go's directory for test
-    data, with a golden file: what the TypeScript parser returns for it.
+    parser ported one for one, and tests for what is new now that the parser
+    takes the bytes of a file.
+  - The sample in `backend/internal/ofcom/testdata/`, Go's directory for test
+    data, with a golden file: what the TypeScript parser returned for it.
   - CI: a `backend` job (formatting, `go vet`, `go test`) and a `docs` job
-    (Biome). The existing `check` job gathers them and stays the only required
-    check, so branch protection does not change.
-- **Proves, once, in the pull request.** Both parsers read the same downloaded
-  snapshot and write their stations and warnings as JSON. The two outputs are
-  identical. Only then is the TypeScript parser removed.
-- **Removes.** `packages/core`, `tsconfig.json`, the `typecheck` and `test`
-  scripts, the TypeScript development dependencies and the `workspaces` field;
-  the `check` script is reduced to linting. Biome stays at the root, installed
-  with Bun, so that Markdown, JSON and YAML keep being checked until `web/`
-  brings TypeScript back in step 4. Node goes from CI if nothing else needs
-  it.
-- **Updates.** `README.md` (development), `CONTRIBUTING.md`, the pull request
-  template, `AGENTS.md` (proof commands, review rules, and `**/testdata/**`
-  beside `**/fixtures/**` in the review rule and the risk tiers),
-  `.github/dependabot.yml` (Go modules in `backend/`),
-  `docs/security/threat-model.md` (the parser, the dependencies, the CI jobs),
-  `docs/data-sources.md` (the parser's path).
-- **Done when.**
+    (Biome). The `check` job gathers them and stays the only required check,
+    so branch protection did not change.
+- **Proved, once, before the TypeScript parser was removed.** Both parsers
+  read the file published on 24 November 2026, with 22,761 sites, and a copy
+  of it altered to raise every kind of warning. Their outputs were identical,
+  byte for byte, on both.
+- **Settled.**
+  - Go 1.27.4, the `go` line of `backend/go.mod`, which CI reads.
+  - The standard library only, including for the command line.
+  - The parser takes the bytes of a file and returns stations and warnings.
+    It keeps the names the TypeScript parser gave to its fields.
+  - Biome stays at the root, run with Bun, so that Markdown, JSON and YAML
+    keep being checked until `web/` brings TypeScript back in step 4. Node is
+    no longer needed.
+- **Done when.** Both are true:
   - `go test ./...` passes in `backend/`, including the comparison with the
     golden file.
   - `swisscoverage parse` on the day's public file prints about 23,000
