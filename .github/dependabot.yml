@@ -76,3 +76,10 @@ updates:
         dependency-type: "development"
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      # TypeScript 7 ships no JavaScript API, and two tools call it:
+      # openapi-typescript (`bun run generate`) and @astrojs/check, through
+      # Volar, which requires TypeScript below 7 (`bun run check`). Remove
+      # this rule once both support TypeScript 7.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
