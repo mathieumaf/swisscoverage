@@ -7,8 +7,8 @@ commands, `serve`, `openapi`, `parse`, `migrate` and `ingest`; the parser for
 OFCOM's file; the database, PostgreSQL with PostGIS, with the import that
 loads the archive into it; and the public, read-only API, with its contract
 in `openapi.json`. The website, in TypeScript with Astro under `web/`, is
-started: its pages are rendered on a server that calls the API. The map and
-the MCP server are planned.
+started: its pages are rendered on a server that calls the API, and its home
+page is the map of every station. The MCP server is planned.
 
 - `docs/architecture.md`: read before adding a module, a command or a
   dependency. It says what exists, what is planned, and where a change belongs.
@@ -132,12 +132,15 @@ how to stop it, `bunx --bun astro dev stop`. In another terminal:
 
 ```sh
 curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' -H 'Accept-Language: de-CH' http://127.0.0.1:4321/
-curl -sS http://127.0.0.1:4321/fr/ | grep -o 'class="snapshot"[^<]*'
+curl -sS http://127.0.0.1:4321/fr/ | grep -o 'class="intro__snapshot"[^<]*'
 ```
 
 The first prints `302 http://127.0.0.1:4321/de/`: the root sends each visitor
 to their language. The second prints the number of sites and the date of the
-latest snapshot. With the API stopped, the page still answers 200 and says the
+latest snapshot. Open `http://127.0.0.1:4321/fr/` in a browser to see the
+map: the browser itself loads every station from the API, at the origin of
+`SWISSCOVERAGE_API_URL`, and the base map from OpenFreeMap. A click on a
+station opens its sheet. With the API stopped, the page still answers 200 and says the
 data cannot be loaded. `bun run build` then `bun run preview` serves the
 production build the same way.
 
@@ -185,7 +188,8 @@ Flag a change when:
   approximate formulas instead of being left to PostGIS.
 - **It brings in data we may not use.** A fixture or data file that does not
   come from a source documented in `docs/data-sources.md`, anything scraped
-  from another map or app, or a change that drops the attribution to OFCOM.
+  from another map or app, or a change that drops the attribution to OFCOM,
+  or the base map's to OpenFreeMap, OpenMapTiles and OpenStreetMap.
 - **It breaks the parser's boundary.** The parser (`backend/internal/ofcom`)
   reads the network, the file system, the environment, a database or the
   clock. It must stay pure so its tests are deterministic. Reading files is

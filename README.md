@@ -6,7 +6,7 @@ MCP server over the same data.
 > **Status: early development.** Nothing is deployed yet. The repository holds
 > the foundations: the parser for the official dataset, the database and the
 > import that loads the daily archive into it, the public API that serves it,
-> the start of the website, the architecture and the plan.
+> the map of every station, the architecture and the plan.
 > Follow the [roadmap](docs/roadmap.md) to see what comes next.
 
 ## Why
@@ -69,8 +69,8 @@ Most of this is planned, not built. Today the repository holds:
 backend/     The `swisscoverage` program, in Go: the parser for the OFCOM
              dataset, the database schema, the import that records what
              changed from one day to the next, and the read-only API
-web/         The website, in TypeScript with Astro: so far the home page in
-             French, German, Italian and English
+web/         The website, in TypeScript with Astro: the map of every
+             station, in French, German, Italian and English
 deploy/      Docker Compose with the database, for local work and tests
 docs/        Architecture, decisions, roadmap, data sources, security
 openapi.json The API's contract, generated from the code

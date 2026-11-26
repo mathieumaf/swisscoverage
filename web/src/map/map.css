@@ -1,0 +1,196 @@
+.station-map {
+  position: absolute;
+  inset: 0;
+}
+
+.station-map__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.station-map__status {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 1.5rem);
+  margin: 0;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.station-map__status--error,
+.station-map__status--baseMapError {
+  color: var(--danger);
+}
+
+/* The attribution stays above an open sheet. */
+.station-map .maplibregl-ctrl-bottom-right {
+  z-index: 3;
+}
+
+/* The base map is light whatever the site's theme, so the credits are dark
+   text on a light band: inherited from a dark page, they would be light grey
+   on white. */
+.station-map .maplibregl-ctrl-attrib {
+  background: rgb(255 255 255 / 0.85);
+  color: #1f2328;
+}
+
+.station-map .maplibregl-ctrl-attrib a {
+  color: #1f2328;
+}
+
+/* Above the attribution, which must stay visible. */
+.station-sheet {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  bottom: 2.5rem;
+  width: min(24rem, calc(100% - 1.5rem));
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+  font-size: 0.9375rem;
+  z-index: 2;
+}
+
+/* On a phone, the sheet rises from the bottom and leaves the map visible. */
+@media (max-width: 640px) {
+  .station-sheet {
+    top: auto;
+    right: 0;
+    left: 0;
+    width: auto;
+    bottom: 2.5rem;
+    max-height: 60%;
+    border-radius: 0.75rem 0.75rem 0 0;
+  }
+}
+
+.station-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.station-sheet h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.station-sheet__operator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.station-sheet__dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+}
+
+.station-sheet__close {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.station-sheet__notice {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--border);
+}
+
+.station-sheet__facts {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.station-sheet__facts dt {
+  color: var(--muted);
+}
+
+.station-sheet__facts dd {
+  margin: 0;
+}
+
+.station-sheet__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.station-sheet__chips li {
+  padding: 0 0.5rem;
+  border-radius: 0.375rem;
+  background: var(--border);
+  font-weight: 600;
+}
+
+.station-sheet__muted,
+.station-sheet__source {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.station-choice {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.station-choice button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.625rem 0.5rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.station-choice button:hover,
+.station-choice button:focus-visible {
+  background: var(--border);
+}
+
+.station-choice .station-sheet__dot {
+  flex: none;
+}

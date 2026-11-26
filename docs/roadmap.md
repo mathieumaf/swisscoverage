@@ -149,7 +149,7 @@ The parser moved to Go, and the repository got its Go toolchain.
   1. The foundation (done): Astro and TypeScript on Bun, pages rendered on
      a server, the home page in four languages from the API,
      types generated from `openapi.json`, the `web` job in CI.
-  2. The map, with React and MapLibre GL: every station from
+  2. The map (done), with React and MapLibre GL: every station from
      `GET /v1/stations`, grouped when zoomed
      out, the base map with its attribution, a sheet per station, the
      visitor's position on request, a layout for phones.
@@ -162,7 +162,8 @@ The parser moved to Go, and the repository got its Go toolchain.
 - **Decides.**
   - A page per station, or a map only: a page per station, rendered on the
     server ([decision 24](decisions.md)).
-  - The base map.
+  - The base map: OpenFreeMap's Liberty style
+    ([decision 25](decisions.md)).
   - Search by address: which service turns an address into coordinates. It
     must be added to [data-sources.md](data-sources.md) before any code calls
     it. Until then the search covers station labels only.

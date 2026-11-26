@@ -1,4 +1,5 @@
 import node from "@astrojs/node";
+import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
 
 // Pages are rendered on the server (decision 24 in docs/decisions.md), by the
@@ -7,6 +8,8 @@ import { defineConfig } from "astro/config";
 export default defineConfig({
   output: "server",
   adapter: node({ mode: "standalone" }),
+  // React renders the map, in the browser only.
+  integrations: [react()],
   server: {
     // This machine only. Pass --host to `astro dev` only on purpose.
     host: "127.0.0.1",

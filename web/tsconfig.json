@@ -4,6 +4,8 @@
   "exclude": ["dist"],
   "compilerOptions": {
     "types": ["bun"],
-    "noPropertyAccessFromIndexSignature": false
+    "noPropertyAccessFromIndexSignature": false,
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
   }
 }

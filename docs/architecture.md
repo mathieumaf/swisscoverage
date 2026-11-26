@@ -76,12 +76,12 @@ a reader sees the day before or the day itself, never a mix.
 
 A typical day:
 
-| When (UTC)          | What happens                                                                                                 | State                                                  |
-| ------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| around 22:00        | OFCOM replaces its file.                                                                                     |                                                        |
-| 04:17, 10:17, 16:17 | The archive copies it, verifies its checksum and commits it. The later runs find it archived and do nothing. | exists                                                 |
-| 05:00               | The import loads it: it compares it with the day before and writes the differences.                          | exists as a command; scheduled in roadmap step 5       |
-| afterwards          | The API serves the day's data as soon as the import commits it; the map and the MCP server read it there.    | the API exists; the map and the MCP server are planned |
+| When (UTC)          | What happens                                                                                                 | State                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| around 22:00        | OFCOM replaces its file.                                                                                     |                                                      |
+| 04:17, 10:17, 16:17 | The archive copies it, verifies its checksum and commits it. The later runs find it archived and do nothing. | exists                                               |
+| 05:00               | The import loads it: it compares it with the day before and writes the differences.                          | exists as a command; scheduled in roadmap step 5     |
+| afterwards          | The API serves the day's data as soon as the import commits it; the map and the MCP server read it there.    | the API and the map exist; the MCP server is planned |
 
 ## Parts
 
@@ -94,7 +94,7 @@ A typical day:
 | Store          | `backend/internal/store`                                               | exists  | The schema, its migrations and the queries, for PostgreSQL with PostGIS. Records each snapshot and what it changed, and reads them back for the API, each request in one read-only transaction. PostGIS converts positions from LV95 to WGS84. |
 | API            | `backend/internal/api`, `openapi.json`                                 | exists  | The public, read-only HTTP API and its contract. See [The API](#the-api).                                                                                                                                                                      |
 | MCP server     | `backend/internal/mcp`                                                 | planned | Tools for AI assistants. A client of the public API over HTTP, with no access to the database.                                                                                                                                                 |
-| Website        | `web/` (TypeScript)                                                    | started | The map and the pages, in four languages, rendered on a server ([decision 24](decisions.md)). A client of the public API over HTTP. Today it has the home page of each language; the map is planned.                                           |
+| Website        | `web/` (TypeScript)                                                    | started | The map and the pages, in four languages, rendered on a server ([decision 24](decisions.md)). A client of the public API over HTTP. Today it has the map, on the home page of each language.                                                   |
 | Deployment     | `deploy/`                                                              | started | Docker Compose for local work and tests, which exists; a Helm chart for Kubernetes in production, which is planned.                                                                                                                            |
 
 The `swisscoverage` program has four commands that run in production and two
@@ -134,6 +134,7 @@ swisscoverage/
 │       ├── api/               the API client, typed by openapi.json
 │       ├── i18n/              the four languages and their messages
 │       ├── layouts/           what every page shares
+│       ├── map/               the map and the sheet of a station, in React
 │       └── pages/             one file per route, under /{language}/
 ├── openapi.json               the API contract, generated and committed; exists
 ├── deploy/
@@ -269,7 +270,7 @@ them. Choices marked "open" are questions listed in
 | Database access      | SQL written by hand, typed code generated                                              | `pgx` is the driver and `sqlc` the generator.                                                                  |
 | Migrations           | Versioned SQL files, forward only                                                      | Applied by `migrate`, with a runner of our own. They stay compatible with the previous version of the program. |
 | Website              | TypeScript; Astro with React for the map                                               | Pages rendered on a server, run by Bun ([decision 24](decisions.md)).                                          |
-| Map                  | MapLibre GL                                                                            | The base map is open.                                                                                          |
+| Map                  | MapLibre GL                                                                            | OpenFreeMap's Liberty style as the base map ([decision 25](decisions.md)).                                     |
 | Checks               | `gofmt`, `go vet`, `go test` against a real database; Biome; `astro check`, `bun test` | One CI job per part, gathered by the job named `check`, the only required one.                                 |
 | Local work and tests | Docker Compose                                                                         | PostgreSQL 18 with PostGIS 3.6.                                                                                |
 | Production           | Kubernetes, Helm, CloudNativePG                                                        | Meant for a managed cluster in Switzerland; must work on a self-managed one.                                   |
@@ -285,8 +286,8 @@ line of `backend/go.mod`, which CI installs.
 The TypeScript side runs on Bun, the version in `packageManager` of the root
 `package.json`. At the root, Biome checks Markdown, JSON, YAML and the
 website's TypeScript. `web/` has its own `package.json`: Astro, its adapter
-for a standalone server, and `openapi-fetch`, a client typed by the contract;
-React and MapLibre GL come with the map. Its development tools are
+for a standalone server, `openapi-fetch`, a client typed by the contract,
+React, and MapLibre GL, which draws the map. Its development tools are
 `@astrojs/check` with TypeScript, which check the `.astro` files too, and
 `openapi-typescript`, which generates the types. The server reads one
 setting, `SWISSCOVERAGE_API_URL`, the origin of the API; on this machine it

@@ -20,8 +20,12 @@ const intlTags: Record<Locale, string> = {
   en: "en-CH",
 };
 
-export function formatNumber(locale: Locale, value: number): string {
-  return new Intl.NumberFormat(intlTags[locale]).format(value);
+export function formatNumber(
+  locale: Locale,
+  value: number,
+  options?: Intl.NumberFormatOptions,
+): string {
+  return new Intl.NumberFormat(intlTags[locale], options).format(value);
 }
 
 // Dates are shown as they were in Switzerland: a snapshot published at

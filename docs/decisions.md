@@ -415,6 +415,28 @@ Three facts shaped most choices:
   site no longer needs a page per station.
 - **Accepted.** 26 November 2026.
 
+### 25. OpenFreeMap's Liberty style for the base map
+
+- **Decision.** The map is drawn on OpenFreeMap's public instance, with its
+  Liberty style, loaded by each visitor's browser from
+  `tiles.openfreemap.org`. Place names are shown in the visitor's language
+  where OpenStreetMap has one, otherwise in the local one. The source, its
+  terms and its attribution are in [data-sources.md](data-sources.md).
+- **Why.** Chosen by the maintainer on a comparison of six base maps around
+  Biel and the Jura, with real stations on top: four OpenFreeMap styles and
+  two swisstopo ones. Liberty reads best under 23,000 coloured points. It
+  needs no key and no account, has no limit on map views, and is built from
+  OpenStreetMap, so it also covers the stations across the border.
+- **Cost.** The site depends on a free service run by one company, with no
+  guarantee of service. Visitors' browsers contact it, through Cloudflare.
+- **Rejected.** swisstopo's base maps: official and the most precise inside
+  Switzerland, but not preferred on the comparison. The other OpenFreeMap
+  styles: Positron, lighter, Bright, more contrasted, and Dark.
+- **Revisit when.** The public instance becomes unreliable, changes its terms,
+  or stops: the same style can then be served from a self-hosted
+  OpenFreeMap, or swisstopo's base map can replace it.
+- **Accepted.** 26 November 2026.
+
 ## Open
 
 Not decided yet. Each has a recommendation and the step of the
@@ -422,7 +444,6 @@ Not decided yet. Each has a recommendation and the step of the
 
 | Question                                                                            | Recommendation                                                                                                                                                | Settled in |
 | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| Which base map?                                                                     | OpenFreeMap, with its Liberty style, if its terms allow it. The terms are not checked yet; they go into [data-sources.md](data-sources.md) with the map.      | Step 4     |
 | Which service turns an address into coordinates, and who calls it?                  | swisstopo's public search service, called from the browser, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first. | Step 4     |
 | The API on `api.swisscoverage.ch` or under `swisscoverage.ch/api`?                  | The subdomain: the API's address then does not depend on the website.                                                                                         | Step 5     |
 | Two small cluster nodes, or one?                                                    | Two, so that a cluster update does not interrupt the site. Prices are not checked yet.                                                                        | Step 5     |
