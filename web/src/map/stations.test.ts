@@ -1,38 +1,55 @@
 import { describe, expect, test } from "bun:test";
 import {
+  isStationId,
   localizeLabel,
   lv95Of,
   type StationCollection,
   stationsAt,
   toMapData,
+  toStations,
 } from "./stations";
 
-describe("toMapData", () => {
-  test("keeps the position, the identifier, the label and the operator", () => {
-    const collection: StationCollection = {
-      type: "FeatureCollection",
-      attribution: "Source: Federal Office of Communications OFCOM",
-      snapshot: {
-        publishedAt: "2026-11-24T22:01:55Z",
-        sha256: "0".repeat(64),
-        sites: 1,
-      },
-      features: [
-        {
-          type: "Feature",
-          id: "2683328_1247916_Sunrise ZE416-1",
-          geometry: { type: "Point", coordinates: [7.4474, 46.948] },
-          properties: {
-            name: "Sunrise ZE416-1",
-            operator: "sunrise",
-            kind: "outdoor",
-            powerClass: "medium",
-            technologies: ["4G", "5G"],
-          },
+describe("toStations and toMapData", () => {
+  const collection: StationCollection = {
+    type: "FeatureCollection",
+    attribution: "Source: Federal Office of Communications OFCOM",
+    snapshot: {
+      publishedAt: "2026-11-24T22:01:55Z",
+      sha256: "0".repeat(64),
+      sites: 1,
+    },
+    features: [
+      {
+        type: "Feature",
+        id: "2683328_1247916_Sunrise ZE416-1",
+        geometry: { type: "Point", coordinates: [7.4474, 46.948] },
+        properties: {
+          name: "Sunrise ZE416-1",
+          operator: "sunrise",
+          kind: "outdoor",
+          powerClass: "medium",
+          technologies: ["4G", "5G"],
         },
-      ],
-    };
-    expect(toMapData(collection)).toEqual({
+      },
+    ],
+  };
+
+  test("keeps what the filters read", () => {
+    expect(toStations(collection)).toEqual([
+      {
+        id: "2683328_1247916_Sunrise ZE416-1",
+        name: "Sunrise ZE416-1",
+        operator: "sunrise",
+        kind: "outdoor",
+        powerClass: "medium",
+        technologies: ["4G", "5G"],
+        coordinates: [7.4474, 46.948],
+      },
+    ]);
+  });
+
+  test("draws the position, the identifier, the label and the operator", () => {
+    expect(toMapData(toStations(collection))).toEqual({
       type: "FeatureCollection",
       features: [
         {
@@ -124,5 +141,30 @@ describe("lv95Of", () => {
     expect(lv95Of("2497760_1121940_Salt GE_2203A")).toBe(
       "LV95 2497760, 1121940",
     );
+  });
+});
+
+describe("isStationId", () => {
+  test("accepts a position and a label", () => {
+    expect(isStationId("2683328_1247916_Sunrise ZE416-1")).toBe(true);
+    expect(isStationId("2497760_1121940_Salt GE_2203A")).toBe(true);
+    expect(isStationId("2676878.25_1246069.5_Sunrise ZH601-1")).toBe(true);
+    expect(isStationId(`1_2_${"📡".repeat(196)}`)).toBe(true);
+  });
+
+  test("refuses anything else", () => {
+    for (const value of [
+      "",
+      ".",
+      "..",
+      "abc",
+      "2683328_1247916_",
+      "1._2_x",
+      "../v1",
+      "1_2_a\nb",
+      `1_2_${"x".repeat(200)}`,
+    ]) {
+      expect(isStationId(value)).toBe(false);
+    }
   });
 });

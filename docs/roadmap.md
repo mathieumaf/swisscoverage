@@ -153,8 +153,8 @@ The parser moved to Go, and the repository got its Go toolchain.
      `GET /v1/stations`, grouped when zoomed
      out, the base map with its attribution, a sheet per station, the
      visitor's position on request, a layout for phones.
-  3. Filters and the search by label, kept in the address so a view can be
-     shared.
+  3. Filters and the search by label (done); the address keeps the filters,
+     the open station and the map's position, so a view can be shared.
   4. The search by address, once its service is in
      [data-sources.md](data-sources.md).
   5. The pages: a page per station, the other pages, every text in four
