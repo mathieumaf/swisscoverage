@@ -4,7 +4,13 @@ import { formatDate, formatNumber, type Locale } from "../i18n/locales";
 import type { MessageKey } from "../i18n/messages/en";
 import { translate } from "../i18n/translate";
 import { Sheet } from "./Sheet";
-import { operatorColors, type Period, type StationHistory } from "./stations";
+import {
+  mutedText,
+  operatorColors,
+  operatorDot,
+  type Period,
+  type StationHistory,
+} from "./stations";
 
 interface Props {
   id: string;
@@ -58,9 +64,9 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
       title={station?.name ?? "…"}
       eyebrow={
         station && (
-          <p className="station-sheet__operator">
+          <p className="mb-1 flex items-center gap-[0.4rem] text-[0.8125rem] font-semibold tracking-[0.04em] text-muted uppercase">
             <span
-              className="station-sheet__dot"
+              className={operatorDot}
               style={{ background: operatorColors[station.operator] }}
             />
             {t(`operator.${station.operator}`)}
@@ -70,15 +76,25 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
       closeLabel={t("sheet.close")}
       onClose={onClose}
     >
-      {state.status === "loading" && <p role="status">{t("sheet.loading")}</p>}
-      {state.status === "error" && <p role="alert">{t("sheet.error")}</p>}
+      {state.status === "loading" && (
+        <p role="status" className="my-[1em]">
+          {t("sheet.loading")}
+        </p>
+      )}
+      {state.status === "error" && (
+        <p role="alert" className="my-[1em]">
+          {t("sheet.error")}
+        </p>
+      )}
 
       {station && current && (
         <>
           {!station.published && (
-            <p className="station-sheet__notice">{t("sheet.notPublished")}</p>
+            <p className="my-[1em] rounded-lg bg-border px-3 py-2">
+              {t("sheet.notPublished")}
+            </p>
           )}
-          <dl className="station-sheet__facts">
+          <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-2 [&>dt]:text-muted">
             <dt>{t("sheet.kind")}</dt>
             <dd>{t(`kind.${current.kind}`)}</dd>
             <dt>{t("sheet.powerClass")}</dt>
@@ -88,9 +104,14 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
               {current.technologies.length === 0 ? (
                 t("sheet.noTechnology")
               ) : (
-                <ul className="station-sheet__chips">
+                <ul className="flex flex-wrap gap-1">
                   {current.technologies.map((technology) => (
-                    <li key={technology}>{technology}</li>
+                    <li
+                      key={technology}
+                      className="rounded-md bg-border px-2 font-semibold"
+                    >
+                      {technology}
+                    </li>
                   ))}
                 </ul>
               )}
@@ -112,7 +133,7 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
               {station.position.lat.toFixed(5)},{" "}
               {station.position.lon.toFixed(5)}
               <br />
-              <span className="station-sheet__muted">
+              <span className={mutedText}>
                 LV95 {station.lv95.east}, {station.lv95.north}
               </span>
             </dd>
@@ -120,7 +141,7 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
             <dd>{date(station.firstSeen)}</dd>
           </dl>
 
-          <p className="station-sheet__source">{t("footer.source")}</p>
+          <p className={`my-[1em] ${mutedText}`}>{t("footer.source")}</p>
         </>
       )}
     </Sheet>

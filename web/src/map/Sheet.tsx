@@ -32,16 +32,24 @@ export function Sheet({
   }, [onClose]);
 
   return (
-    <aside className="station-sheet" aria-labelledby="station-sheet-title">
-      <header className="station-sheet__header">
+    <aside
+      className="absolute top-3 right-3 bottom-10 z-[2] w-[min(24rem,calc(100%-1.5rem))] overflow-y-auto rounded-xl border border-border bg-background px-5 py-4 text-[0.9375rem] text-foreground shadow-[0_8px_24px_rgb(0_0_0/0.2)] phone:top-auto phone:right-0 phone:left-0 phone:max-h-[60%] phone:w-auto phone:rounded-b-none"
+      aria-labelledby="station-sheet-title"
+    >
+      <header className="flex items-start justify-between gap-4">
         <div>
           {eyebrow}
-          <h2 id="station-sheet-title">{title}</h2>
+          <h2
+            id="station-sheet-title"
+            className="mb-3 text-[1.25rem] leading-[1.3] font-bold wrap-anywhere"
+          >
+            {title}
+          </h2>
         </div>
         <button
           ref={closeButton}
           type="button"
-          className="station-sheet__close"
+          className="size-10 flex-none cursor-pointer rounded-full border border-border text-[1.5rem] leading-none text-foreground"
           onClick={onClose}
           aria-label={closeLabel}
         >

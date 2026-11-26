@@ -1,7 +1,13 @@
 import { formatNumber, type Locale } from "../i18n/locales";
 import { translate } from "../i18n/translate";
 import { Sheet } from "./Sheet";
-import { lv95Of, type MapStation, operatorColors } from "./stations";
+import {
+  lv95Of,
+  type MapStation,
+  mutedText,
+  operatorColors,
+  operatorDot,
+} from "./stations";
 
 interface Props {
   stations: MapStation[];
@@ -21,18 +27,22 @@ export function StationChoice({ stations, locale, onChoose, onClose }: Props) {
       closeLabel={translate(locale, "sheet.close")}
       onClose={onClose}
     >
-      <ul className="station-choice">
+      <ul>
         {stations.map((station) => (
           <li key={station.id}>
-            <button type="button" onClick={() => onChoose(station)}>
+            <button
+              type="button"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 text-left text-foreground hover:bg-border focus-visible:bg-border"
+              onClick={() => onChoose(station)}
+            >
               <span
-                className="station-sheet__dot"
+                className={operatorDot}
                 style={{ background: operatorColors[station.operator] }}
               />
               <span>
                 <strong>{station.name}</strong>
                 <br />
-                <span className="station-sheet__muted">
+                <span className={mutedText}>
                   {translate(locale, `operator.${station.operator}`)} ·{" "}
                   {lv95Of(station.id)}
                 </span>

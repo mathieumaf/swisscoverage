@@ -14,7 +14,11 @@ Astro.response.headers.set("Vary", "Accept-Language");
 ---
 
 <Base locale={locale} title={translate(locale, "notFound.title")} error>
-  <h1>{translate(locale, "notFound.title")}</h1>
-  <p>{translate(locale, "notFound.text")}</p>
-  <p><a href={`/${locale}/`}>{translate(locale, "notFound.home")}</a></p>
+  <h1 class="my-[0.67em] text-[2em] font-bold">
+    {translate(locale, "notFound.title")}
+  </h1>
+  <p class="my-[1em]">{translate(locale, "notFound.text")}</p>
+  <p class="my-[1em]">
+    <a href={`/${locale}/`}>{translate(locale, "notFound.home")}</a>
+  </p>
 </Base>

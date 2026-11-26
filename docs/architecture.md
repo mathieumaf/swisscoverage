@@ -134,6 +134,7 @@ swisscoverage/
 │       ├── api/               the API client, typed by openapi.json
 │       ├── i18n/              the four languages and their messages
 │       ├── layouts/           what every page shares
+│       ├── styles/            Tailwind and the site's colours, light and dark
 │       ├── map/               the map and the sheet of a station, in React
 │       └── pages/             one file per route, under /{language}/
 ├── openapi.json               the API contract, generated and committed; exists
@@ -287,7 +288,8 @@ The TypeScript side runs on Bun, the version in `packageManager` of the root
 `package.json`. At the root, Biome checks Markdown, JSON, YAML and the
 website's TypeScript. `web/` has its own `package.json`: Astro, its adapter
 for a standalone server, `openapi-fetch`, a client typed by the contract,
-React, and MapLibre GL, which draws the map. Its development tools are
+React, MapLibre GL, which draws the map, and Tailwind CSS, which styles the
+pages ([decision 26](decisions.md)). Its development tools are
 `@astrojs/check` with TypeScript, which check the `.astro` files too, and
 `openapi-typescript`, which generates the types. The server reads one
 setting, `SWISSCOVERAGE_API_URL`, the origin of the API; on this machine it

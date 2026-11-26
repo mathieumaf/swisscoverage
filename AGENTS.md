@@ -132,7 +132,7 @@ how to stop it, `bunx --bun astro dev stop`. In another terminal:
 
 ```sh
 curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' -H 'Accept-Language: de-CH' http://127.0.0.1:4321/
-curl -sS http://127.0.0.1:4321/fr/ | grep -o 'class="intro__snapshot"[^<]*'
+curl -sS http://127.0.0.1:4321/fr/ | grep -o 'id="snapshot"[^<]*'
 ```
 
 The first prints `302 http://127.0.0.1:4321/de/`: the root sends each visitor

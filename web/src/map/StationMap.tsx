@@ -376,15 +376,17 @@ export default function StationMap({ locale, apiUrl }: Props) {
   const [only] = selected;
 
   return (
-    <div className="station-map">
+    <div className="station-map absolute inset-0">
+      {/* `absolute!`: MapLibre's own stylesheet, outside Tailwind's layers,
+          makes its container `position: relative`, and would win otherwise. */}
       <section
         ref={container}
-        className="station-map__canvas"
+        className="absolute! inset-0"
         aria-label={t("map.label")}
       />
       {status !== "ready" && (
         <p
-          className={`station-map__status station-map__status--${status}`}
+          className={`absolute bottom-10 left-1/2 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-full bg-background px-4 py-2 text-center text-[0.875rem] shadow-[0_2px_8px_rgb(0_0_0/0.2)] ${status === "loading" ? "text-foreground" : "text-danger"}`}
           role="status"
         >
           {

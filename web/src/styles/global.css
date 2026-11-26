@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+/* The site's colours, which change with the visitor's light or dark mode,
+   as Tailwind colours: bg-background, text-muted, border-border, and so on. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+}
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* `phone:` applies up to 640px wide, in pixels: Tailwind's own breakpoints
+   are in rem and move with the visitor's default font size. */
+@custom-variant phone (@media (max-width: 640px));
+
+/* `hover:` applies whenever the pointer is over the element, as plain CSS
+   does, and not only on devices whose main pointer can hover. */
+@custom-variant hover (&:hover);
+
+:root {
+  color-scheme: light dark;
+  --background: #f7f8fa;
+  --foreground: #16181d;
+  --muted: #5b6270;
+  --border: #dde1e7;
+  --accent: #1f6feb;
+  --danger: #b91c1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f1115;
+    --foreground: #e8eaee;
+    --muted: #9aa3b2;
+    --border: #262a33;
+    --accent: #6ea8ff;
+    --danger: #f87171;
+  }
+}
+
+@layer base {
+  /* Keep the browser's own feedback when a link or button is tapped, which
+     Tailwind's reset removes. */
+  html {
+    -webkit-tap-highlight-color: initial;
+  }
+
+  /* Links look like links unless a component says otherwise. */
+  a {
+    color: var(--color-accent);
+    text-decoration-line: underline;
+  }
+}
