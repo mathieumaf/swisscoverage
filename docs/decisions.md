@@ -443,14 +443,17 @@ Three facts shaped most choices:
   plugin: classes in the markup of the Astro pages and the React components.
   The site's colours (`background`, `foreground`, `muted`, `border`,
   `accent`, `danger`) are CSS variables, with a light and a dark value,
-  exposed as Tailwind colours in `web/src/styles/global.css`. The only plain
-  CSS left styles MapLibre's own controls, which classes in our markup cannot
-  reach (`web/src/map/map.css`).
+  exposed as Tailwind colours in `web/src/styles/global.css`, which also holds
+  the default look of links and two variants: `phone:` up to 640px wide, and
+  `hover:` as plain CSS has it. The only other plain CSS styles MapLibre's own
+  controls, which classes in our markup cannot reach (`web/src/map/map.css`).
 - **Why.** The map is about to grow a panel of filters, then a search and
   more pages. One scale of spacing, sizes and colours, used from the markup,
-  keeps them consistent and leaves no unused rules behind. The CSS written by
+  keeps them consistent, and the styles of a component live and go with it. The CSS written by
   hand until then was small enough to move over without a visible change.
 - **Cost.** One more build dependency. The markup carries long class lists.
+  Tailwind 4 needs recent browsers: Safari 16.4, Chrome 111 and Firefox 128,
+  or later.
   Tailwind's styles live in CSS layers, so a stylesheet outside them, such as
   MapLibre's, wins over a class: the map's container needs `absolute!`.
 - **Rejected.** Plain CSS with a convention: workable at this size, but each

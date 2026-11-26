@@ -33,7 +33,7 @@ export function Sheet({
 
   return (
     <aside
-      className="absolute top-3 right-3 bottom-10 z-[2] w-[min(24rem,calc(100%-1.5rem))] overflow-y-auto rounded-xl border border-border bg-background px-5 py-4 text-[0.9375rem] text-foreground shadow-[0_8px_24px_rgb(0_0_0/0.2)] max-sm:top-auto max-sm:right-0 max-sm:left-0 max-sm:max-h-[60%] max-sm:w-auto max-sm:rounded-b-none"
+      className="absolute top-3 right-3 bottom-10 z-[2] w-[min(24rem,calc(100%-1.5rem))] overflow-y-auto rounded-xl border border-border bg-background px-5 py-4 text-[0.9375rem] text-foreground shadow-[0_8px_24px_rgb(0_0_0/0.2)] phone:top-auto phone:right-0 phone:left-0 phone:max-h-[60%] phone:w-auto phone:rounded-b-none"
       aria-labelledby="station-sheet-title"
     >
       <header className="flex items-start justify-between gap-4">
@@ -49,7 +49,7 @@ export function Sheet({
         <button
           ref={closeButton}
           type="button"
-          className="size-10 flex-none cursor-pointer rounded-full border border-border bg-transparent px-1.5 py-px text-[1.5rem] leading-none text-foreground"
+          className="size-10 flex-none cursor-pointer rounded-full border border-border text-[1.5rem] leading-none text-foreground"
           onClick={onClose}
           aria-label={closeLabel}
         >
