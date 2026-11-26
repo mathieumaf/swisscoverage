@@ -4,8 +4,11 @@ import type { paths } from "./schema";
 // The API that `swisscoverage serve` answers on this machine by default.
 export const defaultApiUrl = "http://127.0.0.1:8080";
 
-// How long the server waits for the API before it gives up on a request.
-const timeoutMs = 5_000;
+// How long the server waits for the API before it gives up on a request. The
+// browser waits longer for the list of every station: about 700 KB once
+// compressed, which a slow phone connection needs time to receive.
+export const serverTimeoutMs = 5_000;
+export const browserTimeoutMs = 60_000;
 
 // The origin of the API, read from SWISSCOVERAGE_API_URL. It is the only
 // address the server calls: nothing a visitor sends changes it. It must be an
@@ -35,10 +38,10 @@ export function apiUrl(value: string | undefined): string {
   return url.origin;
 }
 
-// A client of the public API, typed by the contract in openapi.json. It never
-// follows a redirect, which could lead to another origin or out of the
-// contract.
-export function createApiClient(baseUrl: string) {
+// A client of the public API, typed by the contract in openapi.json, for the
+// server and for the browser. It never follows a redirect, which could lead
+// to another origin or out of the contract.
+export function createApiClient(baseUrl: string, timeoutMs: number) {
   return createClient<paths>({
     baseUrl,
     fetch: (request) =>
@@ -49,11 +52,4 @@ export function createApiClient(baseUrl: string) {
   });
 }
 
-let client: ReturnType<typeof createApiClient> | undefined;
-
-// The client the pages use, created on first use so that a wrong address
-// fails the request that needs it, with a message that says why.
-export function api() {
-  client ??= createApiClient(apiUrl(process.env.SWISSCOVERAGE_API_URL));
-  return client;
-}
+export type ApiClient = ReturnType<typeof createApiClient>;

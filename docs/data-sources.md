@@ -97,6 +97,38 @@ Act (LTrans / BGÖ):
 technologies, was filed in November 2026. This section will describe the
 fields once the data arrives. Version 1.0 depends on it.
 
+## Base map (OpenFreeMap)
+
+The background of the map: roads, places, water, forests, relief. The site
+draws OFCOM's stations on top of it and reads nothing else from it.
+
+|           |                                                                                                                                                       |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Publisher | OpenFreeMap, run by Hyperknot Software Kft. (Hungary)                                                                                                 |
+| Data      | Vector tiles built from OpenStreetMap with the OpenMapTiles schema; Natural Earth relief at small scales                                              |
+| Style     | Liberty, `https://tiles.openfreemap.org/styles/liberty`, a fork of OSM Liberty                                                                        |
+| Access    | Public instance, no key, no registration, no cookies; no limit on map views                                                                           |
+| Terms     | [Terms of service](https://openfreemap.org/tos/) and [privacy policy](https://openfreemap.org/privacy/), read on 26 November 2026                     |
+| Licences  | Data © OpenStreetMap contributors; OpenMapTiles schema and styles: code BSD-3-Clause, design CC BY 4.0; Noto Sans fonts: SIL OFL 1.1; Maki icons: CC0 |
+| Used by   | `web/src/map/`: the visitor's browser loads the style, the tiles, the fonts and the sprites from `tiles.openfreemap.org`                              |
+
+Attribution to show: "OpenFreeMap © OpenMapTiles Data from OpenStreetMap",
+with links. The tiles declare it themselves and MapLibre shows it in the
+map's attribution, next to OFCOM's.
+
+What to know:
+
+- **No guarantee.** The public instance is free, financed by donations, and
+  may change or stop without notice. OpenFreeMap can also be self-hosted, from
+  the images it publishes: that is the way out if the public instance goes.
+- **Visitors' requests go to a third party.** Each visitor's browser asks
+  OpenFreeMap, through Cloudflare, for the tiles of the area they look at.
+  OpenFreeMap's access logs hold no IP address; its error logs may, for seven
+  days.
+- **Fetching tiles in bulk is forbidden**, beyond offline downloads of at most
+  3,000 tiles. The project downloads none: only visitors' browsers load them,
+  as they move the map.
+
 ## Other OFCOM datasets
 
 Published on the same portal and not used yet:

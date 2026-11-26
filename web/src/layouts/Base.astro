@@ -8,9 +8,12 @@ interface Props {
   // An error page has no translations: its language links lead to the home
   // page of each language.
   error?: boolean;
+  // A page that fills the screen, such as the map, under the header and
+  // without the footer. Its content must then credit OFCOM itself.
+  fullscreen?: boolean;
 }
 
-const { locale, title, error = false } = Astro.props;
+const { locale, title, error = false, fullscreen = false } = Astro.props;
 const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
 const pageTitle = title ? `${title} · swisscoverage` : "swisscoverage";
 const path = Astro.url.pathname;
@@ -30,7 +33,7 @@ const linkTo = (other: Locale) =>
       <link rel="alternate" hreflang={other} href={localizedPath(path, other)} />
     ))}
   </head>
-  <body>
+  <body class:list={{ fullscreen }}>
     <header class="site-header">
       <a class="brand" href={`/${locale}/`}>swisscoverage</a>
       <nav aria-label={t("nav.language")}>
@@ -54,12 +57,14 @@ const linkTo = (other: Locale) =>
     <main>
       <slot />
     </main>
-    <footer class="site-footer">
-      <p>{t("footer.source")}</p>
-      <p>
-        <a href="https://github.com/mathieumaf/swisscoverage">{t("footer.code")}</a>{" · "}{t("footer.licence")}
-      </p>
-    </footer>
+    {!fullscreen && (
+      <footer class="site-footer">
+        <p>{t("footer.source")}</p>
+        <p>
+          <a href="https://github.com/mathieumaf/swisscoverage">{t("footer.code")}</a>{" · "}{t("footer.licence")}
+        </p>
+      </footer>
+    )}
   </body>
 </html>
 
@@ -112,6 +117,17 @@ const linkTo = (other: Locale) =>
     max-width: 48rem;
     margin: 0 auto;
     padding: 2rem 1rem;
+  }
+
+  body.fullscreen {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  body.fullscreen main {
+    position: relative;
+    max-width: none;
+    padding: 0;
   }
 
   .visually-hidden {
