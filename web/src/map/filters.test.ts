@@ -86,6 +86,29 @@ describe("including", () => {
     expect(widened.kinds).toEqual(filters.kinds);
   });
 
+  test("leaves alone a vocabulary that already shows the station", () => {
+    const filters = allFilters();
+    filters.operators = new Set(["swisscom"]);
+    filters.technologies = new Set(["5G"]);
+    const widened = including(filters, station({ technologies: ["4G", "5G"] }));
+    expect([...widened.technologies]).toEqual(["5G"]);
+    expect(widened.technologies).toBe(filters.technologies);
+    expect([...widened.operators]).toEqual(["swisscom", "sunrise"]);
+  });
+
+  test("keeps every value for a value the panel does not know", () => {
+    const filters = allFilters();
+    filters.operators = new Set(["swisscom"]);
+    const widened = including(
+      filters,
+      station({ operator: "newcomer" as Station["operator"] }),
+    );
+    expect(widened.operators.size).toBe(5);
+    expect(widened.operators.has("newcomer" as Station["operator"])).toBe(
+      false,
+    );
+  });
+
   test("keeps the filters when the station already shows", () => {
     const filters = allFilters();
     expect(including(filters, station({}))).toBe(filters);
@@ -113,6 +136,9 @@ describe("hasMapPosition", () => {
       "#map=11/46.9",
       "#map=11/146.9/7.4",
       "#map=40/46.9/7.4",
+      "#map=23/46.9/7.4",
+      "#map=11/46.9/7.4/181",
+      "#map=11/46.9/7.4/0/61",
     ]) {
       expect(hasMapPosition(hash)).toBe(false);
     }

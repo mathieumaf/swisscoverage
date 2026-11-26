@@ -81,7 +81,8 @@ export function toMapData(stations: Station[]) {
 // is checked before it becomes a path.
 export function isStationId(value: string): boolean {
   return (
-    value.length <= 200 &&
+    // In characters, as the contract counts them, not in UTF-16 units.
+    [...value].length <= 200 &&
     /^-?\d+(?:\.\d+)?_-?\d+(?:\.\d+)?_[^\r\n]+$/.test(value)
   );
 }

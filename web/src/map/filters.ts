@@ -91,25 +91,46 @@ export function matches(station: Station, filters: Filters): boolean {
 }
 
 // The filters, widened as little as needed to show a station the visitor
-// asked for, by its label or by an address.
+// asked for, by its label or by an address. Only a vocabulary that excludes
+// the station changes: it gains the station's values that the panel knows,
+// or keeps every value when the station has none the panel knows.
 export function including(filters: Filters, station: Station): Filters {
   if (matches(station, filters)) {
     return filters;
   }
-  const add = <T>(kept: Set<T>, value: T) => new Set([...kept, value]);
+  function widen<T extends string>(
+    kept: Set<T>,
+    vocabulary: readonly T[],
+    values: readonly T[],
+  ): Set<T> {
+    if (
+      kept.size === vocabulary.length ||
+      values.some((value) => kept.has(value))
+    ) {
+      return kept;
+    }
+    const known = values.filter((value) => vocabulary.includes(value));
+    return known.length === 0
+      ? new Set(vocabulary)
+      : new Set([...kept, ...known]);
+  }
   return {
-    operators: add(filters.operators, station.operator),
-    kinds: add(filters.kinds, station.kind),
-    powerClasses: add(filters.powerClasses, station.powerClass),
-    technologies:
-      station.technologies.length === 0
-        ? new Set(technologies)
-        : new Set([...filters.technologies, ...station.technologies]),
+    operators: widen(filters.operators, operators, [station.operator]),
+    kinds: widen(filters.kinds, kinds, [station.kind]),
+    powerClasses: widen(filters.powerClasses, powerClasses, [
+      station.powerClass,
+    ]),
+    technologies: widen(
+      filters.technologies,
+      technologies,
+      station.technologies,
+    ),
   };
 }
 
-// Whether an address's hash gives the map a position, read as MapLibre reads
-// it: `map=zoom/latitude/longitude`, three numbers in range.
+// Whether an address's hash gives the map a position that MapLibre will
+// use: `map=zoom/latitude/longitude[/bearing[/pitch]]`, numbers within the
+// limits of MapLibre's defaults, which this map keeps.
 export function hasMapPosition(hash: string): boolean {
   const parts = (
     new URLSearchParams(hash.replace("#", "")).get("map") ?? ""
@@ -117,8 +138,17 @@ export function hasMapPosition(hash: string): boolean {
   if (parts.length < 3 || parts.some((part) => Number.isNaN(+part))) {
     return false;
   }
-  const [zoom = Number.NaN, latitude = Number.NaN] = parts.map(Number);
-  return zoom >= 0 && zoom <= 24 && Math.abs(latitude) <= 90;
+  const [zoom = 0, latitude = 0, longitude = 0, bearing = 0, pitch = 0] =
+    parts.map(Number);
+  return (
+    zoom >= 0 &&
+    zoom <= 22 &&
+    Math.abs(latitude) <= 90 &&
+    Number.isFinite(longitude) &&
+    Math.abs(bearing) <= 180 &&
+    pitch >= 0 &&
+    pitch <= 60
+  );
 }
 
 // The parameters of the address that hold the filters, one per vocabulary,

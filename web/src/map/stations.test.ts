@@ -149,6 +149,7 @@ describe("isStationId", () => {
     expect(isStationId("2683328_1247916_Sunrise ZE416-1")).toBe(true);
     expect(isStationId("2497760_1121940_Salt GE_2203A")).toBe(true);
     expect(isStationId("2676878.25_1246069.5_Sunrise ZH601-1")).toBe(true);
+    expect(isStationId(`1_2_${"📡".repeat(196)}`)).toBe(true);
   });
 
   test("refuses anything else", () => {
