@@ -44,7 +44,9 @@ holds the `swisscoverage` program with its commands in
 archive; `store`, the database; and `api`, the public API. The website is
 written in TypeScript with Astro under `web/`: its pages in `src/pages/`,
 under their language, and its messages in `src/i18n/messages/`, one file per
-language, with English as the reference.
+language, with English as the reference. Styles are Tailwind classes in the
+markup; the site's colours, light and dark, are in `src/styles/global.css`,
+as `bg-background`, `text-muted` and so on.
 
 The parser never touches the network, the file system, the environment, a
 database or the clock: it receives the bytes of a file from the command that

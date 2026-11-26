@@ -6,6 +6,10 @@ export type StationHistory = components["schemas"]["StationHistory"];
 export type Period = components["schemas"]["Period"];
 export type Operator = components["schemas"]["StationProperties"]["operator"];
 
+// The classes shared by the sheet and the list of stations at one place.
+export const mutedText = "text-[0.8125rem] text-muted";
+export const operatorDot = "size-2.5 flex-none rounded-full";
+
 // One colour per operator, readable on the base map and with white text or a
 // white outline.
 export const operatorColors: Record<Operator, string> = {

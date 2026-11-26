@@ -45,62 +45,27 @@ try {
   {browserApiUrl && (
     <StationMap client:only="react" locale={locale} apiUrl={browserApiUrl} />
   )}
-  <section class="intro">
-    <h1>{translate(locale, "home.title")}</h1>
-    <p class="intro__text">{translate(locale, "home.intro")}</p>
-    <p class="intro__snapshot">{snapshot}</p>
-    <noscript><p>{translate(locale, "map.noScript")}</p></noscript>
-    <p class="intro__source">
+  <section
+    class="pointer-events-none absolute top-3 left-3 max-w-[min(22rem,calc(100%-5rem))] rounded-xl border border-border bg-background px-4 py-3 shadow-[0_2px_8px_rgb(0_0_0/0.15)]"
+  >
+    <h1 class="text-[1.0625rem] leading-[1.3] font-bold">
+      {translate(locale, "home.title")}
+    </h1>
+    {/* On a phone the map comes first: the panel keeps the title and the date. */}
+    <p class="mt-1 text-[0.875rem] max-sm:hidden">
+      {translate(locale, "home.intro")}
+    </p>
+    <p id="snapshot" class="mt-1 text-[0.875rem] text-muted">{snapshot}</p>
+    <noscript>
+      <p class="mt-1 text-[0.875rem]">{translate(locale, "map.noScript")}</p>
+    </noscript>
+    {/* OFCOM's credit, rendered by the server, so that it shows with the data
+        even when the map cannot load. */}
+    <p class="mt-1 text-[0.75rem] text-muted">
       {translate(locale, "footer.source")}{" · "}
-      <a href="https://github.com/mathieumaf/swisscoverage">{translate(locale, "footer.code")}</a>
+      <a class="pointer-events-auto" href="https://github.com/mathieumaf/swisscoverage"
+        >{translate(locale, "footer.code")}</a
+      >
     </p>
   </section>
 </Base>
-
-<style>
-  .intro {
-    position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    max-width: min(22rem, calc(100% - 5rem));
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--border);
-    border-radius: 0.75rem;
-    background: var(--background);
-    box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
-    pointer-events: none;
-  }
-
-  h1 {
-    margin: 0;
-    font-size: 1.0625rem;
-    line-height: 1.3;
-  }
-
-  .intro p {
-    margin: 0.25rem 0 0;
-    font-size: 0.875rem;
-  }
-
-  .intro__snapshot {
-    color: var(--muted);
-  }
-
-  /* OFCOM's credit, rendered by the server, so that it shows with the data
-     even when the map cannot load. */
-  .intro .intro__source {
-    color: var(--muted);
-    font-size: 0.75rem;
-  }
-
-  .intro__source a {
-    pointer-events: auto;
-  }
-
-  /* On a phone the map comes first: the panel keeps the title and the date. */
-  @media (max-width: 640px) {
-    .intro__text {
-      display: none;
-    }
-  }
-</style>

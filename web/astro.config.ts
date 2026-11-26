@@ -1,5 +1,6 @@
 import node from "@astrojs/node";
 import react from "@astrojs/react";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 
 // Pages are rendered on the server (decision 24 in docs/decisions.md), by the
@@ -15,5 +16,7 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 4321,
   },
+  // Tailwind CSS styles every page (decision 26).
+  vite: { plugins: [tailwindcss()] },
   devToolbar: { enabled: false },
 });
