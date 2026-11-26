@@ -60,14 +60,13 @@ export function stationsAt(
     const id = properties?.id;
     const name = properties?.name;
     const operator = properties?.operator;
-    if (
-      typeof id === "string" &&
-      typeof name === "string" &&
-      typeof operator === "string" &&
-      operator in operatorColors &&
-      !found.has(id)
-    ) {
-      found.set(id, { id, name, operator: operator as Operator });
+    if (typeof id === "string" && typeof name === "string" && !found.has(id)) {
+      // An operator the contract adds later is drawn as `other`, and listed so.
+      const known =
+        typeof operator === "string" && Object.hasOwn(operatorColors, operator)
+          ? (operator as Operator)
+          : "other";
+      found.set(id, { id, name, operator: known });
     }
   }
   return [...found.values()];

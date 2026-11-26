@@ -91,6 +91,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
     map.current = instance;
     let cancelled = false;
     let loaded = false;
+    let baseMapFailed = false;
 
     instance.touchZoomRotate.disableRotation();
     // Compact, behind a button, only on a small map.
@@ -127,13 +128,18 @@ export default function StationMap({ locale, apiUrl }: Props) {
       }
     });
 
-    // Before the map has loaded, an error that is not about one tile means the
-    // base map cannot be drawn: its style, its fonts or its sprites failed.
+    // One tile that fails leaves a hole. Before the map has loaded, any other
+    // error means the base map cannot be drawn: its style, its tile source,
+    // its fonts or its sprites failed. The stations are still drawn, but the
+    // error stays shown.
     instance.on("error", (event) => {
-      if (!loaded && !("sourceId" in event) && !cancelled) {
+      if (!loaded && !("tile" in event) && !cancelled) {
+        baseMapFailed = true;
         console.error("Loading the base map failed:", event.error);
         setStatus("error");
+        return;
       }
+      console.error(event.error);
     });
 
     instance.on("load", async () => {
@@ -239,7 +245,9 @@ export default function StationMap({ locale, apiUrl }: Props) {
         const data = await stations;
         if (!cancelled) {
           instance.getSource<GeoJSONSource>("stations")?.setData(data);
-          setStatus("ready");
+          if (!baseMapFailed) {
+            setStatus("ready");
+          }
         }
       } catch {
         // Already reported when the request failed.

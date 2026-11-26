@@ -78,11 +78,6 @@
   overflow-wrap: anywhere;
 }
 
-.station-sheet h3 {
-  margin: 1.25rem 0 0.5rem;
-  font-size: 1rem;
-}
-
 .station-sheet__operator {
   display: flex;
   align-items: center;

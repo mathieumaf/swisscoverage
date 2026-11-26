@@ -102,9 +102,20 @@ describe("stationsAt", () => {
       stationsAt([
         { properties: null },
         { properties: { cluster_id: 3, point_count: 12 } },
-        { properties: { id: "x", name: "X", operator: "unknown" } },
       ]),
     ).toEqual([]);
+  });
+
+  test("lists an operator it does not know as other", () => {
+    expect(
+      stationsAt([
+        { properties: { id: "x", name: "X", operator: "newcomer" } },
+        { properties: { id: "y", name: "Y", operator: "toString" } },
+      ]),
+    ).toEqual([
+      { id: "x", name: "X", operator: "other" },
+      { id: "y", name: "Y", operator: "other" },
+    ]);
   });
 });
 
