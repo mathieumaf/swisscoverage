@@ -15,6 +15,7 @@ export const it: Messages = {
   "map.label": "Mappa degli impianti di telefonia mobile",
   "map.loading": "Caricamento degli impianti…",
   "map.error": "Al momento gli impianti non possono essere caricati.",
+  "map.baseMapError": "Al momento la mappa di sfondo non può essere caricata.",
   "map.noScript": "La mappa richiede JavaScript.",
   "sheet.close": "Chiudi",
   "sheet.loading": "Caricamento dell’impianto…",

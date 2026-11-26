@@ -16,6 +16,8 @@ export const fr: Messages = {
   "map.label": "Carte des sites de téléphonie mobile",
   "map.loading": "Chargement des sites…",
   "map.error": "Les sites ne peuvent pas être chargés pour l’instant.",
+  "map.baseMapError":
+    "Le fond de carte ne peut pas être chargé pour l’instant.",
   "map.noScript": "La carte a besoin de JavaScript.",
   "sheet.close": "Fermer",
   "sheet.loading": "Chargement du site…",

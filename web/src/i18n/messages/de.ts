@@ -15,6 +15,7 @@ export const de: Messages = {
   "map.label": "Karte der Mobilfunkanlagen",
   "map.loading": "Die Standorte werden geladen…",
   "map.error": "Die Standorte können zurzeit nicht geladen werden.",
+  "map.baseMapError": "Die Hintergrundkarte kann zurzeit nicht geladen werden.",
   "map.noScript": "Die Karte braucht JavaScript.",
   "sheet.close": "Schliessen",
   "sheet.loading": "Der Standort wird geladen…",

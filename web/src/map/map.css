@@ -24,7 +24,8 @@
   text-align: center;
 }
 
-.station-map__status--error {
+.station-map__status--error,
+.station-map__status--baseMapError {
   color: var(--danger);
 }
 

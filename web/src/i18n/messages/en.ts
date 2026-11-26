@@ -15,6 +15,7 @@ export const en = {
   "map.label": "Map of the mobile network sites",
   "map.loading": "Loading the sites…",
   "map.error": "The sites cannot be loaded right now.",
+  "map.baseMapError": "The background map cannot be loaded right now.",
   "map.noScript": "The map needs JavaScript.",
   "sheet.close": "Close",
   "sheet.loading": "Loading the site…",

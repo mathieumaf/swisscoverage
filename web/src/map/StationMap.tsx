@@ -53,7 +53,8 @@ interface Props {
   apiUrl: string;
 }
 
-type Status = "loading" | "ready" | "error";
+// `baseMapError`: the stations are drawn, the background is missing.
+type Status = "loading" | "ready" | "error" | "baseMapError";
 
 export default function StationMap({ locale, apiUrl }: Props) {
   const container = useRef<HTMLElement>(null);
@@ -136,7 +137,9 @@ export default function StationMap({ locale, apiUrl }: Props) {
       if (!loaded && !("tile" in event) && !cancelled) {
         baseMapFailed = true;
         console.error("Loading the base map failed:", event.error);
-        setStatus("error");
+        setStatus((current) =>
+          current === "error" ? current : "baseMapError",
+        );
         return;
       }
       console.error(event.error);
@@ -245,9 +248,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
         const data = await stations;
         if (!cancelled) {
           instance.getSource<GeoJSONSource>("stations")?.setData(data);
-          if (!baseMapFailed) {
-            setStatus("ready");
-          }
+          setStatus(baseMapFailed ? "baseMapError" : "ready");
         }
       } catch {
         // Already reported when the request failed.
@@ -323,7 +324,13 @@ export default function StationMap({ locale, apiUrl }: Props) {
           className={`station-map__status station-map__status--${status}`}
           role="status"
         >
-          {status === "loading" ? t("map.loading") : t("map.error")}
+          {
+            {
+              loading: t("map.loading"),
+              error: t("map.error"),
+              baseMapError: t("map.baseMapError"),
+            }[status]
+          }
         </p>
       )}
       {selected.length === 1 && only && (
