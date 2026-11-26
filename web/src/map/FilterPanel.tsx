@@ -141,7 +141,11 @@ export function FilterPanel({
                   >
                     <span
                       className={operatorDot}
-                      style={{ background: operatorColors[station.operator] }}
+                      style={{
+                        background:
+                          operatorColors[station.operator] ??
+                          operatorColors.other,
+                      }}
                     />
                     {/* One label can stand at several positions. */}
                     <span>

@@ -15,7 +15,14 @@ import { browserTimeoutMs, createApiClient } from "../api/client";
 import type { Locale } from "../i18n/locales";
 import { translate } from "../i18n/translate";
 import { FilterPanel } from "./FilterPanel";
-import { type Filters, matches, readFilters, writeFilters } from "./filters";
+import {
+  type Filters,
+  hasMapPosition,
+  including,
+  matches,
+  readFilters,
+  writeFilters,
+} from "./filters";
 import "./map.css";
 import { StationChoice } from "./StationChoice";
 import { StationSheet } from "./StationSheet";
@@ -109,7 +116,10 @@ export default function StationMap({ locale, apiUrl }: Props) {
   const [namedStation] = useState(() =>
     new URLSearchParams(window.location.search).get("station"),
   );
-  const [namedPosition] = useState(() => window.location.hash.includes("map="));
+  const [namedPosition] = useState(() => hasMapPosition(window.location.hash));
+  // Whether the station the address names was opened, or found missing: the
+  // address keeps it until then.
+  const [restored, setRestored] = useState(false);
   const [panelOpen, setPanelOpen] = useState(
     () => !window.matchMedia("(max-width: 640px)").matches,
   );
@@ -430,10 +440,14 @@ export default function StationMap({ locale, apiUrl }: Props) {
     updateAddress((search) => writeFilters(filters, search));
   }, [filters]);
 
-  // Keep the station whose sheet is open in the address.
+  // Keep the station whose sheet is open in the address, once the one it
+  // named is restored.
   const [only] = selected;
   const openId = selected.length === 1 ? only?.id : undefined;
   useEffect(() => {
+    if (!restored) {
+      return;
+    }
     updateAddress((search) => {
       if (openId === undefined) {
         search.delete("station");
@@ -441,7 +455,18 @@ export default function StationMap({ locale, apiUrl }: Props) {
         search.set("station", openId);
       }
     });
-  }, [openId]);
+  }, [openId, restored]);
+
+  // On a phone, a sheet and the filters cannot both fit: opening a station
+  // folds the filters.
+  useEffect(() => {
+    if (
+      selected.length > 0 &&
+      window.matchMedia("(max-width: 640px)").matches
+    ) {
+      setPanelOpen(false);
+    }
+  }, [selected]);
 
   // Open the station the address names, once the stations are loaded, and
   // show it unless the address also gives the map's position.
@@ -451,6 +476,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
       return;
     }
     opened.current = true;
+    setRestored(true);
     const id = namedStation;
     if (id === null || !isStationId(id)) {
       return;
@@ -458,18 +484,20 @@ export default function StationMap({ locale, apiUrl }: Props) {
     const station = stations.find((candidate) => candidate.id === id);
     // A station no longer published still has a sheet, read from the API.
     setSelected([station ?? { id, name: "", operator: "other" }]);
-    if (station && !namedPosition) {
-      map.current?.jumpTo({ center: station.coordinates, zoom: stationZoom });
+    if (station) {
+      setFilters((current) => including(current, station));
+      if (!namedPosition) {
+        map.current?.jumpTo({ center: station.coordinates, zoom: stationZoom });
+      }
     }
   }, [stations, namedStation, namedPosition]);
 
-  // A station found by its label: show it and open its sheet.
+  // A station found by its label: show it, even if the filters hid it, and
+  // open its sheet.
   const find = useCallback((station: Station) => {
+    setFilters((current) => including(current, station));
     map.current?.flyTo({ center: station.coordinates, zoom: stationZoom });
     setSelected([station]);
-    if (window.matchMedia("(max-width: 640px)").matches) {
-      setPanelOpen(false);
-    }
   }, []);
 
   const close = useCallback(() => setSelected([]), []);
@@ -485,7 +513,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
       />
       {status !== "ready" && (
         <p
-          className={`absolute bottom-10 left-1/2 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-full bg-background px-4 py-2 text-center text-[0.875rem] shadow-[0_2px_8px_rgb(0_0_0/0.2)] ${status === "loading" ? "text-foreground" : "text-danger"}`}
+          className={`absolute bottom-10 left-1/2 max-w-[calc(100%-1.5rem)] phone:bottom-24 -translate-x-1/2 rounded-full bg-background px-4 py-2 text-center text-[0.875rem] shadow-[0_2px_8px_rgb(0_0_0/0.2)] ${status === "loading" ? "text-foreground" : "text-danger"}`}
           role="status"
         >
           {

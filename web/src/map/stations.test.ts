@@ -148,6 +148,7 @@ describe("isStationId", () => {
   test("accepts a position and a label", () => {
     expect(isStationId("2683328_1247916_Sunrise ZE416-1")).toBe(true);
     expect(isStationId("2497760_1121940_Salt GE_2203A")).toBe(true);
+    expect(isStationId("2676878.25_1246069.5_Sunrise ZH601-1")).toBe(true);
   });
 
   test("refuses anything else", () => {
@@ -157,8 +158,10 @@ describe("isStationId", () => {
       "..",
       "abc",
       "2683328_1247916_",
-      "1_2_ x",
+      "1._2_x",
       "../v1",
+      "1_2_a\nb",
+      `1_2_${"x".repeat(200)}`,
     ]) {
       expect(isStationId(value)).toBe(false);
     }

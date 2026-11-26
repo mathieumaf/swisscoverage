@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
   allFilters,
+  hasMapPosition,
+  including,
   isEveryStationShown,
   matches,
   normalizeLabel,
@@ -55,6 +57,65 @@ describe("matches", () => {
       false,
     );
     expect(matches(station({ technologies: [] }), filters)).toBe(false);
+  });
+});
+
+describe("matches with values the website does not know yet", () => {
+  test("lets them through while their vocabulary is not filtered", () => {
+    const newcomer = station({
+      operator: "newcomer" as Station["operator"],
+      kind: "rooftop" as Station["kind"],
+    });
+    expect(matches(newcomer, allFilters())).toBe(true);
+    const filters = allFilters();
+    filters.operators = new Set(["swisscom"]);
+    expect(matches(newcomer, filters)).toBe(false);
+  });
+});
+
+describe("including", () => {
+  test("widens the filters just enough to show a station", () => {
+    const filters = allFilters();
+    filters.operators = new Set(["swisscom"]);
+    filters.technologies = new Set(["2G"]);
+    const sunrise = station({ technologies: ["4G", "5G"] });
+    const widened = including(filters, sunrise);
+    expect(matches(sunrise, widened)).toBe(true);
+    expect([...widened.operators]).toEqual(["swisscom", "sunrise"]);
+    expect([...widened.technologies]).toEqual(["2G", "4G", "5G"]);
+    expect(widened.kinds).toEqual(filters.kinds);
+  });
+
+  test("keeps the filters when the station already shows", () => {
+    const filters = allFilters();
+    expect(including(filters, station({}))).toBe(filters);
+  });
+
+  test("keeps every technology for a station without one", () => {
+    const filters = allFilters();
+    filters.technologies = new Set(["5G"]);
+    const widened = including(filters, station({ technologies: [] }));
+    expect(widened.technologies.size).toBe(4);
+  });
+});
+
+describe("hasMapPosition", () => {
+  test("reads MapLibre's hash", () => {
+    expect(hasMapPosition("#map=11/46.948/7.447")).toBe(true);
+    expect(hasMapPosition("#map=15/47.15737/7.41774/0/0")).toBe(true);
+  });
+
+  test("refuses what MapLibre would not use", () => {
+    for (const hash of [
+      "",
+      "#map=bogus",
+      "#othermap=11/46.9/7.4",
+      "#map=11/46.9",
+      "#map=11/146.9/7.4",
+      "#map=40/46.9/7.4",
+    ]) {
+      expect(hasMapPosition(hash)).toBe(false);
+    }
   });
 });
 

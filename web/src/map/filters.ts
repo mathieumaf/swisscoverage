@@ -74,16 +74,51 @@ export function isEveryStationShown(filters: Filters): boolean {
   );
 }
 
+// A vocabulary whose every value is kept lets every station through, even
+// one with a value the contract added after this code was written.
 export function matches(station: Station, filters: Filters): boolean {
   return (
-    filters.operators.has(station.operator) &&
-    filters.kinds.has(station.kind) &&
-    filters.powerClasses.has(station.powerClass) &&
+    (filters.operators.size === operators.length ||
+      filters.operators.has(station.operator)) &&
+    (filters.kinds.size === kinds.length || filters.kinds.has(station.kind)) &&
+    (filters.powerClasses.size === powerClasses.length ||
+      filters.powerClasses.has(station.powerClass)) &&
     (filters.technologies.size === technologies.length ||
       station.technologies.some((technology) =>
         filters.technologies.has(technology),
       ))
   );
+}
+
+// The filters, widened as little as needed to show a station the visitor
+// asked for, by its label or by an address.
+export function including(filters: Filters, station: Station): Filters {
+  if (matches(station, filters)) {
+    return filters;
+  }
+  const add = <T>(kept: Set<T>, value: T) => new Set([...kept, value]);
+  return {
+    operators: add(filters.operators, station.operator),
+    kinds: add(filters.kinds, station.kind),
+    powerClasses: add(filters.powerClasses, station.powerClass),
+    technologies:
+      station.technologies.length === 0
+        ? new Set(technologies)
+        : new Set([...filters.technologies, ...station.technologies]),
+  };
+}
+
+// Whether an address's hash gives the map a position, read as MapLibre reads
+// it: `map=zoom/latitude/longitude`, three numbers in range.
+export function hasMapPosition(hash: string): boolean {
+  const parts = (
+    new URLSearchParams(hash.replace("#", "")).get("map") ?? ""
+  ).split("/");
+  if (parts.length < 3 || parts.some((part) => Number.isNaN(+part))) {
+    return false;
+  }
+  const [zoom = Number.NaN, latitude = Number.NaN] = parts.map(Number);
+  return zoom >= 0 && zoom <= 24 && Math.abs(latitude) <= 90;
 }
 
 // The parameters of the address that hold the filters, one per vocabulary,

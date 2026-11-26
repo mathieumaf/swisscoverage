@@ -54,7 +54,6 @@ export const en = {
   "power.high": "High, above 5,000 W",
   "power.unknown": "Not stated",
   "filters.title": "Filters",
-  "filters.open": "Show the filters",
   "filters.close": "Hide the filters",
   "filters.operator": "Operator",
   "filters.technology": "Technology",

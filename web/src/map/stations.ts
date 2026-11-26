@@ -77,9 +77,13 @@ export function toMapData(stations: Station[]) {
 }
 
 // Whether a value has the shape of a station's identifier, `east_north_label`
-// (decision 22): what an address names is checked before it becomes a path.
+// (decision 22), as the API's contract describes it: what an address names
+// is checked before it becomes a path.
 export function isStationId(value: string): boolean {
-  return /^\d+_\d+_\S/.test(value);
+  return (
+    value.length <= 200 &&
+    /^-?\d+(?:\.\d+)?_-?\d+(?:\.\d+)?_[^\r\n]+$/.test(value)
+  );
 }
 
 // The LV95 position in a station's identifier, `east_north_label`

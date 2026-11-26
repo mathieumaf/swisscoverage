@@ -54,7 +54,6 @@ export const it: Messages = {
   "power.high": "Alta, oltre 5000 W",
   "power.unknown": "Non indicata",
   "filters.title": "Filtri",
-  "filters.open": "Mostra i filtri",
   "filters.close": "Nascondi i filtri",
   "filters.operator": "Operatore",
   "filters.technology": "Tecnologia",
