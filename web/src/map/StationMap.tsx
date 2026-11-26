@@ -10,10 +10,12 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { browserTimeoutMs, createApiClient } from "../api/client";
 import type { Locale } from "../i18n/locales";
 import { translate } from "../i18n/translate";
+import { FilterPanel } from "./FilterPanel";
+import { type Filters, matches, readFilters, writeFilters } from "./filters";
 import "./map.css";
 import { StationChoice } from "./StationChoice";
 import { StationSheet } from "./StationSheet";
@@ -21,8 +23,10 @@ import {
   localizeLabel,
   type MapStation,
   operatorColors,
+  type Station,
   stationsAt,
   toMapData,
+  toStations,
 } from "./stations";
 
 // MapLibre draws in a worker, served from this site. Its default address is
@@ -55,6 +59,21 @@ const switzerland: [[number, number], [number, number]] = [
 // Stations are grouped up to this zoom; beyond it, each one shows.
 const clusterMaxZoom = 8;
 
+// The zoom at which the map shows a station found by its label or named in
+// the address.
+const stationZoom = 15;
+
+// Rewrites the parameters of the page's address without reloading it, and
+// keeps the map's position, which MapLibre writes after `#map=`. Commas stay
+// as they are, so that a shared address reads `operator=swisscom,salt`.
+function updateAddress(change: (search: URLSearchParams) => void) {
+  const url = new URL(window.location.href);
+  const search = new URLSearchParams(url.search);
+  change(search);
+  url.search = search.toString().replaceAll("%2C", ",");
+  window.history.replaceState(window.history.state, "", url);
+}
+
 const operatorColor: ExpressionSpecification = [
   "match",
   ["get", "operator"],
@@ -78,6 +97,26 @@ export default function StationMap({ locale, apiUrl }: Props) {
   // The stations under the last click: one opens its sheet, several are
   // listed to choose from.
   const [selected, setSelected] = useState<MapStation[]>([]);
+  // Every station of the latest snapshot, once loaded, and what the visitor
+  // chose to see, read first from the address so that a view can be shared.
+  const [stations, setStations] = useState<Station[]>([]);
+  const [filters, setFilters] = useState<Filters>(() =>
+    readFilters(new URLSearchParams(window.location.search)),
+  );
+  // The station and the position the address names, read once, before this
+  // component and MapLibre rewrite the address.
+  const [namedStation] = useState(() =>
+    new URLSearchParams(window.location.search).get("station"),
+  );
+  const [namedPosition] = useState(() => window.location.hash.includes("map="));
+  const [panelOpen, setPanelOpen] = useState(
+    () => !window.matchMedia("(max-width: 640px)").matches,
+  );
+  const [sourceReady, setSourceReady] = useState(false);
+  const shown = useMemo(
+    () => stations.filter((station) => matches(station, filters)),
+    [stations, filters],
+  );
   const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
 
   useEffect(() => {
@@ -94,7 +133,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
       if (data === undefined) {
         throw new Error(`The API answered ${response.status}`);
       }
-      return toMapData(data);
+      return toStations(data);
     });
     stations.catch((cause: unknown) => {
       console.error("Loading the stations failed:", cause);
@@ -140,6 +179,9 @@ export default function StationMap({ locale, apiUrl }: Props) {
             [3.5, 44.5],
             [13, 49],
           ],
+          // The position goes into the address, after `#map=`, so that a
+          // view can be shared.
+          hash: "map",
           attributionControl: false,
           dragRotate: false,
           pitchWithRotate: false,
@@ -301,7 +343,8 @@ export default function StationMap({ locale, apiUrl }: Props) {
         try {
           const data = await stations;
           if (!cancelled) {
-            instance.getSource<GeoJSONSource>("stations")?.setData(data);
+            setStations(data);
+            setSourceReady(true);
             setStatus(baseMapFailed ? "baseMapError" : "ready");
           }
         } catch {
@@ -372,8 +415,63 @@ export default function StationMap({ locale, apiUrl }: Props) {
     }
   }, [selected]);
 
-  const close = useCallback(() => setSelected([]), []);
+  // Draw the stations the filters keep.
+  useEffect(() => {
+    if (sourceReady) {
+      map.current
+        ?.getSource<GeoJSONSource>("stations")
+        ?.setData(toMapData(shown));
+    }
+  }, [shown, sourceReady]);
+
+  // Keep the filters in the address.
+  useEffect(() => {
+    updateAddress((search) => writeFilters(filters, search));
+  }, [filters]);
+
+  // Keep the station whose sheet is open in the address.
   const [only] = selected;
+  const openId = selected.length === 1 ? only?.id : undefined;
+  useEffect(() => {
+    updateAddress((search) => {
+      if (openId === undefined) {
+        search.delete("station");
+      } else {
+        search.set("station", openId);
+      }
+    });
+  }, [openId]);
+
+  // Open the station the address names, once the stations are loaded, and
+  // show it unless the address also gives the map's position.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current || stations.length === 0) {
+      return;
+    }
+    opened.current = true;
+    const id = namedStation;
+    if (id === null || id === "") {
+      return;
+    }
+    const station = stations.find((candidate) => candidate.id === id);
+    // A station no longer published still has a sheet, read from the API.
+    setSelected([station ?? { id, name: "", operator: "other" }]);
+    if (station && !namedPosition) {
+      map.current?.jumpTo({ center: station.coordinates, zoom: stationZoom });
+    }
+  }, [stations, namedStation, namedPosition]);
+
+  // A station found by its label: show it and open its sheet.
+  const find = useCallback((station: Station) => {
+    map.current?.flyTo({ center: station.coordinates, zoom: stationZoom });
+    setSelected([station]);
+    if (window.matchMedia("(max-width: 640px)").matches) {
+      setPanelOpen(false);
+    }
+  }, []);
+
+  const close = useCallback(() => setSelected([]), []);
 
   return (
     <div className="station-map absolute inset-0">
@@ -397,6 +495,18 @@ export default function StationMap({ locale, apiUrl }: Props) {
             }[status]
           }
         </p>
+      )}
+      {stations.length > 0 && (
+        <FilterPanel
+          locale={locale}
+          filters={filters}
+          onFilters={setFilters}
+          stations={stations}
+          shown={shown.length}
+          onFind={find}
+          open={panelOpen}
+          onOpen={setPanelOpen}
+        />
       )}
       {selected.length === 1 && only && (
         <StationSheet

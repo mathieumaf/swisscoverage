@@ -140,8 +140,11 @@ to their language. The second prints the number of sites and the date of the
 latest snapshot. Open `http://127.0.0.1:4321/fr/` in a browser to see the
 map: the browser itself loads every station from the API, at the origin of
 `SWISSCOVERAGE_API_URL`, and the base map from OpenFreeMap. A click on a
-station opens its sheet. With the API stopped, the page still answers 200 and says the
-data cannot be loaded. `bun run build` then `bun run preview` serves the
+station opens its sheet. The panel filters the stations and finds one by its
+label; the address keeps the filters, the open station and the map's
+position, so `http://127.0.0.1:4321/fr/?operator=swisscom&technology=5G`
+opens with only Swisscom's 5G sites. With the API stopped, the page still
+answers 200 and says the data cannot be loaded. `bun run build` then `bun run preview` serves the
 production build the same way.
 
 Everything above is safe: the downloads are public, read-only files, what is
