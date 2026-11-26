@@ -28,7 +28,7 @@ in the same pull request, and in particular:
 | Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`), with an index of its snapshots                                    |
 | Architecture and decisions written down                                                                                                                 |
 
-In progress: [step 4](#step-4-website-and-map), the website and the map. Its
+In progress: [step 4](#step-4-website-and-map-in-progress), the website and the map. Its
 foundation is in `web/`.
 
 Waiting on someone else: a Freedom of Information request for OFCOM's detailed
@@ -146,10 +146,11 @@ The parser moved to Go, and the repository got its Go toolchain.
   power class; a search by station label; the pages; the four languages; types
   generated from `openapi.json`; a `web` job in CI.
 - **In pull requests, in this order.**
-  1. The foundation (done): Astro with React and TypeScript on Bun, pages
-     rendered on a server, the home page in four languages from the API,
+  1. The foundation (done): Astro and TypeScript on Bun, pages rendered on
+     a server, the home page in four languages from the API,
      types generated from `openapi.json`, the `web` job in CI.
-  2. The map: every station from `GET /v1/stations`, grouped when zoomed
+  2. The map, with React and MapLibre GL: every station from
+     `GET /v1/stations`, grouped when zoomed
      out, the base map with its attribution, a sheet per station, the
      visitor's position on request, a layout for phones.
   3. Filters and the search by label, kept in the address so a view can be

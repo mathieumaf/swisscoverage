@@ -78,7 +78,7 @@ jobs:
       - name: Tests
         run: go test ./...
 
-  # Markdown, JSON and YAML across the repository.
+  # Markdown, JSON, YAML and the website's TypeScript across the repository.
   docs:
     name: docs
     runs-on: ubuntu-latest

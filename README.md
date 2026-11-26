@@ -98,12 +98,15 @@ export DATABASE_URL=postgres://swisscoverage:swisscoverage@127.0.0.1:54320/swiss
 go run ./cmd/swisscoverage migrate                    # creates the tables
 go run ./cmd/swisscoverage ingest                     # loads the archive
 go run ./cmd/swisscoverage serve                      # the API, on http://127.0.0.1:8080/v1/
+```
 
-cd ..
+In another terminal, from the root of the repository:
+
+```sh
 bun install
 bun run check                                         # Markdown, JSON, YAML and TypeScript
 
-cd web                                                # with the API above running
+cd web
 bun install
 bun run dev                                           # the website, on http://127.0.0.1:4321/
 ```

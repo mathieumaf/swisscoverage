@@ -35,12 +35,17 @@ export function apiUrl(value: string | undefined): string {
   return url.origin;
 }
 
-// A client of the public API, typed by the contract in openapi.json.
+// A client of the public API, typed by the contract in openapi.json. It never
+// follows a redirect, which could lead to another origin or out of the
+// contract.
 export function createApiClient(baseUrl: string) {
   return createClient<paths>({
     baseUrl,
     fetch: (request) =>
-      fetch(request, { signal: AbortSignal.timeout(timeoutMs) }),
+      fetch(request, {
+        redirect: "error",
+        signal: AbortSignal.timeout(timeoutMs),
+      }),
   });
 }
 

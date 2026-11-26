@@ -10,9 +10,10 @@ const locale = isLocale(first)
   ? first
   : negotiateLocale(Astro.request.headers.get("Accept-Language"));
 Astro.response.status = 404;
+Astro.response.headers.set("Vary", "Accept-Language");
 ---
 
-<Base locale={locale} title={translate(locale, "notFound.title")}>
+<Base locale={locale} title={translate(locale, "notFound.title")} error>
   <h1>{translate(locale, "notFound.title")}</h1>
   <p>{translate(locale, "notFound.text")}</p>
   <p><a href={`/${locale}/`}>{translate(locale, "notFound.home")}</a></p>

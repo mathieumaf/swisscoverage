@@ -285,10 +285,10 @@ line of `backend/go.mod`, which CI installs.
 The TypeScript side runs on Bun, the version in `packageManager` of the root
 `package.json`. At the root, Biome checks Markdown, JSON, YAML and the
 website's TypeScript. `web/` has its own `package.json`: Astro, its adapter
-for a standalone server, React, and `openapi-fetch`, a client typed by the
-contract. Its development tools are `@astrojs/check` with TypeScript, which
-check the `.astro` files too, and `openapi-typescript`, which generates the
-types. The server reads one setting, `SWISSCOVERAGE_API_URL`, the origin of
+for a standalone server, and `openapi-fetch`, a client typed by the contract;
+React and MapLibre GL come with the map. Its development tools are
+`@astrojs/check` with TypeScript, which check the `.astro` files too, and
+`openapi-typescript`, which generates the types. The server reads one setting, `SWISSCOVERAGE_API_URL`, the origin of
 the API; on this machine it defaults to `http://127.0.0.1:8080`.
 
 Queries live in `backend/internal/store/queries.sql`. `go generate ./...`,

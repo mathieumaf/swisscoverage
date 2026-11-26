@@ -14,9 +14,9 @@ const locale = lang;
 // answer, the page still renders and says so; the reason goes to the log.
 let snapshot: string;
 try {
-  const { data, error } = await api().GET("/v1/stations/counts");
+  const { data, response } = await api().GET("/v1/stations/counts");
   if (data === undefined) {
-    throw new Error(`The API answered ${error?.status ?? "without a body"}`);
+    throw new Error(`The API answered ${response.status}`);
   }
   snapshot = translate(locale, "home.snapshot", {
     count: formatNumber(locale, data.stations),

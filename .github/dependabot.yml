@@ -56,7 +56,7 @@ updates:
         patterns: ["*"]
         update-types: ["minor", "patch"]
 
-  # The website's dependencies: Astro, React, and the tools that check them.
+  # The website's dependencies: Astro, and the tools that check them.
   - package-ecosystem: "bun"
     directory: "/web"
     schedule:
