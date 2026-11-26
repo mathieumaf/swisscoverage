@@ -9,6 +9,8 @@ node_modules/
 
 # Build and test outputs
 dist/
+# Types that Astro generates in web/
+.astro/
 coverage/
 # The program, when built with `go build ./cmd/swisscoverage` in backend/
 /backend/swisscoverage

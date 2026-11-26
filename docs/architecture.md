@@ -94,7 +94,7 @@ A typical day:
 | Store          | `backend/internal/store`                                               | exists  | The schema, its migrations and the queries, for PostgreSQL with PostGIS. Records each snapshot and what it changed, and reads them back for the API, each request in one read-only transaction. PostGIS converts positions from LV95 to WGS84. |
 | API            | `backend/internal/api`, `openapi.json`                                 | exists  | The public, read-only HTTP API and its contract. See [The API](#the-api).                                                                                                                                                                      |
 | MCP server     | `backend/internal/mcp`                                                 | planned | Tools for AI assistants. A client of the public API over HTTP, with no access to the database.                                                                                                                                                 |
-| Website        | `web/` (TypeScript)                                                    | planned | The map and the pages. A client of the public API over HTTP.                                                                                                                                                                                   |
+| Website        | `web/` (TypeScript)                                                    | started | The map and the pages, in four languages, rendered on a server ([decision 24](decisions.md)). A client of the public API over HTTP. Today it has the home page of each language; the map is planned.                                           |
 | Deployment     | `deploy/`                                                              | started | Docker Compose for local work and tests, which exists; a Helm chart for Kubernetes in production, which is planned.                                                                                                                            |
 
 The `swisscoverage` program has four commands that run in production and two
@@ -129,7 +129,12 @@ swisscoverage/
 │       ├── testdb/            a database of its own for each test; exists
 │       ├── api/               REST routes and the contract they generate; exists
 │       └── mcp/               MCP tools; calls the API over HTTP
-├── web/                       TypeScript: website and map
+├── web/                       TypeScript: website and map; started
+│   └── src/
+│       ├── api/               the API client, typed by openapi.json
+│       ├── i18n/              the four languages and their messages
+│       ├── layouts/           what every page shares
+│       └── pages/             one file per route, under /{language}/
 ├── openapi.json               the API contract, generated and committed; exists
 ├── deploy/
 │   ├── compose.yaml           local work and tests; exists
@@ -158,7 +163,10 @@ committed as `openapi.json`. A test runs the command and fails when its output
 differs from the committed file, so CI fails too. After a change to the API,
 `go run ./cmd/swisscoverage openapi > ../openapi.json`, run in `backend/`,
 writes the file again, and its diff shows the change to the contract. The
-website's types and the MCP server's client will be generated from that file.
+website's types are generated from that file: `bun run generate`, run in
+`web/`, writes `web/src/api/schema.ts`, and CI fails when the committed types
+are not what the contract produces. The MCP server's client will be generated
+from it too.
 Huma generates the contract from the routes and their Go types
 ([decision 21](decisions.md)), and the API serves it at
 `/v1/openapi.json`.
@@ -252,28 +260,36 @@ Choices marked "candidate" are confirmed in the roadmap step that introduces
 them. Choices marked "open" are questions listed in
 [decisions.md](decisions.md).
 
-| Role                 | Choice                                                                                | Notes                                                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| API, import, MCP     | Go                                                                                    | One static binary. The MCP server may move to another language if Go fits it badly.                            |
-| API description      | OpenAPI 3.1, generated from the Go code                                               | Huma, on the standard library's router ([decision 21](decisions.md)).                                          |
-| MCP server           | The official MCP SDK for Go                                                           | Read-only tools, served to assistants over Streamable HTTP.                                                    |
-| Database             | PostgreSQL with PostGIS                                                               | Spatial queries, history, and the rigorous LV95 to WGS84 transformation.                                       |
-| Database access      | SQL written by hand, typed code generated                                             | `pgx` is the driver and `sqlc` the generator.                                                                  |
-| Migrations           | Versioned SQL files, forward only                                                     | Applied by `migrate`, with a runner of our own. They stay compatible with the previous version of the program. |
-| Website              | TypeScript; Astro with React for the map                                              | Server-rendered pages are the recommended baseline; still open.                                                |
-| Map                  | MapLibre GL                                                                           | The base map is open.                                                                                          |
-| Checks               | `gofmt`, `go vet`, `go test` against a real database; Biome; `tsc` once `web/` exists | One CI job per part, gathered by the job named `check`, the only required one.                                 |
-| Local work and tests | Docker Compose                                                                        | PostgreSQL 18 with PostGIS 3.6.                                                                                |
-| Production           | Kubernetes, Helm, CloudNativePG                                                       | Meant for a managed cluster in Switzerland; must work on a self-managed one.                                   |
-| In front of the site | Cloudflare                                                                            | DNS and CDN. What it caches is open.                                                                           |
-| Releases             | GitHub Actions, GitHub container registry                                             | Deployment waits for the maintainer's approval.                                                                |
+| Role                 | Choice                                                                                 | Notes                                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| API, import, MCP     | Go                                                                                     | One static binary. The MCP server may move to another language if Go fits it badly.                            |
+| API description      | OpenAPI 3.1, generated from the Go code                                                | Huma, on the standard library's router ([decision 21](decisions.md)).                                          |
+| MCP server           | The official MCP SDK for Go                                                            | Read-only tools, served to assistants over Streamable HTTP.                                                    |
+| Database             | PostgreSQL with PostGIS                                                                | Spatial queries, history, and the rigorous LV95 to WGS84 transformation.                                       |
+| Database access      | SQL written by hand, typed code generated                                              | `pgx` is the driver and `sqlc` the generator.                                                                  |
+| Migrations           | Versioned SQL files, forward only                                                      | Applied by `migrate`, with a runner of our own. They stay compatible with the previous version of the program. |
+| Website              | TypeScript; Astro with React for the map                                               | Pages rendered on a server, run by Bun ([decision 24](decisions.md)).                                          |
+| Map                  | MapLibre GL                                                                            | The base map is open.                                                                                          |
+| Checks               | `gofmt`, `go vet`, `go test` against a real database; Biome; `astro check`, `bun test` | One CI job per part, gathered by the job named `check`, the only required one.                                 |
+| Local work and tests | Docker Compose                                                                         | PostgreSQL 18 with PostGIS 3.6.                                                                                |
+| Production           | Kubernetes, Helm, CloudNativePG                                                        | Meant for a managed cluster in Switzerland; must work on a self-managed one.                                   |
+| In front of the site | Cloudflare                                                                             | DNS and CDN. What it caches is open.                                                                           |
+| Releases             | GitHub Actions, GitHub container registry                                              | Deployment waits for the maintainer's approval.                                                                |
 
 The backend has two dependencies: `pgx`, the PostgreSQL driver, and Huma,
 which describes and validates the API. Everything else, including the command
 line, the HTTP server and router, the HTTP client that reads the archive and
 the migration runner, is Go's standard library. The Go version is the `go`
-line of `backend/go.mod`, which CI installs. Until `web/` exists, the only
-JavaScript tool is Biome, run with Bun to check Markdown, JSON and YAML.
+line of `backend/go.mod`, which CI installs.
+
+The TypeScript side runs on Bun, the version in `packageManager` of the root
+`package.json`. At the root, Biome checks Markdown, JSON, YAML and the
+website's TypeScript. `web/` has its own `package.json`: Astro, its adapter
+for a standalone server, React, and `openapi-fetch`, a client typed by the
+contract. Its development tools are `@astrojs/check` with TypeScript, which
+check the `.astro` files too, and `openapi-typescript`, which generates the
+types. The server reads one setting, `SWISSCOVERAGE_API_URL`, the origin of
+the API; on this machine it defaults to `http://127.0.0.1:8080`.
 
 Queries live in `backend/internal/store/queries.sql`. `go generate ./...`,
 run in `backend/`, turns them into the code of `internal/store/query` with
@@ -356,8 +372,9 @@ An arrow goes from the one that calls to the one that answers.
 - **Cloudflare.** It serves DNS and sits in front of every public hostname:
   the website, the API and the MCP server. Nothing may depend on it
   ([decision 16](decisions.md)).
-- **If the site ends up as a map only**, which is still open, the `web` image
-  serves static files instead of rendering pages. Nothing else changes.
+- **The website renders its pages** ([decision 24](decisions.md)), so the
+  `web` image runs a server, Bun with Astro's standalone server. It holds no
+  credentials and reaches the API at the address it is given.
 - **Local and tests.** Docker Compose starts the database
   (`deploy/compose.yaml`). The application joins it when its image exists.
 

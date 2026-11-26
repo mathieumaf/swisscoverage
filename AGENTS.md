@@ -6,7 +6,9 @@ the backend, in Go under `backend/`: the `swisscoverage` program with five
 commands, `serve`, `openapi`, `parse`, `migrate` and `ingest`; the parser for
 OFCOM's file; the database, PostgreSQL with PostGIS, with the import that
 loads the archive into it; and the public, read-only API, with its contract
-in `openapi.json`. The MCP server and a website in TypeScript are planned.
+in `openapi.json`. The website, in TypeScript with Astro under `web/`, is
+started: its pages are rendered on a server that calls the API. The map and
+the MCP server are planned.
 
 - `docs/architecture.md`: read before adding a module, a command or a
   dependency. It says what exists, what is planned, and where a change belongs.
@@ -37,7 +39,13 @@ docker compose -f deploy/compose.yaml up -d --wait
 | `gofmt -l .`            | `backend/` | formatting of the Go code                                                     | prints nothing               |
 | `go mod tidy -diff`     | `backend/` | `go.mod` and `go.sum` match the imports                                       | prints nothing               |
 | `go generate ./...`     | `backend/` | the generated query code is current                                           | `git status` shows no change |
-| `bun run check`         | the root   | lint and formatting of Markdown, JSON, YAML                                   | prints `No fixes applied.`   |
+| `bun run check`         | the root   | lint and formatting of Markdown, JSON, YAML and TypeScript                    | prints `No fixes applied.`   |
+| `bun run generate`      | `web/`     | the website's types match `openapi.json`                                      | `git status` shows no change |
+| `bun run check`         | `web/`     | the type checks of the website, `.astro` files included                       | prints `0 errors`            |
+| `bun test`              | `web/`     | the website's tests                                                           | prints `0 fail`              |
+| `bun run build`         | `web/`     | the website builds for production                                             | prints `Complete!`           |
+
+Run `bun install --frozen-lockfile` at the root and in `web/` first.
 
 Without `CI=true`, the tests that need the database are skipped when it does
 not answer, and `go test` still prints `ok`: that proves nothing about the
@@ -111,11 +119,34 @@ names a station's `id`, which reads it back once percent-encoded. A request
 with a parameter that is wrong or unknown answers 422. `serve` only reads:
 its connections refuse every write.
 
+To see a change to the website, serve the API as above, then, in `web/`:
+
+```sh
+bun run dev
+```
+
+It serves the site on `http://127.0.0.1:4321/`, against the API at
+`http://127.0.0.1:8080`; `SWISSCOVERAGE_API_URL` names another origin, such
+as `http://127.0.0.1:8081`. Astro may start it in the background and print
+how to stop it, `bunx --bun astro dev stop`. In another terminal:
+
+```sh
+curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' -H 'Accept-Language: de-CH' http://127.0.0.1:4321/
+curl -sS http://127.0.0.1:4321/fr/ | grep -o 'class="snapshot"[^<]*'
+```
+
+The first prints `302 http://127.0.0.1:4321/de/`: the root sends each visitor
+to their language. The second prints the number of sites and the date of the
+latest snapshot. With the API stopped, the page still answers 200 and says the
+data cannot be loaded. `bun run build` then `bun run preview` serves the
+production build the same way.
+
 Everything above is safe: the downloads are public, read-only files, what is
 written goes to the working tree or to the local database, and `serve`
-listens on this machine only. The repository holds no credentials beyond the
-ones of that local database, and there is no deployment today, so no command
-touches production.
+listens on this machine only, like the website, which calls the API named by
+`SWISSCOVERAGE_API_URL` and nothing else. The repository holds no credentials
+beyond the ones of that local database, and there is no deployment today, so
+no command touches production.
 
 Off limits:
 
@@ -128,7 +159,9 @@ Off limits:
   `ingest` writes, `serve` publishes what it reads, and the tests create and
   drop databases on the server they are given.
 - Running `serve` on an address other machines can reach, such as
-  `-listen :8080`, outside a deployment.
+  `-listen :8080`, outside a deployment, and the same for the website:
+  `astro dev --host`, or `HOST=0.0.0.0` for the production build.
+- Setting `SWISSCOVERAGE_API_URL` to an API you do not run yourself.
 
 When a deployment is added, the pull request that adds it must extend this
 section: how to run it against throwaway data, and which commands touch
@@ -180,6 +213,10 @@ Flag a change when:
   sent with a header that lets it be cached.
 - **It lets the API write.** The API reads through
   `store.OpenReadOnly` and read-only transactions only.
+- **It trusts what the website receives.** A page renders a string from the
+  API or from the request as HTML (`set:html`, `dangerouslySetInnerHTML`),
+  builds the address of an API call from anything but `SWISSCOVERAGE_API_URL`
+  and the paths of the contract, or shows a visitor the details of an error.
 
 Skip third-party texts: `LICENSE` and `CODE_OF_CONDUCT.md`. For the samples
 under `**/testdata/` and `**/fixtures/`, check where they come from, not their
@@ -188,7 +225,8 @@ change to it as a change to the parser's behaviour. Review `bun.lock` and
 `backend/go.sum`: they pick the dependency versions that run. `openapi.json`
 is generated: review it as the change to the public contract that it shows,
 and check that it changed only with `backend/internal/api` or with the
-parser's vocabularies, which it lists. The code under
+parser's vocabularies, which it lists. `web/src/api/schema.ts` is generated
+from it: check that it changed only with `openapi.json`. The code under
 `backend/internal/store/query/` is generated: review `queries.sql` and the
 migrations it comes from, and check that it changed only with them.
 
@@ -215,8 +253,8 @@ When paths overlap, the higher tier wins.
   what answers requests from the internet.
 - `deploy/**` and any `Dockerfile`: what runs, locally today, and what is
   released and how.
-- Planned, High from their first commit: `web/package.json` and
-  `web/bun.lock` (the dependencies that run).
+- `web/package.json`, `web/bun.lock`: the website's dependencies, and what
+  runs them.
 
 **Low**
 
@@ -228,7 +266,8 @@ When paths overlap, the higher tier wins.
 **Medium**
 
 - Everything not listed in High or Low: for example the other Go files under
-  `backend/`, and `biome.json`.
+  `backend/`, the website's code under `web/src/`, `web/astro.config.ts`, and
+  `biome.json`.
 - `docs/architecture.md` and `docs/decisions.md`: agents and contributors act
   on them, so a wrong statement there misdirects real work.
 - `**/testdata/**` and `**/fixtures/**`: a sample is data entering the

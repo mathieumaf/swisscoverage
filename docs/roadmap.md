@@ -28,7 +28,8 @@ in the same pull request, and in particular:
 | Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`), with an index of its snapshots                                    |
 | Architecture and decisions written down                                                                                                                 |
 
-Next: [step 4](#step-4-website-and-map), the website and the map.
+In progress: [step 4](#step-4-website-and-map), the website and the map. Its
+foundation is in `web/`.
 
 Waiting on someone else: a Freedom of Information request for OFCOM's detailed
 antenna database was filed on 24 November 2026. Version 1.0 depends on the
@@ -139,13 +140,27 @@ The parser moved to Go, and the repository got its Go toolchain.
     loaded from the archive.
   - Each appears in the committed `openapi.json`.
 
-### Step 4. Website and map
+### Step 4. Website and map (in progress)
 
 - **Adds.** `web/`: the map with filters by operator, technology, kind and
   power class; a search by station label; the pages; the four languages; types
   generated from `openapi.json`; a `web` job in CI.
+- **In pull requests, in this order.**
+  1. The foundation (done): Astro with React and TypeScript on Bun, pages
+     rendered on a server, the home page in four languages from the API,
+     types generated from `openapi.json`, the `web` job in CI.
+  2. The map: every station from `GET /v1/stations`, grouped when zoomed
+     out, the base map with its attribution, a sheet per station, the
+     visitor's position on request, a layout for phones.
+  3. Filters and the search by label, kept in the address so a view can be
+     shared.
+  4. The search by address, once its service is in
+     [data-sources.md](data-sources.md).
+  5. The pages: a page per station, the other pages, every text in four
+     languages.
 - **Decides.**
-  - A page per station, or a map only.
+  - A page per station, or a map only: a page per station, rendered on the
+    server ([decision 24](decisions.md)).
   - The base map.
   - Search by address: which service turns an address into coordinates. It
     must be added to [data-sources.md](data-sources.md) before any code calls

@@ -1,0 +1,19 @@
+---
+import { isLocale, negotiateLocale } from "../i18n/locales";
+import { translate } from "../i18n/translate";
+import Base from "../layouts/Base.astro";
+
+// In the language of the address when it names one, otherwise in the one the
+// browser asks for.
+const first = Astro.url.pathname.split("/")[1];
+const locale = isLocale(first)
+  ? first
+  : negotiateLocale(Astro.request.headers.get("Accept-Language"));
+Astro.response.status = 404;
+---
+
+<Base locale={locale} title={translate(locale, "notFound.title")}>
+  <h1>{translate(locale, "notFound.title")}</h1>
+  <p>{translate(locale, "notFound.text")}</p>
+  <p><a href={`/${locale}/`}>{translate(locale, "notFound.home")}</a></p>
+</Base>

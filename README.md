@@ -6,7 +6,7 @@ MCP server over the same data.
 > **Status: early development.** Nothing is deployed yet. The repository holds
 > the foundations: the parser for the official dataset, the database and the
 > import that loads the daily archive into it, the public API that serves it,
-> the architecture and the plan.
+> the start of the website, the architecture and the plan.
 > Follow the [roadmap](docs/roadmap.md) to see what comes next.
 
 ## Why
@@ -69,6 +69,8 @@ Most of this is planned, not built. Today the repository holds:
 backend/     The `swisscoverage` program, in Go: the parser for the OFCOM
              dataset, the database schema, the import that records what
              changed from one day to the next, and the read-only API
+web/         The website, in TypeScript with Astro: so far the home page in
+             French, German, Italian and English
 deploy/      Docker Compose with the database, for local work and tests
 docs/        Architecture, decisions, roadmap, data sources, security
 openapi.json The API's contract, generated from the code
@@ -82,7 +84,8 @@ openapi.json The API's contract, generated from the code
 ## Development
 
 You need [Go](https://go.dev) 1.27.4 or later, Docker for the database, and
-[Bun](https://bun.sh) 1.4.5 for the tool that checks the documentation.
+[Bun](https://bun.sh) 1.4.5 for the website and the tool that checks the
+documentation.
 
 ```sh
 git clone https://github.com/mathieumaf/swisscoverage.git
@@ -98,7 +101,11 @@ go run ./cmd/swisscoverage serve                      # the API, on http://127.0
 
 cd ..
 bun install
-bun run check                                         # Markdown, JSON and YAML
+bun run check                                         # Markdown, JSON, YAML and TypeScript
+
+cd web                                                # with the API above running
+bun install
+bun run dev                                           # the website, on http://127.0.0.1:4321/
 ```
 
 [CONTRIBUTING.md](CONTRIBUTING.md) lists every check that CI runs.
