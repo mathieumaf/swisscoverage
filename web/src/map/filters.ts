@@ -130,7 +130,8 @@ export function including(filters: Filters, station: Station): Filters {
 
 // Whether an address's hash gives the map a position that MapLibre will
 // use: `map=zoom/latitude/longitude[/bearing[/pitch]]`, numbers within the
-// limits of MapLibre's defaults, which this map keeps.
+// limits of MapLibre's defaults, which this map keeps. A longitude that is not
+// finite, which MapLibre would still take, counts as no position.
 export function hasMapPosition(hash: string): boolean {
   const parts = (
     new URLSearchParams(hash.replace("#", "")).get("map") ?? ""
@@ -141,7 +142,7 @@ export function hasMapPosition(hash: string): boolean {
   const [zoom = 0, latitude = 0, longitude = 0, bearing = 0, pitch = 0] =
     parts.map(Number);
   return (
-    zoom >= 0 &&
+    zoom >= -2 &&
     zoom <= 22 &&
     Math.abs(latitude) <= 90 &&
     Number.isFinite(longitude) &&

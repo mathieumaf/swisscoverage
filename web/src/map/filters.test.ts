@@ -126,6 +126,7 @@ describe("hasMapPosition", () => {
   test("reads MapLibre's hash", () => {
     expect(hasMapPosition("#map=11/46.948/7.447")).toBe(true);
     expect(hasMapPosition("#map=15/47.15737/7.41774/0/0")).toBe(true);
+    expect(hasMapPosition("#map=-1/46.948/7.447")).toBe(true);
   });
 
   test("refuses what MapLibre would not use", () => {
@@ -137,6 +138,7 @@ describe("hasMapPosition", () => {
       "#map=11/146.9/7.4",
       "#map=40/46.9/7.4",
       "#map=23/46.9/7.4",
+      "#map=-3/46.9/7.4",
       "#map=11/46.9/7.4/181",
       "#map=11/46.9/7.4/0/61",
     ]) {
