@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  isStationId,
   localizeLabel,
   lv95Of,
   type StationCollection,
@@ -140,5 +141,26 @@ describe("lv95Of", () => {
     expect(lv95Of("2497760_1121940_Salt GE_2203A")).toBe(
       "LV95 2497760, 1121940",
     );
+  });
+});
+
+describe("isStationId", () => {
+  test("accepts a position and a label", () => {
+    expect(isStationId("2683328_1247916_Sunrise ZE416-1")).toBe(true);
+    expect(isStationId("2497760_1121940_Salt GE_2203A")).toBe(true);
+  });
+
+  test("refuses anything else", () => {
+    for (const value of [
+      "",
+      ".",
+      "..",
+      "abc",
+      "2683328_1247916_",
+      "1_2_ x",
+      "../v1",
+    ]) {
+      expect(isStationId(value)).toBe(false);
+    }
   });
 });

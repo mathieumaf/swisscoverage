@@ -20,6 +20,7 @@ import "./map.css";
 import { StationChoice } from "./StationChoice";
 import { StationSheet } from "./StationSheet";
 import {
+  isStationId,
   localizeLabel,
   type MapStation,
   operatorColors,
@@ -451,7 +452,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
     }
     opened.current = true;
     const id = namedStation;
-    if (id === null || id === "") {
+    if (id === null || !isStationId(id)) {
       return;
     }
     const station = stations.find((candidate) => candidate.id === id);
