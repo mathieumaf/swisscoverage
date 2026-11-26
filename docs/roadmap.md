@@ -28,8 +28,8 @@ in the same pull request, and in particular:
 | Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`), with an index of its snapshots                                    |
 | Architecture and decisions written down                                                                                                                 |
 
-In progress: [step 4](#step-4-website-and-map-in-progress), the website and the map. Its
-foundation is in `web/`.
+In progress: [step 4](#step-4-website-and-map-in-progress), the website and
+the map. Its foundation is in `web/`.
 
 Waiting on someone else: a Freedom of Information request for OFCOM's detailed
 antenna database was filed on 24 November 2026. Version 1.0 depends on the

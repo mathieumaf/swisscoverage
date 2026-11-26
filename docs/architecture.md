@@ -288,8 +288,9 @@ website's TypeScript. `web/` has its own `package.json`: Astro, its adapter
 for a standalone server, and `openapi-fetch`, a client typed by the contract;
 React and MapLibre GL come with the map. Its development tools are
 `@astrojs/check` with TypeScript, which check the `.astro` files too, and
-`openapi-typescript`, which generates the types. The server reads one setting, `SWISSCOVERAGE_API_URL`, the origin of
-the API; on this machine it defaults to `http://127.0.0.1:8080`.
+`openapi-typescript`, which generates the types. The server reads one
+setting, `SWISSCOVERAGE_API_URL`, the origin of the API; on this machine it
+defaults to `http://127.0.0.1:8080`.
 
 Queries live in `backend/internal/store/queries.sql`. `go generate ./...`,
 run in `backend/`, turns them into the code of `internal/store/query` with
