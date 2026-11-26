@@ -11,6 +11,16 @@ if (!isLocale(lang)) {
 }
 const locale = lang;
 
+// The API's origin, which the map calls from the browser. When it is not
+// usable, the page renders without the map and says the data cannot be
+// loaded; the reason goes to the log.
+let browserApiUrl: string | undefined;
+try {
+  browserApiUrl = serverApiUrl();
+} catch (cause) {
+  console.error("SWISSCOVERAGE_API_URL is not usable:", cause);
+}
+
 // The latest snapshot, read from the public API, so that the page says what
 // it shows before the map has loaded, and without JavaScript. When the API
 // does not answer, the page still renders and says so; the reason goes to the
@@ -32,12 +42,18 @@ try {
 ---
 
 <Base locale={locale} fullscreen>
-  <StationMap client:only="react" locale={locale} apiUrl={serverApiUrl()} />
+  {browserApiUrl && (
+    <StationMap client:only="react" locale={locale} apiUrl={browserApiUrl} />
+  )}
   <section class="intro">
     <h1>{translate(locale, "home.title")}</h1>
     <p class="intro__text">{translate(locale, "home.intro")}</p>
     <p class="intro__snapshot">{snapshot}</p>
     <noscript><p>{translate(locale, "map.noScript")}</p></noscript>
+    <p class="intro__source">
+      {translate(locale, "footer.source")}{" · "}
+      <a href="https://github.com/mathieumaf/swisscoverage">{translate(locale, "footer.code")}</a>
+    </p>
   </section>
 </Base>
 
@@ -68,6 +84,17 @@ try {
 
   .intro__snapshot {
     color: var(--muted);
+  }
+
+  /* OFCOM's credit, rendered by the server, so that it shows with the data
+     even when the map cannot load. */
+  .intro .intro__source {
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  .intro__source a {
+    pointer-events: auto;
   }
 
   /* On a phone the map comes first: the panel keeps the title and the date. */

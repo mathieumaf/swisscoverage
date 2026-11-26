@@ -76,12 +76,12 @@ a reader sees the day before or the day itself, never a mix.
 
 A typical day:
 
-| When (UTC)          | What happens                                                                                                 | State                                                  |
-| ------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| around 22:00        | OFCOM replaces its file.                                                                                     |                                                        |
-| 04:17, 10:17, 16:17 | The archive copies it, verifies its checksum and commits it. The later runs find it archived and do nothing. | exists                                                 |
-| 05:00               | The import loads it: it compares it with the day before and writes the differences.                          | exists as a command; scheduled in roadmap step 5       |
-| afterwards          | The API serves the day's data as soon as the import commits it; the map and the MCP server read it there.    | the API exists; the map and the MCP server are planned |
+| When (UTC)          | What happens                                                                                                 | State                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| around 22:00        | OFCOM replaces its file.                                                                                     |                                                      |
+| 04:17, 10:17, 16:17 | The archive copies it, verifies its checksum and commits it. The later runs find it archived and do nothing. | exists                                               |
+| 05:00               | The import loads it: it compares it with the day before and writes the differences.                          | exists as a command; scheduled in roadmap step 5     |
+| afterwards          | The API serves the day's data as soon as the import commits it; the map and the MCP server read it there.    | the API and the map exist; the MCP server is planned |
 
 ## Parts
 

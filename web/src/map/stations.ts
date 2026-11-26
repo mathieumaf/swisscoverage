@@ -16,8 +16,16 @@ export const operatorColors: Record<Operator, string> = {
   other: "#7c3aed",
 };
 
-// What the map keeps of each station: its position, its identifier, to open
-// its sheet, and its operator, to colour it. The identifier is copied into the
+// What the map keeps of a station: its identifier, to open its sheet, its
+// label, to list it among others at the same place, and its operator, to
+// colour it.
+export interface MapStation {
+  id: string;
+  name: string;
+  operator: Operator;
+}
+
+// The stations as the map draws them. The identifier is copied into the
 // properties, where MapLibre's expressions can read it.
 export function toMapData(collection: StationCollection) {
   return {
@@ -25,9 +33,44 @@ export function toMapData(collection: StationCollection) {
     features: collection.features.map((feature) => ({
       type: "Feature" as const,
       geometry: feature.geometry,
-      properties: { id: feature.id, operator: feature.properties.operator },
+      properties: {
+        id: feature.id,
+        name: feature.properties.name,
+        operator: feature.properties.operator,
+      } satisfies MapStation,
     })),
   };
+}
+
+// The LV95 position in a station's identifier, `east_north_label`
+// (decision 22), to tell apart stations that share a label.
+export function lv95Of(id: string): string {
+  const [east = "", north = ""] = id.split("_");
+  return `LV95 ${east}, ${north}`;
+}
+
+// The distinct stations among the features under a click. Several stations
+// can stand at the same position: 1,417 places held more than one in the
+// snapshot of 24 November 2026.
+export function stationsAt(
+  features: { properties?: Record<string, unknown> | null }[],
+): MapStation[] {
+  const found = new Map<string, MapStation>();
+  for (const { properties } of features) {
+    const id = properties?.id;
+    const name = properties?.name;
+    const operator = properties?.operator;
+    if (
+      typeof id === "string" &&
+      typeof name === "string" &&
+      typeof operator === "string" &&
+      operator in operatorColors &&
+      !found.has(id)
+    ) {
+      found.set(id, { id, name, operator: operator as Operator });
+    }
+  }
+  return [...found.values()];
 }
 
 // The base map writes place names in English where OpenStreetMap has an

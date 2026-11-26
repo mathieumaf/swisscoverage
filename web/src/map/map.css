@@ -13,6 +13,7 @@
   bottom: 2.5rem;
   left: 50%;
   transform: translateX(-50%);
+  max-width: calc(100% - 1.5rem);
   margin: 0;
   padding: 0.5rem 1rem;
   border-radius: 999px;
@@ -20,11 +21,16 @@
   color: var(--foreground);
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
   font-size: 0.875rem;
-  white-space: nowrap;
+  text-align: center;
 }
 
 .station-map__status--error {
-  color: #b91c1c;
+  color: var(--danger);
+}
+
+/* The attribution stays above an open sheet. */
+.station-map .maplibregl-ctrl-bottom-right {
+  z-index: 3;
 }
 
 /* Above the attribution, which must stay visible. */
@@ -52,7 +58,7 @@
     right: 0;
     left: 0;
     width: auto;
-    bottom: 2rem;
+    bottom: 2.5rem;
     max-height: 60%;
     border-radius: 0.75rem 0.75rem 0 0;
   }
@@ -151,11 +157,32 @@
   font-size: 0.8125rem;
 }
 
-.station-sheet__history {
+.station-choice {
   margin: 0;
-  padding-left: 1.25rem;
+  padding: 0;
+  list-style: none;
 }
 
-.station-sheet__history li + li {
-  margin-top: 0.5rem;
+.station-choice button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.625rem 0.5rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.station-choice button:hover,
+.station-choice button:focus-visible {
+  background: var(--border);
+}
+
+.station-choice .station-sheet__dot {
+  flex: none;
 }

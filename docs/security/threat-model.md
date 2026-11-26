@@ -243,7 +243,8 @@ personal data.
   through Cloudflare, for the tiles of the area they look at, which reveals
   their address and the area to that service. Accepted because the map needs
   a base map and the project has no tile server; OpenFreeMap keeps no IP
-  address in its access logs ([data-sources.md](../data-sources.md)). A
+  address in its access logs, except for a while during an incident
+  ([data-sources.md](../data-sources.md)). A
   self-hosted OpenFreeMap removes the third party, if that becomes needed.
 - **A third party in front of the site.** _Unverified._ Putting Cloudflare in
   front means trusting it with visitor traffic and with the availability of

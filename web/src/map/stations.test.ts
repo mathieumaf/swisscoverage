@@ -1,8 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { localizeLabel, type StationCollection, toMapData } from "./stations";
+import {
+  localizeLabel,
+  lv95Of,
+  type StationCollection,
+  stationsAt,
+  toMapData,
+} from "./stations";
 
 describe("toMapData", () => {
-  test("keeps the position, the identifier and the operator", () => {
+  test("keeps the position, the identifier, the label and the operator", () => {
     const collection: StationCollection = {
       type: "FeatureCollection",
       attribution: "Source: Federal Office of Communications OFCOM",
@@ -34,6 +40,7 @@ describe("toMapData", () => {
           geometry: { type: "Point", coordinates: [7.4474, 46.948] },
           properties: {
             id: "2683328_1247916_Sunrise ZE416-1",
+            name: "Sunrise ZE416-1",
             operator: "sunrise",
           },
         },
@@ -66,5 +73,45 @@ describe("localizeLabel", () => {
       ["get", "ref"],
     ]);
     expect(localizeLabel("{name}", "it")).toBe("{name}");
+  });
+});
+
+describe("stationsAt", () => {
+  test("lists each station under a click once", () => {
+    const salt = {
+      id: "a_b_Salt GE_2203A",
+      name: "Salt GE_2203A",
+      operator: "salt",
+    };
+    const swisscom = {
+      id: "a_b_Swisscom ATHE",
+      name: "Swisscom ATHE",
+      operator: "swisscom",
+    };
+    expect(
+      stationsAt([
+        { properties: salt },
+        { properties: swisscom },
+        { properties: salt },
+      ]),
+    ).toEqual([salt, swisscom] as never);
+  });
+
+  test("skips what is not a station", () => {
+    expect(
+      stationsAt([
+        { properties: null },
+        { properties: { cluster_id: 3, point_count: 12 } },
+        { properties: { id: "x", name: "X", operator: "unknown" } },
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe("lv95Of", () => {
+  test("reads the position in an identifier", () => {
+    expect(lv95Of("2497760_1121940_Salt GE_2203A")).toBe(
+      "LV95 2497760, 1121940",
+    );
   });
 });

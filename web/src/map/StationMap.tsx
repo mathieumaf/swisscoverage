@@ -9,13 +9,20 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { browserTimeoutMs, createApiClient } from "../api/client";
 import type { Locale } from "../i18n/locales";
 import { translate } from "../i18n/translate";
 import "./map.css";
+import { StationChoice } from "./StationChoice";
 import { StationSheet } from "./StationSheet";
-import { localizeLabel, operatorColors, toMapData } from "./stations";
+import {
+  localizeLabel,
+  type MapStation,
+  operatorColors,
+  stationsAt,
+  toMapData,
+} from "./stations";
 
 // MapLibre draws in a worker, served from this site. Its default address is
 // relative to the library, which the bundler moves.
@@ -52,31 +59,43 @@ export default function StationMap({ locale, apiUrl }: Props) {
   const container = useRef<HTMLElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const [status, setStatus] = useState<Status>("loading");
-  const [selected, setSelected] = useState<string | null>(null);
+  // The stations under the last click: one opens its sheet, several are
+  // listed to choose from.
+  const [selected, setSelected] = useState<MapStation[]>([]);
   const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
 
   useEffect(() => {
     if (container.current === null) {
       return;
     }
-    const api = createApiClient(apiUrl, browserTimeoutMs);
-    const instance = new MapLibreMap({
-      container: container.current,
-      style: baseMapStyle,
-      bounds: switzerland,
-      maxBounds: [
-        [3.5, 44.5],
-        [13, 49],
-      ],
-      attributionControl: false,
-      dragRotate: false,
-      pitchWithRotate: false,
-    });
+    let instance: MapLibreMap;
+    try {
+      instance = new MapLibreMap({
+        container: container.current,
+        style: baseMapStyle,
+        bounds: switzerland,
+        maxBounds: [
+          [3.5, 44.5],
+          [13, 49],
+        ],
+        attributionControl: false,
+        dragRotate: false,
+        pitchWithRotate: false,
+      });
+    } catch (cause) {
+      // Most often a browser without WebGL.
+      console.error("Creating the map failed:", cause);
+      setStatus("error");
+      return;
+    }
     map.current = instance;
+    let cancelled = false;
+    let loaded = false;
+
     instance.touchZoomRotate.disableRotation();
+    // Compact, behind a button, only on a small map.
     instance.addControl(
       new AttributionControl({
-        compact: true,
         customAttribution: translate(locale, "footer.source"),
       }),
     );
@@ -93,8 +112,32 @@ export default function StationMap({ locale, apiUrl }: Props) {
       "top-right",
     );
 
-    let cancelled = false;
+    // The stations load while the base map does.
+    const api = createApiClient(apiUrl, browserTimeoutMs);
+    const stations = api.GET("/v1/stations").then(({ data, response }) => {
+      if (data === undefined) {
+        throw new Error(`The API answered ${response.status}`);
+      }
+      return toMapData(data);
+    });
+    stations.catch((cause: unknown) => {
+      console.error("Loading the stations failed:", cause);
+      if (!cancelled) {
+        setStatus("error");
+      }
+    });
+
+    // Before the map has loaded, an error that is not about one tile means the
+    // base map cannot be drawn: its style, its fonts or its sprites failed.
+    instance.on("error", (event) => {
+      if (!loaded && !("sourceId" in event) && !cancelled) {
+        console.error("Loading the base map failed:", event.error);
+        setStatus("error");
+      }
+    });
+
     instance.on("load", async () => {
+      loaded = true;
       for (const layer of instance.getStyle().layers) {
         if (layer.type === "symbol" && layer.layout?.["text-field"]) {
           instance.setLayoutProperty(
@@ -173,7 +216,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
         id: "selected",
         type: "circle",
         source: "stations",
-        filter: ["==", ["get", "id"], ""],
+        filter: ["in", ["get", "id"], ["literal", []]],
         paint: {
           "circle-color": "rgba(0, 0, 0, 0)",
           "circle-radius": [
@@ -193,21 +236,13 @@ export default function StationMap({ locale, apiUrl }: Props) {
       });
 
       try {
-        const { data, response } = await api.GET("/v1/stations");
-        if (data === undefined) {
-          throw new Error(`The API answered ${response.status}`);
-        }
+        const data = await stations;
         if (!cancelled) {
-          instance
-            .getSource<GeoJSONSource>("stations")
-            ?.setData(toMapData(data));
+          instance.getSource<GeoJSONSource>("stations")?.setData(data);
           setStatus("ready");
         }
-      } catch (cause) {
-        console.error("Loading the stations failed:", cause);
-        if (!cancelled) {
-          setStatus("error");
-        }
+      } catch {
+        // Already reported when the request failed.
       }
     });
 
@@ -217,18 +252,24 @@ export default function StationMap({ locale, apiUrl }: Props) {
       if (feature?.geometry.type !== "Point" || typeof clusterId !== "number") {
         return;
       }
-      const zoom = await instance
-        .getSource<GeoJSONSource>("stations")
-        ?.getClusterExpansionZoom(clusterId);
-      instance.easeTo({
-        center: feature.geometry.coordinates as [number, number],
-        zoom: Math.min(zoom ?? instance.getZoom() + 2, clusterMaxZoom + 1),
-      });
+      try {
+        const zoom = await instance
+          .getSource<GeoJSONSource>("stations")
+          ?.getClusterExpansionZoom(clusterId);
+        if (!cancelled) {
+          instance.easeTo({
+            center: feature.geometry.coordinates as [number, number],
+            zoom: Math.min(zoom ?? instance.getZoom() + 2, clusterMaxZoom + 1),
+          });
+        }
+      } catch {
+        // The stations changed while the cluster was being read: no zoom.
+      }
     });
     instance.on("click", "stations", (event) => {
-      const id = event.features?.[0]?.properties?.id;
-      if (typeof id === "string") {
-        setSelected(id);
+      const found = stationsAt(event.features ?? []);
+      if (found.length > 0) {
+        setSelected(found);
       }
     });
     for (const layer of ["clusters", "stations"]) {
@@ -247,13 +288,20 @@ export default function StationMap({ locale, apiUrl }: Props) {
     };
   }, [apiUrl, locale]);
 
-  // Outline the station whose sheet is open.
+  // Outline the stations whose sheet or list is open.
   useEffect(() => {
     const instance = map.current;
     if (instance?.getLayer("selected")) {
-      instance.setFilter("selected", ["==", ["get", "id"], selected ?? ""]);
+      instance.setFilter("selected", [
+        "in",
+        ["get", "id"],
+        ["literal", selected.map((station) => station.id)],
+      ]);
     }
   }, [selected]);
+
+  const close = useCallback(() => setSelected([]), []);
+  const [only] = selected;
 
   return (
     <div className="station-map">
@@ -270,13 +318,21 @@ export default function StationMap({ locale, apiUrl }: Props) {
           {status === "loading" ? t("map.loading") : t("map.error")}
         </p>
       )}
-      {selected !== null && (
+      {selected.length === 1 && only && (
         <StationSheet
-          key={selected}
-          id={selected}
+          key={only.id}
+          id={only.id}
           locale={locale}
           apiUrl={apiUrl}
-          onClose={() => setSelected(null)}
+          onClose={close}
+        />
+      )}
+      {selected.length > 1 && (
+        <StationChoice
+          stations={selected}
+          locale={locale}
+          onChoose={(station) => setSelected([station])}
+          onClose={close}
         />
       )}
     </div>

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { browserTimeoutMs, createApiClient } from "../api/client";
 import { formatDate, formatNumber, type Locale } from "../i18n/locales";
 import type { MessageKey } from "../i18n/messages/en";
 import { translate } from "../i18n/translate";
+import { Sheet } from "./Sheet";
 import { operatorColors, type Period, type StationHistory } from "./stations";
 
 interface Props {
@@ -18,10 +19,9 @@ type State =
   | { status: "ready"; station: StationHistory };
 
 // The sheet of one station, read from GET /v1/stations/{id}: what OFCOM
-// publishes of it today and what changed since the archive began.
+// publishes of it today, or last published.
 export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
   const [state, setState] = useState<State>({ status: "loading" });
-  const closeButton = useRef<HTMLButtonElement>(null);
   const t = (key: MessageKey, values?: Record<string, string>) =>
     translate(locale, key, values);
   const date = (value: string) => formatDate(locale, new Date(value));
@@ -50,46 +50,26 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
     };
   }, [apiUrl, id]);
 
-  useEffect(() => {
-    closeButton.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const station = state.status === "ready" ? state.station : undefined;
   const current = station?.periods[0];
 
   return (
-    <aside className="station-sheet" aria-labelledby="station-sheet-title">
-      <header className="station-sheet__header">
-        <div>
-          {station && (
-            <p className="station-sheet__operator">
-              <span
-                className="station-sheet__dot"
-                style={{ background: operatorColors[station.operator] }}
-              />
-              {t(`operator.${station.operator}`)}
-            </p>
-          )}
-          <h2 id="station-sheet-title">{station?.name ?? "…"}</h2>
-        </div>
-        <button
-          ref={closeButton}
-          type="button"
-          className="station-sheet__close"
-          onClick={onClose}
-          aria-label={t("sheet.close")}
-        >
-          ×
-        </button>
-      </header>
-
+    <Sheet
+      title={station?.name ?? "…"}
+      eyebrow={
+        station && (
+          <p className="station-sheet__operator">
+            <span
+              className="station-sheet__dot"
+              style={{ background: operatorColors[station.operator] }}
+            />
+            {t(`operator.${station.operator}`)}
+          </p>
+        )
+      }
+      closeLabel={t("sheet.close")}
+      onClose={onClose}
+    >
       {state.status === "loading" && <p role="status">{t("sheet.loading")}</p>}
       {state.status === "error" && <p role="alert">{t("sheet.error")}</p>}
 
@@ -140,36 +120,10 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
             <dd>{date(station.firstSeen)}</dd>
           </dl>
 
-          {station.periods.length > 1 && (
-            <section>
-              <h3>{t("sheet.history")}</h3>
-              <ol className="station-sheet__history">
-                {station.periods.map((period) => (
-                  <li key={period.from}>
-                    <strong>
-                      {period.to === null
-                        ? t("sheet.since", { date: date(period.from) })
-                        : t("sheet.between", {
-                            from: date(period.from),
-                            to: date(period.to),
-                          })}
-                    </strong>
-                    <br />
-                    {[
-                      t(`kind.${period.kind}`),
-                      t(`power.${period.powerClass}`),
-                      period.technologies.join(", ") || t("sheet.noTechnology"),
-                    ].join(" · ")}
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-
           <p className="station-sheet__source">{t("footer.source")}</p>
         </>
       )}
-    </aside>
+    </Sheet>
   );
 }
 

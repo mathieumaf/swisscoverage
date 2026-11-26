@@ -15,9 +15,5 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 4321,
   },
-  vite: {
-    // MapLibre GL alone is about 1.1 MB once minified, 300 KB compressed.
-    build: { chunkSizeWarningLimit: 1200 },
-  },
   devToolbar: { enabled: false },
 });

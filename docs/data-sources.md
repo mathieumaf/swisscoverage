@@ -124,7 +124,8 @@ What to know:
 - **Visitors' requests go to a third party.** Each visitor's browser asks
   OpenFreeMap, through Cloudflare, for the tiles of the area they look at.
   OpenFreeMap's access logs hold no IP address; its error logs may, for seven
-  days.
+  days, and it may log addresses for up to 30 days to handle a security
+  incident or abuse.
 - **Fetching tiles in bulk is forbidden**, beyond offline downloads of at most
   3,000 tiles. The project downloads none: only visitors' browsers load them,
   as they move the map.
