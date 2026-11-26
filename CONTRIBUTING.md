@@ -15,13 +15,14 @@ documentation, issues and pull requests.
 
 You need [Go](https://go.dev) 1.27.4 or later for the backend,
 [Docker](https://docs.docker.com/get-started/get-docker/) for the database,
-and [Bun](https://bun.sh) 1.4.5 to run Biome, the tool that checks Markdown,
-JSON and YAML.
+and [Bun](https://bun.sh) 1.4.5 for the website and for Biome, the tool that
+checks Markdown, JSON, YAML and TypeScript.
 
 ```sh
 git clone https://github.com/mathieumaf/swisscoverage.git
 cd swisscoverage
 bun install
+(cd web && bun install)
 docker compose -f deploy/compose.yaml up -d --wait    # the local database
 ```
 
@@ -41,12 +42,20 @@ holds the `swisscoverage` program with its commands in
 `backend/cmd/swisscoverage`, and four packages under `backend/internal/`:
 `ofcom`, the parser for OFCOM's file; `archive`, which reads the daily
 archive; `store`, the database; and `api`, the public API. The website is
-planned in TypeScript under `web/`.
+written in TypeScript with Astro under `web/`: its pages in `src/pages/`,
+under their language, and its messages in `src/i18n/messages/`, one file per
+language, with English as the reference.
 
 The parser never touches the network, the file system, the environment, a
 database or the clock: it receives the bytes of a file from the command that
 calls it. Code that needs the database belongs in `backend/internal/store`.
-The website reaches the data only by calling the public API.
+The website reaches the data only by calling the public API. Its types come
+from the contract: after a change to `openapi.json`, run `bun run generate` in
+`web/` and commit the result; CI fails until you do.
+
+Every text of the website exists in French, German, Italian and English. A
+new message goes into `web/src/i18n/messages/en.ts` first; the type checks
+then fail until the other three languages have it too.
 
 The API's contract is `openapi.json`, at the root, generated from the code of
 `backend/internal/api`. After a change to the API, run
@@ -80,7 +89,13 @@ go vet ./...
 go test ./...        # needs the local database, see below
 
 cd ..
-bun run check        # lint and formatting of Markdown, JSON and YAML
+bun run check        # lint and formatting of Markdown, JSON, YAML and TypeScript
+
+cd web
+bun run generate     # the types from openapi.json: git status shows no change
+bun run check        # type checks, .astro files included
+bun test
+bun run build
 ```
 
 The tests that need the database are skipped when it is not running, and
@@ -113,6 +128,10 @@ go run ./cmd/swisscoverage migrate    # creates the tables
 go run ./cmd/swisscoverage ingest     # loads every snapshot it does not hold yet
 go run ./cmd/swisscoverage serve      # the API, on http://127.0.0.1:8080/v1/
 ```
+
+With the API running, `bun run dev` in `web/` serves the website on
+`http://127.0.0.1:4321/`. It calls the API at `http://127.0.0.1:8080`, or at
+the origin given in `SWISSCOVERAGE_API_URL`.
 
 ## Data
 

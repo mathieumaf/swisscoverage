@@ -1,0 +1,26 @@
+{
+  "name": "@swisscoverage/web",
+  "private": true,
+  "description": "The website and the map of swisscoverage, a client of the public API.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 bun --bun astro dev",
+    "build": "ASTRO_TELEMETRY_DISABLED=1 bun --bun astro build",
+    "preview": "bun ./dist/server/entry.mjs",
+    "check": "ASTRO_TELEMETRY_DISABLED=1 bun --bun astro check",
+    "generate": "bun --bun openapi-typescript ../openapi.json --output src/api/schema.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@astrojs/node": "11.1.14",
+    "astro": "7.4.13",
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "@types/bun": "1.4.5",
+    "openapi-typescript": "7.13.0",
+    "typescript": "6.0.3"
+  }
+}

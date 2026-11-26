@@ -9,9 +9,10 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
-      "!bun.lock",
+      "!**/bun.lock",
       "!**/testdata/*.golden.json",
       "!openapi.json",
+      "!web/src/api/schema.ts",
       "!!**/dist"
     ]
   },
@@ -38,5 +39,22 @@
       "quoteStyle": "double",
       "semicolons": "always"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off"
+          },
+          "style": {
+            "useConst": "off",
+            "useImportType": "off"
+          }
+        }
+      }
+    }
+  ]
 }

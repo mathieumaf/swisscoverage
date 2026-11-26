@@ -78,7 +78,7 @@ jobs:
       - name: Tests
         run: go test ./...
 
-  # Markdown, JSON and YAML across the repository.
+  # Markdown, JSON, YAML and the website's TypeScript across the repository.
   docs:
     name: docs
     runs-on: ubuntu-latest
@@ -99,13 +99,58 @@ jobs:
       - name: Lint and formatting
         run: bun run lint
 
+  # The website: its types against the API's contract, type checks, tests and
+  # the production build.
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    env:
+      ASTRO_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Reads the version from `packageManager` in the root package.json.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # The types are generated from openapi.json. This fails when the
+      # committed ones are not what the contract produces.
+      - name: Generated types are current
+        run: |
+          bun run generate
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Run 'bun run generate' in web/ and commit the result:"
+            git status --short
+            git diff
+            exit 1
+          fi
+
+      - name: Type check
+        run: bun run check
+
+      - name: Tests
+        run: bun test
+
+      - name: Build
+        run: bun run build
+
   # The only check that branch protection requires. It runs even when a job
   # above failed or was cancelled: a job that is skipped counts as passed for
   # branch protection, and this one must not be skipped.
   check:
     name: check
     if: ${{ always() }}
-    needs: [backend, docs]
+    needs: [backend, docs, web]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

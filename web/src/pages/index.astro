@@ -1,0 +1,16 @@
+---
+import { negotiateLocale } from "../i18n/locales";
+
+// The root sends each visitor to the language their browser asks for, among
+// the four, or to the default one.
+const locale = negotiateLocale(Astro.request.headers.get("Accept-Language"));
+
+return new Response(null, {
+  status: 302,
+  headers: {
+    Location: `/${locale}/`,
+    Vary: "Accept-Language",
+    "Cache-Control": "no-cache",
+  },
+});
+---

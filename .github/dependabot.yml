@@ -34,8 +34,8 @@ updates:
       prefix: "chore"
       include: "scope"
 
-  # JavaScript dependencies (Bun reads package.json and bun.lock). Today that
-  # is Biome only, which checks Markdown, JSON and YAML.
+  # JavaScript tools of the root (Bun reads package.json and bun.lock): Biome,
+  # which checks Markdown, JSON, YAML and the website's TypeScript.
   - package-ecosystem: "bun"
     directory: "/"
     schedule:
@@ -52,6 +52,27 @@ updates:
         patterns: ["*"]
         update-types: ["minor", "patch"]
       js-development-dependencies:
+        dependency-type: "development"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # The website's dependencies: Astro, and the tools that check them.
+  - package-ecosystem: "bun"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "fix"
+      prefix-development: "chore"
+      include: "scope"
+    groups:
+      # Majors stay ungrouped so each one is reviewed on its own.
+      web-production-dependencies:
+        dependency-type: "production"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      web-development-dependencies:
         dependency-type: "development"
         patterns: ["*"]
         update-types: ["minor", "patch"]

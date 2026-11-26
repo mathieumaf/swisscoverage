@@ -1,0 +1,46 @@
+---
+import { api } from "../../api/client";
+import { formatDate, formatNumber, isLocale } from "../../i18n/locales";
+import { translate } from "../../i18n/translate";
+import Base from "../../layouts/Base.astro";
+
+const { lang } = Astro.params;
+if (!isLocale(lang)) {
+  return Astro.rewrite("/404");
+}
+const locale = lang;
+
+// The latest snapshot, read from the public API. When the API does not
+// answer, the page still renders and says so; the reason goes to the log.
+let snapshot: string;
+try {
+  const { data, response } = await api().GET("/v1/stations/counts");
+  if (data === undefined) {
+    throw new Error(`The API answered ${response.status}`);
+  }
+  snapshot = translate(locale, "home.snapshot", {
+    count: formatNumber(locale, data.stations),
+    date: formatDate(locale, new Date(data.snapshot.publishedAt)),
+  });
+} catch (cause) {
+  console.error("Reading the station counts from the API failed:", cause);
+  snapshot = translate(locale, "home.unavailable");
+}
+---
+
+<Base locale={locale}>
+  <h1>{translate(locale, "home.title")}</h1>
+  <p>{translate(locale, "home.intro")}</p>
+  <p class="snapshot">{snapshot}</p>
+</Base>
+
+<style>
+  h1 {
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    line-height: 1.2;
+  }
+
+  .snapshot {
+    color: var(--muted);
+  }
+</style>

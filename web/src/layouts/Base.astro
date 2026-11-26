@@ -1,0 +1,185 @@
+---
+import { isLocale, type Locale, locales, localizedPath } from "../i18n/locales";
+import { languageNames, translate } from "../i18n/translate";
+
+interface Props {
+  locale: Locale;
+  title?: string;
+  // An error page has no translations: its language links lead to the home
+  // page of each language.
+  error?: boolean;
+}
+
+const { locale, title, error = false } = Astro.props;
+const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
+const pageTitle = title ? `${title} · swisscoverage` : "swisscoverage";
+const path = Astro.url.pathname;
+const alternates = !error && isLocale(path.split("/")[1]) ? locales : [];
+const linkTo = (other: Locale) =>
+  error ? `/${other}/` : localizedPath(path, other);
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={t("site.description")} />
+    <title>{pageTitle}</title>
+    {alternates.map((other) => (
+      <link rel="alternate" hreflang={other} href={localizedPath(path, other)} />
+    ))}
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href={`/${locale}/`}>swisscoverage</a>
+      <nav aria-label={t("nav.language")}>
+        <ul class="languages">
+          {locales.map((other) => (
+            <li>
+              <a
+                href={linkTo(other)}
+                hreflang={other}
+                lang={other}
+                aria-current={!error && other === locale ? "page" : undefined}
+              >
+                {other.toUpperCase()}
+                <span class="visually-hidden"> {languageNames[other]}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <p>{t("footer.source")}</p>
+      <p>
+        <a href="https://github.com/mathieumaf/swisscoverage">{t("footer.code")}</a>{" · "}{t("footer.licence")}
+      </p>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: light dark;
+    --background: #f7f8fa;
+    --foreground: #16181d;
+    --muted: #5b6270;
+    --border: #dde1e7;
+    --accent: #1f6feb;
+    font-family:
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #0f1115;
+      --foreground: #e8eaee;
+      --muted: #9aa3b2;
+      --border: #262a33;
+      --accent: #6ea8ff;
+    }
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: var(--background);
+    color: var(--foreground);
+    line-height: 1.5;
+  }
+
+  a {
+    color: var(--accent);
+  }
+
+  main {
+    flex: 1;
+    width: 100%;
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+</style>
+
+<style>
+  .site-header,
+  .site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+    border-color: var(--border);
+    border-style: solid;
+    border-width: 0;
+  }
+
+  .site-header {
+    border-bottom-width: 1px;
+  }
+
+  .site-footer {
+    border-top-width: 1px;
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+
+  .site-footer p {
+    margin: 0;
+  }
+
+  .brand {
+    color: var(--foreground);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .languages {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .languages a {
+    display: inline-block;
+    min-width: 2.75rem;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    color: var(--muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .languages a[aria-current="page"] {
+    color: var(--foreground);
+    background: var(--border);
+  }
+</style>

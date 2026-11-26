@@ -389,6 +389,32 @@ Three facts shaped most choices:
   API can then keep the latest response in memory.
 - **Accepted.** 25 November 2026.
 
+### 24. Pages rendered on a server, and a page per station
+
+- **Decision.** The website's pages are rendered on a server: Astro in server
+  mode, with the standalone server of `@astrojs/node`, run by Bun. Each
+  station will have its own address, `/{language}/stations/{id}`: on the map
+  it opens as a sheet over the map, and loaded on its own it is a complete
+  page. Every page lives under its language, `/fr/`, `/de/`, `/it/` and
+  `/en/`; the root sends each visitor to the language their browser ranks
+  highest, or to English.
+- **Why.** A station's address can be shared and found by search engines,
+  and a page with its content in the HTML works before the map's JavaScript
+  has loaded. The server calls the API like any other client (decision 2),
+  from an address set by its operator.
+- **Cost.** The `web` image runs a server exposed to the internet instead of
+  serving files, and is a part of the threat model. Bun runs it although
+  `@astrojs/node` targets Node: one runtime for the whole TypeScript side, at
+  the risk of a difference that Astro's own tests would not catch.
+- **Rejected.** A map only, served as static files: simpler to host, but a
+  station could only be shared as an address that search engines do not
+  read, and its page would show nothing until the map had loaded. Node to
+  run the server: the reference runtime for the adapter, and a second
+  toolchain beside Bun.
+- **Revisit when.** Bun breaks the server in a way that Node does not, or the
+  site no longer needs a page per station.
+- **Accepted.** 26 November 2026.
+
 ## Open
 
 Not decided yet. Each has a recommendation and the step of the
@@ -396,8 +422,7 @@ Not decided yet. Each has a recommendation and the step of the
 
 | Question                                                                            | Recommendation                                                                                                                                                | Settled in |
 | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| A page per station, found by search engines, or only a map?                         | Pages, rendered on the server. Without them the site is a browser-only application and the `web` image serves static files.                                   | Step 4     |
-| Which base map?                                                                     | The official swisstopo base map if its terms allow it, otherwise OpenFreeMap. The terms are not checked yet.                                                  | Step 4     |
+| Which base map?                                                                     | OpenFreeMap, with its Liberty style, if its terms allow it. The terms are not checked yet; they go into [data-sources.md](data-sources.md) with the map.      | Step 4     |
 | Which service turns an address into coordinates, and who calls it?                  | swisstopo's public search service, called from the browser, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first. | Step 4     |
 | The API on `api.swisscoverage.ch` or under `swisscoverage.ch/api`?                  | The subdomain: the API's address then does not depend on the website.                                                                                         | Step 5     |
 | Two small cluster nodes, or one?                                                    | Two, so that a cluster update does not interrupt the site. Prices are not checked yet.                                                                        | Step 5     |
