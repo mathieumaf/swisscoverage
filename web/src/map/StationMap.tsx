@@ -596,6 +596,12 @@ export default function StationMap({ locale, apiUrl }: Props) {
     instance.flyTo(camera ?? { center: place.center, zoom });
   }, []);
 
+  const clearPlace = useCallback(() => {
+    map.current
+      ?.getSource<GeoJSONSource>("place")
+      ?.setData({ type: "FeatureCollection", features: [] });
+  }, []);
+
   const close = useCallback(() => setSelected([]), []);
 
   return (
@@ -630,6 +636,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
           shown={shown.length}
           onFind={find}
           onPlace={showPlace}
+          onClearPlace={clearPlace}
           open={panelOpen}
           onOpen={setPanelOpen}
         />

@@ -31,6 +31,8 @@ interface Props {
   shown: number;
   onFind: (station: Station) => void;
   onPlace: (place: Place) => void;
+  // The search was emptied: the place it found is no longer marked.
+  onClearPlace: () => void;
   open: boolean;
   onOpen: (open: boolean) => void;
 }
@@ -49,6 +51,7 @@ export function FilterPanel({
   shown,
   onFind,
   onPlace,
+  onClearPlace,
   open,
   onOpen,
 }: Props) {
@@ -147,7 +150,12 @@ export function FilterPanel({
             className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-foreground"
             placeholder={t("search.placeholder")}
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              if (event.target.value.trim() === "") {
+                onClearPlace();
+              }
+            }}
             autoComplete="off"
             spellCheck={false}
           />
