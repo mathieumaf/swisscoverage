@@ -497,6 +497,37 @@ Three facts shaped most choices:
   contacted first.
 - **Accepted.** 28 November 2026.
 
+### 28. The API's documentation is generated from its contract
+
+- **Decision.** The page `/{lang}/api` of the website is made from
+  `openapi.json`, which the website is built with: its endpoints, parameters,
+  limits, responses, errors, caching headers and types, with their
+  descriptions in the English of the contract. Only the frame is translated
+  into the four languages: the titles, the labels, the introduction and
+  OFCOM's attribution. The examples are `curl` commands built from the
+  examples that the contract gives for its parameters, at the origin of
+  `SWISSCOVERAGE_API_URL`. A parameter without an example is left out of the
+  command, so an example in the contract must make a request that works.
+  There is no interactive reference: the page links to the contract, which
+  the API serves at `/v1/openapi.json`.
+- **Why.** The page cannot disagree with the API: a change to the contract
+  changes the page, and a test fails when the page leaves out an operation,
+  a parameter or a type. The descriptions are written once, next to the code
+  (decision 21), instead of four more times by hand. The examples use the
+  origin the map already calls, so they run as they are, locally and once
+  online.
+- **Cost.** The reference is in English on the French, German and Italian
+  pages. The page shows no example responses, since the contract gives none.
+- **Rejected.** A page written by hand in four languages: four texts to keep
+  in step with the contract, which no test could check. An interactive
+  reference such as Scalar, Redoc or Swagger UI: a large dependency in the
+  website, in English only, that adds requests from the browser and would
+  have to be described on the page about the site; anyone can load the
+  contract into such a tool themselves.
+- **Revisit when.** Readers ask for the reference in their language, or for
+  trying requests from the page.
+- **Accepted.** 28 November 2026.
+
 ## Open
 
 Not decided yet. Each has a recommendation and the step of the

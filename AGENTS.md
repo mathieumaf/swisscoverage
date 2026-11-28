@@ -136,13 +136,16 @@ curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' -H 'Accept-Language: d
 curl -sS http://127.0.0.1:4321/fr/ | grep -o 'id="snapshot"[^<]*'
 curl -sS 'http://127.0.0.1:4321/fr/stations/2683328_1247916_Sunrise%20ZE416-1' | grep -o '<h1[^>]*>[^<]*'
 curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4321/fr/stations/1_2_Nothing
+curl -sS http://127.0.0.1:4321/fr/api | grep -o 'curl -sS[^<]*' | head -1 | sed "s/&#39;/'/g; s/&amp;/\&/g"
 ```
 
 The first prints `302 http://127.0.0.1:4321/de/`: the root sends each visitor
 to their language. The second prints the number of sites and the date of the
 latest snapshot. The third prints the title of a station's page, which the
 server renders with what OFCOM publishes of it and its history; the fourth
-prints `404`, for a station the API does not know. Open `http://127.0.0.1:4321/fr/` in a browser to see the
+prints `404`, for a station the API does not know. The fifth prints the
+first request of the page about the API, which the page generates from
+`openapi.json`: run it, and the API answers the stations around a point. Open `http://127.0.0.1:4321/fr/` in a browser to see the
 map: the browser itself loads every station from the API, at the origin of
 `SWISSCOVERAGE_API_URL`, and the base map from OpenFreeMap. A click on a
 station opens its sheet, which links to the station's page. The panel filters the stations, and its search

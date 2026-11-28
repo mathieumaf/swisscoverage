@@ -32,6 +32,7 @@ const {
 const t = translator(locale);
 const pages = [
   { href: `/${locale}/`, label: t("nav.map") },
+  { href: `/${locale}/api`, label: t("nav.api") },
   { href: `/${locale}/about`, label: t("nav.about") },
 ].filter((page) => !(hideCurrent && page.href === path));
 const link =

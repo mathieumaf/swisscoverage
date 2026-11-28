@@ -26,11 +26,11 @@ in the same pull request, and in particular:
 | Step 2: the database, its schema, and the `migrate` and `ingest` commands, which load the archive and record what changed from one snapshot to the next |
 | Step 3: the public API, read-only, served by the `serve` command, and its contract in `openapi.json`                                                    |
 | Step 4: the website, with the map of every station, its filters and search, a page per station with its history, in four languages                      |
+| Step 5: the API's documentation, a page of the website in four languages generated from `openapi.json`, with examples that run as they are              |
 | Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`), with an index of its snapshots                                    |
 | Architecture and decisions written down                                                                                                                 |
 
-Next: [step 5](#step-5-api-documentation), the API's documentation, then
-[step 6](#step-6-going-online), going online.
+Next: [step 6](#step-6-going-online), going online.
 
 Waiting on someone else: a Freedom of Information request for OFCOM's detailed
 antenna database was filed on 24 November 2026. Version 1.0 depends on the
@@ -175,16 +175,25 @@ The parser moved to Go, and the repository got its Go toolchain.
 - **Done when.** The site runs locally against the local API, shows every
   station of the day, filters them, and is usable on a phone-sized screen.
 
-### Step 5. API documentation
+### Step 5. API documentation (done)
 
-- **Adds.** A page on the website, in four languages, that explains the public
-  API: what it serves and from where, each endpoint with its parameters and
-  limits, the errors it answers, OFCOM's attribution, and examples to copy,
-  with a link to the contract in `openapi.json`.
-- **Decides.** Whether the page is written by hand or generated from
-  `openapi.json`, and whether it also serves an interactive reference.
-- **Done when.** Someone who has never seen the project reads the page and
-  lists the stations around a point with `curl`, without opening the code.
+- **Added.** The page `/{lang}/api` of the website, linked from the
+  navigation of every page: what the API serves and from where, a first
+  request to copy, OFCOM's attribution and its terms, each endpoint with its
+  parameters, limits, responses and an example `curl` command, the errors, the
+  caching, every type, and links to the contract. Examples for the parameters
+  that make them, added to the contract.
+- **Decided.**
+  - The page is generated from `openapi.json`, as the website is built with
+    it: only its frame is translated, and the reference is in the English of
+    the contract ([decision 28](decisions.md)).
+  - No interactive reference: the contract is linked, for the tools that
+    read it.
+  - The examples start with the origin of `SWISSCOVERAGE_API_URL`, the one
+    the map calls: they run as they are, locally today and online after step 6.
+- **Proved.** A reader given only the page, with no access to the
+  repository, listed Swisscom's stations within 500 m of a point in Geneva
+  with `curl`, then read the nearest one's history.
 
 ### Step 6. Going online
 

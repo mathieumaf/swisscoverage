@@ -536,9 +536,9 @@ func (h handlers) listStations(ctx context.Context, _ *struct{}) (*listStationsO
 
 type searchStationsInput struct {
 	BBox       []float64    `query:"bbox" minItems:"4" maxItems:"4" doc:"A rectangle in WGS84, as west,south,east,north in degrees: the longitude of its west edge, the latitude of its south edge, and so on. Edges are included."`
-	Latitude   float64      `query:"lat" minimum:"-90" maximum:"90" doc:"The latitude of the point to search around, in WGS84 degrees. Requires lon."`
-	Longitude  float64      `query:"lon" minimum:"-180" maximum:"180" doc:"The longitude of the point to search around, in WGS84 degrees. Requires lat."`
-	Radius     float64      `query:"radius" minimum:"1" maximum:"50000" default:"1000" doc:"Around a point: the distance to search within, in metres."`
+	Latitude   float64      `query:"lat" minimum:"-90" maximum:"90" example:"46.948" doc:"The latitude of the point to search around, in WGS84 degrees. Requires lon."`
+	Longitude  float64      `query:"lon" minimum:"-180" maximum:"180" example:"7.4474" doc:"The longitude of the point to search around, in WGS84 degrees. Requires lat."`
+	Radius     float64      `query:"radius" minimum:"1" maximum:"50000" default:"1000" example:"300" doc:"Around a point: the distance to search within, in metres."`
 	Operator   []Operator   `query:"operator" maxItems:"5" doc:"Keeps the sites run by one of these operators."`
 	Kind       []Kind       `query:"kind" maxItems:"6" doc:"Keeps the sites of one of these kinds."`
 	PowerClass []PowerClass `query:"powerClass" maxItems:"5" doc:"Keeps the sites of one of these power classes."`
@@ -683,7 +683,7 @@ func (h handlers) searchStations(ctx context.Context, input *searchStationsInput
 // 3. One station and its history.
 
 type getStationInput struct {
-	ID string `path:"id" maxLength:"200" pattern:"^-?[0-9]+(\\.[0-9]+)?_-?[0-9]+(\\.[0-9]+)?_.+$" doc:"The station's identifier, as east_north_label, such as 2683000_1247000_Sunrise ZH601-1, percent-encoded in the path."`
+	ID string `path:"id" maxLength:"200" example:"2683328_1247916_Sunrise ZE416-1" pattern:"^-?[0-9]+(\\.[0-9]+)?_-?[0-9]+(\\.[0-9]+)?_.+$" doc:"The station's identifier, as east_north_label, such as 2683000_1247000_Sunrise ZH601-1, percent-encoded in the path."`
 	Paging
 }
 
