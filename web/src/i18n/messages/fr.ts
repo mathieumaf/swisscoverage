@@ -128,7 +128,7 @@ export const fr: Messages = {
   "about.privacy2":
     "Pour dessiner la carte, votre navigateur demande à OpenFreeMap le fond de la zone que vous regardez.",
   "about.privacy3":
-    "Ce que vous tapez dans le champ de recherche de la carte est envoyé à swisstopo dès le troisième caractère, pour trouver adresses, NPA et communes.",
+    "Ce que vous tapez dans le champ de recherche de la carte est envoyé à swisstopo dès le troisième caractère, pour trouver des adresses, des NPA et des communes.",
   "about.codeTitle": "Code source",
   "about.code":
     "Le code est publié sous licence AGPL-3.0. Les erreurs et les suggestions sont les bienvenues sous forme d’issues sur GitHub.",

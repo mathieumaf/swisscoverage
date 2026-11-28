@@ -25,7 +25,9 @@ const {
 } = Astro.props;
 const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
 const pageTitle = title ? `${title} · swisscoverage` : "swisscoverage";
-const path = Astro.url.pathname;
+// The path as the browser sent it: Astro.url is decoded, which would change
+// the identifier in a station's address (see stationIdFromPath).
+const path = new URL(Astro.request.url).pathname;
 const alternates = !error && isLocale(path.split("/")[1]) ? locales : [];
 const linkTo = (other: Locale) =>
   error ? `/${other}/` : localizedPath(path, other);

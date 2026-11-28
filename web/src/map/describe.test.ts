@@ -100,11 +100,13 @@ describe("history", () => {
     const close: Period = { ...newer, powerClass: "medium" };
     const entries = history(
       "en",
-      [{ ...close, installationLimitValue: 5.00002 }, older],
+      [{ ...close, installationLimitValue: 5.0002 }, older],
       true,
     );
     expect(entries[0]).toMatchObject({
-      changes: [{ label: "sheet.limitValue" }],
+      changes: [
+        { label: "sheet.limitValue", before: "5.0 V/m", after: "5.0002 V/m" },
+      ],
     });
   });
 
@@ -137,6 +139,8 @@ describe("station addresses", () => {
       stationIdFromPath("/it/stations/1_2_%E0%A4%A", "it"),
     ).toBeUndefined();
     expect(stationIdFromPath("/fr/stations/1_2_A", "it")).toBeUndefined();
+    expect(stationIdFromPath("/it/stations/1_2_A/", "it")).toBe("1_2_A");
+    expect(stationIdFromPath("/it/stations/1_2_A%2F", "it")).toBe("1_2_A/");
   });
 
   test("open the map at the station with its sheet", () => {
