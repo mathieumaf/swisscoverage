@@ -43,7 +43,8 @@ into a map, a public API and an MCP server.
   by `SWISSCOVERAGE_API_URL`, `http://127.0.0.1:8080` by default. It holds no
   credentials and has no access to the database. Locally it listens on
   `127.0.0.1:4321`. Today it serves the map, on the home page of each
-  language. The map runs in the visitor's browser: it reads the stations
+  language, a page per station and a page about the site. The map runs in
+  the visitor's browser: it reads the stations
   from the same API origin, the base map from OpenFreeMap
   (`tiles.openfreemap.org`), and the places a visitor searches for from
   swisstopo's location search (`api3.geo.admin.ch`).
@@ -70,8 +71,8 @@ list is an assumption until the code exists, and is marked _unverified_ below.
 - The rest of the backend: `mcp`, the MCP server, as another command of the
   same program. `serve`, `ingest` and `migrate` exist, and are not deployed
   anywhere yet.
-- The MCP server, and the website's station pages. Both are clients of the
-  public API over HTTP and have no access to the database.
+- The MCP server. Like the website, it is a client of the public API over
+  HTTP and has no access to the database.
 - Container images published to the GitHub container registry, deployed to a
   Kubernetes cluster with a Helm chart.
 - Cloudflare in front of every public hostname, for DNS and as a CDN.

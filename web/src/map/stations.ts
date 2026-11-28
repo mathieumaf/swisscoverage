@@ -92,6 +92,24 @@ export function stationPath(locale: Locale, id: string): string {
   return `/${locale}/stations/${encodeURIComponent(id)}`;
 }
 
+// The identifier in the path of a station's page, as `stationPath` wrote it:
+// decoded once, from the path as the browser sent it. Astro's own parameter
+// is decoded otherwise, and would turn `%2F` or `%41` into another station.
+export function stationIdFromPath(
+  pathname: string,
+  locale: Locale,
+): string | undefined {
+  const prefix = `/${locale}/stations/`;
+  if (!pathname.startsWith(prefix)) {
+    return undefined;
+  }
+  try {
+    return decodeURIComponent(pathname.slice(prefix.length));
+  } catch {
+    return undefined;
+  }
+}
+
 // The address of the map with a station's sheet open, at its position.
 export function stationOnMapPath(
   locale: Locale,

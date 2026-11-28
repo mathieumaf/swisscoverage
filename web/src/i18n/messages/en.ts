@@ -28,7 +28,7 @@ export const en = {
   "sheet.limitValue": "Installation limit value",
   "sheet.permit": "Permit",
   "sheet.position": "Position",
-  "sheet.firstSeen": "First published",
+  "sheet.firstSeen": "First seen in the archive",
   "sheet.notPublished": "No longer published",
   "sheet.unknown": "Not stated",
   "choice.title": "{count} stations at this place",
@@ -76,13 +76,12 @@ export const en = {
   "nav.map": "Map",
   "nav.about": "About",
   "sheet.page": "Open this station's page, with its history",
-  "choice.back": "{count} stations at this place",
   "station.description":
     "{name}, {operator}: {kind}, {technologies}. A mobile network site published by OFCOM, with its history.",
   "station.onMap": "Show on the map",
-  "station.published": "As published today",
+  "station.published": "In the latest published data",
   "station.lastPublished": "As last published",
-  "station.notPublishedSince": "No longer published since {date}.",
+  "station.notPublishedSince": "Not published since {date}.",
   "station.history": "History",
   "station.historyIntro":
     "What OFCOM published of this site, the latest first. Each period shows what changed from the one before it.",
@@ -104,7 +103,7 @@ export const en = {
   "about.data1":
     "One point per site, at the position of its first mast. Other masts on the same or a nearby roof are not published.",
   "about.data2":
-    "The power is a class, the highest power radiated in a 90° sector, not a measured value.",
+    "The power is a class: the highest combined power radiated in a 90° sector, not a measured value.",
   "about.data3":
     "Sites below 1 W are not published, and technologies are given per site, not per antenna.",
   "about.data4":
@@ -123,7 +122,7 @@ export const en = {
   "about.privacy2":
     "To draw the map, your browser asks OpenFreeMap for the background of the area you look at.",
   "about.privacy3":
-    "When you search for a place, your browser sends what you type to swisstopo, from the third character.",
+    "What you type in the map's search field is sent to swisstopo from the third character, to find addresses, postcodes and municipalities.",
   "about.codeTitle": "Source code",
   "about.code":
     "The code is published under the AGPL-3.0 licence. Errors and suggestions are welcome as issues on GitHub.",

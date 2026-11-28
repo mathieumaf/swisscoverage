@@ -4,8 +4,9 @@ import { translate } from "../i18n/translate";
 import Base from "../layouts/Base.astro";
 
 // In the language of the address when it names one, otherwise in the one the
-// browser asks for.
-const first = Astro.url.pathname.split("/")[1];
+// browser asks for. A page that found nothing rewrites to this one: the
+// address it was asked for is the origin path.
+const first = Astro.originPathname.split("/")[1];
 const locale = isLocale(first)
   ? first
   : negotiateLocale(Astro.request.headers.get("Accept-Language"));

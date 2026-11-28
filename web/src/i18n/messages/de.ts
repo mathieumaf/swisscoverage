@@ -28,7 +28,7 @@ export const de: Messages = {
   "sheet.limitValue": "Anlagegrenzwert",
   "sheet.permit": "Bewilligung",
   "sheet.position": "Position",
-  "sheet.firstSeen": "Erstmals veröffentlicht",
+  "sheet.firstSeen": "Erstmals im Archiv",
   "sheet.notPublished": "Nicht mehr veröffentlicht",
   "sheet.unknown": "Nicht angegeben",
   "choice.title": "{count} Anlagen an diesem Ort",
@@ -74,13 +74,12 @@ export const de: Messages = {
   "place.gg25": "Gemeinde",
   "nav.pages": "Seiten",
   "nav.map": "Karte",
-  "nav.about": "Über",
-  "sheet.page": "Seite dieser Anlage öffnen, mit ihrem Verlauf",
-  "choice.back": "{count} Anlagen an diesem Ort",
+  "nav.about": "Über das Projekt",
+  "sheet.page": "Seite dieser Anlage mit Verlauf öffnen",
   "station.description":
     "{name}, {operator}: {kind}, {technologies}. Ein vom BAKOM veröffentlichter Mobilfunkstandort, mit seinem Verlauf.",
   "station.onMap": "Auf der Karte zeigen",
-  "station.published": "Wie heute veröffentlicht",
+  "station.published": "In den neuesten veröffentlichten Daten",
   "station.lastPublished": "Wie zuletzt veröffentlicht",
   "station.notPublishedSince": "Seit dem {date} nicht mehr veröffentlicht.",
   "station.history": "Verlauf",
@@ -105,7 +104,7 @@ export const de: Messages = {
   "about.data1":
     "Ein Punkt pro Standort, an der Position seines ersten Masts. Weitere Masten auf demselben oder einem benachbarten Dach werden nicht veröffentlicht.",
   "about.data2":
-    "Die Leistung ist eine Klasse, die höchste in einem 90°-Sektor abgestrahlte Leistung, und kein Messwert.",
+    "Die Leistung ist eine Klasse: die höchste kumulierte Leistung, die in einem 90°-Sektor abgestrahlt wird, und kein Messwert.",
   "about.data3":
     "Standorte unter 1 W werden nicht veröffentlicht, und die Technologien werden pro Standort angegeben, nicht pro Antenne.",
   "about.data4":
@@ -125,7 +124,7 @@ export const de: Messages = {
   "about.privacy2":
     "Um die Karte zu zeichnen, fragt Ihr Browser OpenFreeMap nach dem Hintergrund des Gebiets, das Sie ansehen.",
   "about.privacy3":
-    "Wenn Sie einen Ort suchen, sendet Ihr Browser Ihre Eingabe ab dem dritten Zeichen an swisstopo.",
+    "Was Sie in das Suchfeld der Karte eingeben, wird ab dem dritten Zeichen an swisstopo gesendet, um Adressen, Postleitzahlen und Gemeinden zu finden.",
   "about.codeTitle": "Quellcode",
   "about.code":
     "Der Code ist unter der Lizenz AGPL-3.0 veröffentlicht. Fehler und Vorschläge sind als Issues auf GitHub willkommen.",

@@ -30,7 +30,7 @@ export const fr: Messages = {
   "sheet.limitValue": "Valeur limite de l’installation",
   "sheet.permit": "Autorisation",
   "sheet.position": "Position",
-  "sheet.firstSeen": "Première publication",
+  "sheet.firstSeen": "Première apparition dans l’archive",
   "sheet.notPublished": "N’est plus publié",
   "sheet.unknown": "Non indiqué",
   "choice.title": "{count} stations à cet endroit",
@@ -80,16 +80,15 @@ export const fr: Messages = {
   "nav.map": "Carte",
   "nav.about": "À propos",
   "sheet.page": "Ouvrir la page de cette station, avec son historique",
-  "choice.back": "{count} stations à cet endroit",
   "station.description":
     "{name}, {operator} : {kind}, {technologies}. Un site de téléphonie mobile publié par l’OFCOM, avec son historique.",
   "station.onMap": "Voir sur la carte",
-  "station.published": "Tel que publié aujourd’hui",
-  "station.lastPublished": "Tel que publié en dernier",
-  "station.notPublishedSince": "N’est plus publiée depuis le {date}.",
+  "station.published": "Dans les dernières données publiées",
+  "station.lastPublished": "Tel que publié pour la dernière fois",
+  "station.notPublishedSince": "N’est plus publié depuis le {date}.",
   "station.history": "Historique",
   "station.historyIntro":
-    "Ce que l’OFCOM a publié de ce site, du plus récent au plus ancien. Chaque période montre ce qui a changé depuis la précédente.",
+    "Données publiées par l’OFCOM pour ce site, de la période la plus récente à la plus ancienne. Chaque période montre ce qui a changé depuis la précédente.",
   "station.unavailableTitle": "Station indisponible",
   "station.unavailable":
     "Cette station ne peut pas être chargée pour l’instant.",
@@ -97,8 +96,8 @@ export const fr: Messages = {
   "history.range": "Du {from} au {to}",
   "history.first": "Première publication dans l’archive.",
   "history.earlier": "Les périodes plus anciennes ne sont pas affichées.",
-  "history.unchanged": "Publiée à nouveau, sans changement.",
-  "history.gap": "Pas publiée.",
+  "history.unchanged": "Publié à nouveau, sans changement.",
+  "history.gap": "Non publié.",
   "history.truncated":
     "Les {shown} périodes les plus récentes sur {total} sont affichées.",
   "about.title": "À propos de swisscoverage",
@@ -110,7 +109,7 @@ export const fr: Messages = {
   "about.data1":
     "Un point par site, à la position de son premier mât. Les autres mâts sur le même toit ou un toit voisin ne sont pas publiés.",
   "about.data2":
-    "La puissance est une classe, la puissance la plus élevée rayonnée dans un secteur de 90°, et non une valeur mesurée.",
+    "La puissance est une classe : la puissance cumulée la plus élevée rayonnée dans un secteur de 90°, et non une valeur mesurée.",
   "about.data3":
     "Les sites de moins de 1 W ne sont pas publiés, et les technologies sont données par site, pas par antenne.",
   "about.data4":
@@ -129,7 +128,7 @@ export const fr: Messages = {
   "about.privacy2":
     "Pour dessiner la carte, votre navigateur demande à OpenFreeMap le fond de la zone que vous regardez.",
   "about.privacy3":
-    "Quand vous cherchez un lieu, votre navigateur envoie ce que vous tapez à swisstopo, dès le troisième caractère.",
+    "Ce que vous tapez dans le champ de recherche de la carte est envoyé à swisstopo dès le troisième caractère, pour trouver adresses, NPA et communes.",
   "about.codeTitle": "Code source",
   "about.code":
     "Le code est publié sous licence AGPL-3.0. Les erreurs et les suggestions sont les bienvenues sous forme d’issues sur GitHub.",

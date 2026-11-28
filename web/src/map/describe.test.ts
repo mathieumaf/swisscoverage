@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { describePeriod, history } from "./describe";
-import { type Period, stationOnMapPath, stationPath } from "./stations";
+import {
+  type Period,
+  stationIdFromPath,
+  stationOnMapPath,
+  stationPath,
+} from "./stations";
 
 // Periods shaped like those of GET /v1/stations/{id}, the latest first.
 const older: Period = {
@@ -91,6 +96,18 @@ describe("history", () => {
     expect(entries[0]).toMatchObject({ changes: [], first: false });
   });
 
+  test("shows a change that rounds to the same words", () => {
+    const close: Period = { ...newer, powerClass: "medium" };
+    const entries = history(
+      "en",
+      [{ ...close, installationLimitValue: 5.00002 }, older],
+      true,
+    );
+    expect(entries[0]).toMatchObject({
+      changes: [{ label: "sheet.limitValue" }],
+    });
+  });
+
   test("does not call the oldest period shown the first when more exist", () => {
     expect(history("en", [newer], false)).toEqual([
       { type: "period", from: newer.from, to: null, changes: [], first: false },
@@ -104,6 +121,22 @@ describe("station addresses", () => {
       "/de/stations/2636501_1240299_Swisscom%20OFTR",
     );
     expect(stationPath("en", "1_2_A/B?#")).toBe("/en/stations/1_2_A%2FB%3F%23");
+  });
+
+  test("read back the identifier they hold, reserved characters included", () => {
+    for (const id of [
+      "2636501_1240299_Swisscom OFTR",
+      "1_2_A/B?#",
+      "1_2_A%41",
+      "1_2_A.html",
+      "1_2_A+B,C&D:E",
+    ]) {
+      expect(stationIdFromPath(stationPath("it", id), "it")).toBe(id);
+    }
+    expect(
+      stationIdFromPath("/it/stations/1_2_%E0%A4%A", "it"),
+    ).toBeUndefined();
+    expect(stationIdFromPath("/fr/stations/1_2_A", "it")).toBeUndefined();
   });
 
   test("open the map at the station with its sheet", () => {

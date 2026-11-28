@@ -9,6 +9,7 @@ import {
   isStationId,
   operatorColors,
   type StationHistory,
+  stationIdFromPath,
   stationOnMapPath,
 } from "../../../map/stations";
 
@@ -16,11 +17,16 @@ import {
 // changed since the archive began, rendered by the server from
 // GET /v1/stations/{id}.
 
-const { lang, id } = Astro.params;
-if (!isLocale(lang) || id === undefined || !isStationId(id)) {
+const { lang } = Astro.params;
+if (!isLocale(lang)) {
   return Astro.rewrite("/404");
 }
 const locale = lang;
+// From the request as the browser sent it: Astro.url is already decoded once.
+const id = stationIdFromPath(new URL(Astro.request.url).pathname, locale);
+if (id === undefined || !isStationId(id)) {
+  return Astro.rewrite("/404");
+}
 const t = (key: MessageKey, values?: Record<string, string>) =>
   translate(locale, key, values);
 const date = (value: string) => formatDate(locale, new Date(value));
@@ -85,7 +91,6 @@ const entries =
       <h1 class="text-[2em] leading-[1.2] font-bold wrap-anywhere">
         {station.name}
       </h1>
-      <p class="mt-1 text-muted">LV95 {station.lv95.east}, {station.lv95.north}</p>
       <p class="mt-4">
         <a href={stationOnMapPath(locale, station.id, station.position)}
           >{t("station.onMap")}</a

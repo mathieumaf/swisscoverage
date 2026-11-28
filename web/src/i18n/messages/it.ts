@@ -28,7 +28,7 @@ export const it: Messages = {
   "sheet.limitValue": "Valore limite dell’impianto",
   "sheet.permit": "Autorizzazione",
   "sheet.position": "Posizione",
-  "sheet.firstSeen": "Prima pubblicazione",
+  "sheet.firstSeen": "Prima apparizione nell’archivio",
   "sheet.notPublished": "Non più pubblicato",
   "sheet.unknown": "Non indicato",
   "choice.title": "{count} impianti in questo luogo",
@@ -76,16 +76,15 @@ export const it: Messages = {
   "nav.map": "Mappa",
   "nav.about": "Informazioni",
   "sheet.page": "Apri la pagina di questo impianto, con la sua cronologia",
-  "choice.back": "{count} impianti in questo luogo",
   "station.description":
     "{name}, {operator}: {kind}, {technologies}. Un impianto di telefonia mobile pubblicato dall’UFCOM, con la sua cronologia.",
   "station.onMap": "Mostra sulla mappa",
-  "station.published": "Come pubblicato oggi",
+  "station.published": "Negli ultimi dati pubblicati",
   "station.lastPublished": "Come pubblicato l’ultima volta",
   "station.notPublishedSince": "Non più pubblicato dal {date}.",
   "station.history": "Cronologia",
   "station.historyIntro":
-    "Ciò che l’UFCOM ha pubblicato di questo impianto, dal più recente. Ogni periodo mostra cosa è cambiato rispetto al precedente.",
+    "Dati pubblicati dall’UFCOM per questo impianto, dal periodo più recente al più vecchio. Ogni periodo mostra cosa è cambiato rispetto al precedente.",
   "station.unavailableTitle": "Impianto non disponibile",
   "station.unavailable": "Al momento questo impianto non può essere caricato.",
   "history.since": "Dal {date}",
@@ -105,7 +104,7 @@ export const it: Messages = {
   "about.data1":
     "Un punto per impianto, nella posizione del suo primo palo. Gli altri pali sullo stesso tetto o su un tetto vicino non sono pubblicati.",
   "about.data2":
-    "La potenza è una classe, la potenza più alta irradiata in un settore di 90°, non un valore misurato.",
+    "La potenza è una classe: la potenza cumulata più alta irradiata in un settore di 90°, non un valore misurato.",
   "about.data3":
     "Gli impianti sotto 1 W non sono pubblicati, e le tecnologie sono indicate per impianto, non per antenna.",
   "about.data4":
@@ -124,7 +123,7 @@ export const it: Messages = {
   "about.privacy2":
     "Per disegnare la mappa, il vostro browser chiede a OpenFreeMap lo sfondo della zona che state guardando.",
   "about.privacy3":
-    "Quando cercate un luogo, il vostro browser invia a swisstopo ciò che digitate, dal terzo carattere.",
+    "Ciò che digitate nel campo di ricerca della mappa viene inviato a swisstopo dal terzo carattere, per trovare indirizzi, NPA e comuni.",
   "about.codeTitle": "Codice sorgente",
   "about.code":
     "Il codice è pubblicato con la licenza AGPL-3.0. Errori e suggerimenti sono benvenuti come issue su GitHub.",

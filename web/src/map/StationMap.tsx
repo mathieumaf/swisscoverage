@@ -658,7 +658,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
           back={
             choice.length > 1
               ? {
-                  label: translate(locale, "choice.back", {
+                  label: translate(locale, "choice.title", {
                     count: formatNumber(locale, choice.length),
                   }),
                   onBack: () => {

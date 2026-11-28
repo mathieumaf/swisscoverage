@@ -42,6 +42,7 @@ export function describePeriod(locale: Locale, period: Period): PeriodText {
         ? t("sheet.unknown")
         : `${formatNumber(locale, period.installationLimitValue, {
             minimumFractionDigits: 1,
+            maximumFractionDigits: 4,
           })} V/m`,
     permit: permitText(locale, period),
   };
@@ -107,11 +108,30 @@ export function history(
   return entries;
 }
 
+// What each field holds, as the API gives it, so that a change shows even
+// when its words round to the same.
+function value(period: Period, key: keyof PeriodText): string {
+  switch (key) {
+    case "kind":
+      return period.kind;
+    case "powerClass":
+      return period.powerClass;
+    case "technologies":
+      return period.technologies.join(",");
+    case "adaptive":
+      return String(period.adaptive);
+    case "limitValue":
+      return String(period.installationLimitValue);
+    case "permit":
+      return JSON.stringify(period.permit);
+  }
+}
+
 function changes(locale: Locale, older: Period, newer: Period): Change[] {
   const before = describePeriod(locale, older);
   const after = describePeriod(locale, newer);
   return periodFields
-    .filter(({ key }) => before[key] !== after[key])
+    .filter(({ key }) => value(older, key) !== value(newer, key))
     .map(({ key, label }) => ({
       label,
       before: before[key],

@@ -83,7 +83,7 @@ const linkTo = (other: Locale) =>
               <a
                 class="inline-block min-w-11 rounded-md p-2 text-center text-[0.875rem] font-semibold text-muted no-underline aria-[current=page]:bg-border aria-[current=page]:text-foreground"
                 href={linkTo(other)}
-                data-keep-view={!error || undefined}
+                data-keep-view={fullscreen || undefined}
                 hreflang={other}
                 lang={other}
                 aria-current={!error && other === locale ? "page" : undefined}
@@ -114,17 +114,5 @@ const linkTo = (other: Locale) =>
         </p>
       </footer>
     )}
-    <script>
-      // Another language keeps what the address holds beyond its path: the
-      // map's filters, its open station and its position, which the map
-      // writes there as the visitor moves it.
-      for (const link of document.querySelectorAll<HTMLAnchorElement>(
-        "a[data-keep-view]",
-      )) {
-        link.addEventListener("click", () => {
-          link.href = link.pathname + window.location.search + window.location.hash;
-        });
-      }
-    </script>
   </body>
 </html>
