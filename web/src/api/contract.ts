@@ -43,14 +43,12 @@ interface OperationObject {
   operationId: string;
   summary?: string;
   description?: string;
-  tags?: string[];
   parameters?: ParameterObject[];
   responses: Record<string, ResponseObject>;
 }
 
 export interface OpenApiDocument {
   info: {
-    title: string;
     version: string;
     description?: string;
     license?: { name: string; identifier?: string };
@@ -77,7 +75,7 @@ export type Limit =
 
 export interface Parameter {
   name: string;
-  in: string;
+  in: "path" | "query";
   required: boolean;
   description: string;
   type: TypeName;
@@ -100,7 +98,6 @@ export interface Endpoint {
   path: string;
   summary: string;
   description: string;
-  tag: string;
   parameters: Parameter[];
   responses: Response[];
 }
@@ -111,6 +108,8 @@ export interface Field {
   description: string;
   type: TypeName;
   values: string[];
+  default?: string;
+  limits: Limit[];
 }
 
 export interface Schema {
@@ -130,7 +129,6 @@ export interface Caching {
 }
 
 export interface Reference {
-  title: string;
   version: string;
   description: string;
   license?: string;
@@ -248,6 +246,11 @@ function parameterOf(
   schemas: Record<string, SchemaObject>,
 ): Parameter {
   const schema = parameter.schema;
+  // The page says where each parameter goes: in the path or in the query.
+  // The header of caching is described apart.
+  if (parameter.in !== "path" && parameter.in !== "query") {
+    throw new Error(`${parameter.name} is in ${parameter.in}`);
+  }
   return {
     name: parameter.name,
     in: parameter.in,
@@ -298,6 +301,8 @@ function schemaOf(
       description: describe(value, value.description),
       type: typeName(value, schemas),
       values: values(value),
+      ...(value.default === undefined ? {} : { default: text(value.default) }),
+      limits: limits(value),
     }),
   );
   return {
@@ -355,7 +360,6 @@ export function readContract(document: OpenApiDocument): Reference {
         path,
         summary: operation.summary ?? "",
         description: operation.description ?? "",
-        tag: operation.tags?.[0] ?? "",
         // The header of caching is the same for every operation: the page
         // describes it once.
         parameters: parameters
@@ -371,7 +375,6 @@ export function readContract(document: OpenApiDocument): Reference {
     .sort((a, b) => a.name.localeCompare(b.name));
   const license = document.info.license;
   return {
-    title: document.info.title,
     version: document.info.version,
     description: document.info.description ?? "",
     ...(license === undefined ? {} : { license: license.name }),
@@ -390,15 +393,17 @@ export function exampleUrl(origin: string, endpoint: Endpoint): string {
   let path = endpoint.path;
   const query: string[] = [];
   for (const parameter of endpoint.parameters) {
-    const value = parameter.example ?? parameter.default;
     if (parameter.in === "path") {
-      if (value === undefined) {
+      if (parameter.example === undefined) {
         throw new Error(
           `${endpoint.path} has no example for ${parameter.name}`,
         );
       }
-      path = path.replace(`{${parameter.name}}`, encodeURIComponent(value));
-    } else if (parameter.in === "query" && parameter.example !== undefined) {
+      path = path.replace(
+        `{${parameter.name}}`,
+        encodeURIComponent(parameter.example),
+      );
+    } else if (parameter.example !== undefined) {
       query.push(
         `${encodeURIComponent(parameter.name)}=${encodeURIComponent(parameter.example)}`,
       );

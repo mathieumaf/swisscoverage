@@ -75,9 +75,14 @@ describe("the page about the API", () => {
   test("describes every endpoint and every type of the contract", async () => {
     const { html } = await page("/en/api");
     for (const endpoint of reference.endpoints) {
-      expect(html).toContain(`id="endpoint-${endpoint.id}"`);
+      // Each endpoint's own article, up to the next one, lists its own
+      // parameters.
+      const article = html.match(
+        new RegExp(`<article id="endpoint-${endpoint.id}"[\\s\\S]*?</article>`),
+      )?.[0];
+      expect(article).toBeDefined();
       for (const parameter of endpoint.parameters) {
-        expect(html).toContain(
+        expect(article).toContain(
           `<code class="font-mono font-bold">${parameter.name}</code>`,
         );
       }

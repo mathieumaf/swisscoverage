@@ -122,7 +122,7 @@ export function FilterChips({ locale, filters, onFilters }: Props) {
   return (
     <div
       ref={root}
-      className="pointer-events-none absolute top-4 right-[15rem] left-[26.25rem] z-[4] max-[64rem]:top-[4.25rem] max-[64rem]:right-[4.5rem] phone:right-0 phone:left-0"
+      className="pointer-events-none absolute top-4 right-[18.5rem] left-[26.25rem] z-[4] max-[64rem]:top-[4.25rem] max-[64rem]:right-[4.5rem] phone:right-0 phone:left-0"
     >
       <ul className="pointer-events-auto flex w-fit max-w-full flex-wrap gap-2 p-1 phone:flex-nowrap phone:overflow-x-auto phone:px-3 [scrollbar-width:none]">
         {groups.map((group) => {

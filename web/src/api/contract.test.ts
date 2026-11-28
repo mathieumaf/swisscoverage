@@ -127,6 +127,20 @@ describe("the reference read from openapi.json", () => {
     );
   });
 
+  test("keeps the limits and the default of a field", () => {
+    const field = (schema: string, name: string) =>
+      reference.schemas
+        .find((item) => item.name === schema)
+        ?.fields.find((item) => item.name === name);
+    expect(field("PointGeometry", "coordinates")?.limits).toEqual([
+      { kind: "items", min: 2, max: 2 },
+    ]);
+    expect(field("Snapshot", "sha256")?.limits).toEqual([
+      { kind: "pattern", value: "^[0-9a-f]{64}$" },
+    ]);
+    expect(field("ErrorModel", "type")?.default).toBe("about:blank");
+  });
+
   test("describes caching once, from the contract", () => {
     expect(reference.caching.headers.map((header) => header.name)).toEqual([
       "Cache-Control",
@@ -238,7 +252,7 @@ describe("types and descriptions", () => {
   test("refuse a reference outside the contract's schemas", () => {
     expect(() =>
       readContract({
-        info: { title: "t", version: "1" },
+        info: { version: "1" },
         paths: {
           "/x": {
             get: {

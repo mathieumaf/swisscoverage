@@ -66,12 +66,6 @@ const number = (id: string) =>
     "0",
   );
 
-const location: Record<string, MessageKey> = {
-  path: "api.inPath",
-  query: "api.inQuery",
-  header: "api.inHeader",
-};
-
 function limit(rule: Limit): string {
   switch (rule.kind) {
     case "minimum":
@@ -237,7 +231,7 @@ const badge =
                         <p class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                           <code class="font-mono font-bold">{parameter.name}</code>
                           <span class="font-mono text-[0.875rem] text-muted">{parameter.type.text}</span>
-                          <span class={badge} lang={locale}>{t(location[parameter.in] ?? "api.inQuery")}</span>
+                          <span class={badge} lang={locale}>{t(parameter.in === "path" ? "api.inPath" : "api.inQuery")}</span>
                           {parameter.required && <span class={badge} lang={locale}>{t("api.required")}</span>}
                         </p>
                         <p class="mt-1 max-w-[44rem] leading-relaxed">
@@ -276,8 +270,10 @@ const badge =
                   <li class="flex flex-wrap items-baseline gap-x-3 border-t border-border py-2 first:border-t-0">
                     <code class="font-mono font-bold">{response.status}</code>
                     <span>{response.description}</span>
-                    {response.type && (
+                    {response.type?.schema ? (
                       <a class="font-mono text-[0.875rem]" href={typeHref(response.type)}>{response.type.text}</a>
+                    ) : (
+                      response.type && <span class="font-mono text-[0.875rem] text-muted">{response.type.text}</span>
                     )}
                     {response.contentType && (
                       <span class="font-mono text-[0.8125rem] text-muted">{response.contentType}</span>
@@ -379,6 +375,14 @@ const badge =
                         <span class="text-muted" lang={locale}>{t("api.values")}</span>
                         {field.values.map((value) => <code class={chip}>{value}</code>)}
                       </p>
+                    )}
+                    {(field.default !== undefined || field.limits.length > 0) && (
+                      <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.875rem] text-muted" lang={locale}>
+                        {field.default !== undefined && (
+                          <li>{t("api.default")} <code class={chip}>{field.default}</code></li>
+                        )}
+                        {field.limits.map((rule) => <li>{limit(rule)}</li>)}
+                      </ul>
                     )}
                   </li>
                 ))}
