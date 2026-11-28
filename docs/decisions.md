@@ -465,16 +465,46 @@ Three facts shaped most choices:
   major version changes how it is configured.
 - **Accepted.** 26 November 2026.
 
+### 27. swisstopo's location search, called from the browser, finds addresses
+
+- **Decision.** The map's search finds addresses, postcodes and
+  municipalities with the location search of the geo.admin.ch API, which each
+  visitor's browser calls itself, from the same field as the search by
+  label. It asks only for the origins `address`, `zipcode` and `gg25`, once
+  three characters are typed and the visitor has paused for 300 ms, and keeps
+  five places. When a station label matches and the service only guessed, the
+  places are not shown. The source, its terms and its attribution are in
+  [data-sources.md](data-sources.md).
+- **Why.** It is the federal register of building addresses, free, without a
+  key, open to calls from any origin, and its terms count a web application's
+  visitors as fair use. Called from the browser, each visitor's requests count
+  against their own address, and the site runs no relay. One field is
+  simpler for visitors than two.
+- **Cost.** What a visitor types goes to the Confederation's servers, along
+  with their IP address, station labels included once they reach three
+  characters. The search depends on a service with no guarantee, and
+  `api3.geo.admin.ch` joins the origins that the Content Security Policy,
+  which comes with the deployment, must allow.
+- **Rejected.** A relay on the site's server: it would hide the visitor's
+  address from swisstopo, but send every visitor's searches from one
+  address, where the terms' 40 requests a minute would likely count them all
+  together, and add a service to run. Nominatim, on OpenStreetMap: the usage
+  policy of its public instance forbids search as you type. Two separate
+  fields: a second place to type, for no gain.
+- **Revisit when.** The service changes its terms or its limits, or the site
+  needs more than 20,000 visitors a day to search: swisstopo asks to be
+  contacted first.
+- **Accepted.** 28 November 2026.
+
 ## Open
 
 Not decided yet. Each has a recommendation and the step of the
 [roadmap](roadmap.md) that settles it.
 
-| Question                                                                            | Recommendation                                                                                                                                                | Settled in |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| Which service turns an address into coordinates, and who calls it?                  | swisstopo's public search service, called from the browser, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first. | Step 4     |
-| The API on `api.swisscoverage.ch` or under `swisscoverage.ch/api`?                  | The subdomain: the API's address then does not depend on the website.                                                                                         | Step 5     |
-| Two small cluster nodes, or one?                                                    | Two, so that a cluster update does not interrupt the site. Prices are not checked yet.                                                                        | Step 5     |
-| What does Cloudflare do: cache pages and API responses, or only CDN and protection? | Start with DNS, CDN for static files and protection. Decide on caching responses with real measurements.                                                      | Step 5     |
-| Cloudflare as a plain proxy, or as a tunnel into the cluster?                       | The plain proxy. A tunnel saves a load balancer and a public address, but makes the site depend on Cloudflare, which would reopen decision 16's guardrail.    | Step 5     |
-| Which source for cantons and municipalities?                                        | swisstopo's open boundaries dataset, loaded into PostGIS, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first.   | Step 8     |
+| Question                                                                            | Recommendation                                                                                                                                              | Settled in |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| The API on `api.swisscoverage.ch` or under `swisscoverage.ch/api`?                  | The subdomain: the API's address then does not depend on the website.                                                                                       | Step 5     |
+| Two small cluster nodes, or one?                                                    | Two, so that a cluster update does not interrupt the site. Prices are not checked yet.                                                                      | Step 5     |
+| What does Cloudflare do: cache pages and API responses, or only CDN and protection? | Start with DNS, CDN for static files and protection. Decide on caching responses with real measurements.                                                    | Step 5     |
+| Cloudflare as a plain proxy, or as a tunnel into the cluster?                       | The plain proxy. A tunnel saves a load balancer and a public address, but makes the site depend on Cloudflare, which would reopen decision 16's guardrail.  | Step 5     |
+| Which source for cantons and municipalities?                                        | swisstopo's open boundaries dataset, loaded into PostGIS, if its terms allow it. It is a new source: it goes into [data-sources.md](data-sources.md) first. | Step 8     |

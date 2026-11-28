@@ -155,8 +155,8 @@ The parser moved to Go, and the repository got its Go toolchain.
      visitor's position on request, a layout for phones.
   3. Filters and the search by label (done); the address keeps the filters,
      the open station and the map's position, so a view can be shared.
-  4. The search by address, once its service is in
-     [data-sources.md](data-sources.md).
+  4. The search by address (done), from the same field: swisstopo's
+     location search, entered in [data-sources.md](data-sources.md).
   5. The pages: a page per station, the other pages, every text in four
      languages.
 - **Decides.**
@@ -164,9 +164,8 @@ The parser moved to Go, and the repository got its Go toolchain.
     server ([decision 24](decisions.md)).
   - The base map: OpenFreeMap's Liberty style
     ([decision 25](decisions.md)).
-  - Search by address: which service turns an address into coordinates. It
-    must be added to [data-sources.md](data-sources.md) before any code calls
-    it. Until then the search covers station labels only.
+  - Search by address: swisstopo's location search, called from the
+    browser ([decision 27](decisions.md)).
 - **Done when.** The site runs locally against the local API, shows every
   station of the day, filters them, and is usable on a phone-sized screen.
 

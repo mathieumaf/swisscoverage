@@ -24,6 +24,7 @@ import {
   writeFilters,
 } from "./filters";
 import "./map.css";
+import { type Place, placeAttribution } from "./places";
 import { StationChoice } from "./StationChoice";
 import { StationSheet } from "./StationSheet";
 import {
@@ -70,6 +71,14 @@ const clusterMaxZoom = 8;
 // The zoom at which the map shows a station found by its label or named in
 // the address.
 const stationZoom = 15;
+
+// The zoom at which the map shows an address found by the search, and the
+// largest at which it fits a postcode or a municipality.
+const addressZoom = 17;
+const areaMaxZoom = 15;
+
+// The room the filter panel takes at the right of a large screen.
+const panelWidth = 380;
 
 // Rewrites the parameters of the page's address without reloading it, and
 // keeps the map's position, which MapLibre writes after `#map=`. Commas stay
@@ -213,10 +222,15 @@ export default function StationMap({ locale, apiUrl }: Props) {
       }
 
       instance.touchZoomRotate.disableRotation();
-      // Compact, behind a button, only on a small map.
+      // Compact, behind a button, only on a small map. swisstopo's credit,
+      // for the search by address, is there from the start: an attribution
+      // that changes unfolds over the controls of a small map.
       instance.addControl(
         new AttributionControl({
-          customAttribution: translate(locale, "footer.source"),
+          customAttribution: [
+            translate(locale, "footer.source"),
+            placeAttribution,
+          ],
         }),
       );
       instance.addControl(
@@ -468,6 +482,21 @@ export default function StationMap({ locale, apiUrl }: Props) {
     }
   }, [selected]);
 
+  // On a small map MapLibre shows its attribution unfolded until the map is
+  // dragged, over the bottom of the panel or of a sheet: opening either, or
+  // one in place of the other, folds it, as a drag would. Its button unfolds
+  // it again.
+  useEffect(() => {
+    if (
+      (panelOpen || selected.length > 0) &&
+      window.matchMedia("(max-width: 640px)").matches
+    ) {
+      container.current
+        ?.querySelector(".maplibregl-compact-show")
+        ?.classList.remove("maplibregl-compact-show");
+    }
+  }, [panelOpen, selected]);
+
   // Open the station the address names, once the stations are loaded, and
   // show it unless the address also gives the map's position.
   const opened = useRef(false);
@@ -500,6 +529,79 @@ export default function StationMap({ locale, apiUrl }: Props) {
     setSelected([station]);
   }, []);
 
+  // A place found by the search: show it, and mark an address with a point.
+  const showPlace = useCallback((place: Place) => {
+    const instance = map.current;
+    if (!instance) {
+      return;
+    }
+    const data = {
+      type: "FeatureCollection" as const,
+      features:
+        place.origin === "address"
+          ? [
+              {
+                type: "Feature" as const,
+                geometry: { type: "Point" as const, coordinates: place.center },
+                properties: {},
+              },
+            ]
+          : [],
+    };
+    const source = instance.getSource<GeoJSONSource>("place");
+    if (source) {
+      source.setData(data);
+    } else {
+      instance.addSource("place", { type: "geojson", data });
+      // A halo around a dot, unlike the stations' coloured points.
+      instance.addLayer({
+        id: "place-halo",
+        type: "circle",
+        source: "place",
+        paint: {
+          "circle-color": "rgba(15, 23, 42, 0.18)",
+          "circle-radius": 18,
+          "circle-stroke-color": "#0f172a",
+          "circle-stroke-width": 1,
+        },
+      });
+      instance.addLayer({
+        id: "place",
+        type: "circle",
+        source: "place",
+        paint: {
+          "circle-color": "#0f172a",
+          "circle-radius": 5,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+        },
+      });
+    }
+    // On a phone the panel folds; on a large screen it stays open at the
+    // right, and the place is framed beside it.
+    const phone = window.matchMedia("(max-width: 640px)").matches;
+    if (phone) {
+      setPanelOpen(false);
+    }
+    const padding = phone
+      ? 48
+      : { top: 48, bottom: 48, left: 48, right: panelWidth + 48 };
+    // The padding frames this view only: given to `flyTo`, it would stay
+    // for every later move.
+    const zoom = place.origin === "address" ? addressZoom : areaMaxZoom;
+    const camera = instance.cameraForBounds(
+      place.bounds ?? [place.center, place.center],
+      { padding, maxZoom: zoom },
+    );
+    instance.flyTo(camera ?? { center: place.center, zoom });
+  }, []);
+
+  const clearPlace = useCallback(() => {
+    map.current
+      ?.getSource<GeoJSONSource>("place")
+      ?.setData({ type: "FeatureCollection", features: [] });
+  }, []);
+
   const close = useCallback(() => setSelected([]), []);
 
   return (
@@ -513,7 +615,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
       />
       {status !== "ready" && (
         <p
-          className={`absolute bottom-10 left-1/2 max-w-[calc(100%-1.5rem)] phone:bottom-24 -translate-x-1/2 rounded-full bg-background px-4 py-2 text-center text-[0.875rem] shadow-[0_2px_8px_rgb(0_0_0/0.2)] ${status === "loading" ? "text-foreground" : "text-danger"}`}
+          className={`absolute bottom-10 left-1/2 max-w-[calc(100%-1.5rem)] phone:bottom-40 -translate-x-1/2 rounded-full bg-background px-4 py-2 text-center text-[0.875rem] shadow-[0_2px_8px_rgb(0_0_0/0.2)] ${status === "loading" ? "text-foreground" : "text-danger"}`}
           role="status"
         >
           {
@@ -533,6 +635,8 @@ export default function StationMap({ locale, apiUrl }: Props) {
           stations={stations}
           shown={shown.length}
           onFind={find}
+          onPlace={showPlace}
+          onClearPlace={clearPlace}
           open={panelOpen}
           onOpen={setPanelOpen}
         />

@@ -130,6 +130,53 @@ What to know:
   3,000 tiles. The project downloads none: only visitors' browsers load them,
   as they move the map.
 
+## Search by address (swisstopo)
+
+What turns an address, a postcode or a municipality into a place on the map.
+The site moves the map there and reads nothing else from it.
+
+|           |                                                                                                                                                                                                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Publisher | Federal Office of Topography (swisstopo), for the Federal Spatial Data Infrastructure (FSDI)                                                                                                                                                                                                |
+| Service   | Location search of the geo.admin.ch API, `https://api3.geo.admin.ch/rest/services/ech/SearchServer` with `type=locations` ([documentation](https://docs.geo.admin.ch/access-data/search.html))                                                                                              |
+| Data      | Three origins only: `address`, the official directory of building addresses; `zipcode`, the official directory of towns and cities; `gg25`, the municipalities of swissBOUNDARIES3D                                                                                                         |
+| Access    | Public, free of charge, no key, no registration                                                                                                                                                                                                                                             |
+| Terms     | [FSDI general terms of use and operating conditions](https://www.geo.admin.ch/en/general-terms-of-use-fsdi), in force since 1 January 2025, and [swisstopo's terms for free geodata](https://www.swisstopo.admin.ch/en/terms-of-use-free-geodata-and-geoservices), read on 28 November 2026 |
+| Licence   | swisstopo's free geodata (OGD): use, redistribution and commercial use allowed; the source must be given                                                                                                                                                                                    |
+| Used by   | `web/src/map/places.ts`: the visitor's browser sends what they type in the search to `api3.geo.admin.ch`                                                                                                                                                                                    |
+
+Attribution to show: "© swisstopo", wherever the results of the search are
+shown. The site shows it under the places found, and in the map's
+attribution.
+
+What to know:
+
+- **Fair use.** The REST services allow 40 requests a minute and 21 million a
+  year; the terms do not say whether per address or per application. They
+  count "the integration of geoservices in web applications
+  with an average of 20,000 users per day" as fair use, ask to avoid bots
+  with high query rates, and may restrict or refuse access in case of
+  excessive use. The site asks only once the visitor has typed three
+  characters and paused, and asks again only when the text changes.
+- **The other origins are left out.** `gazetteer` mixes swissNAMES3D with the
+  public transport stops of the Federal Office of Transport, whose terms are
+  not read here; `parcel`, `district` and `kantone` are not useful to find a
+  place on this map.
+- **Visitors' searches go to a third party.** The browser of each visitor
+  sends the text they type to the Confederation's servers. The
+  [Federal Administration's privacy policy](https://www.admin.ch/gov/en/start/terms-and-conditions.html)
+  says that its web pages and web services log the IP address, the date, the
+  time and the request, kept as long as their purpose requires; the FSDI
+  terms say nothing more about the API. Nothing is sent before the visitor
+  types.
+- **No guarantee.** The service is provided on a best-effort basis, and
+  changes that are not backwards compatible are announced one month in
+  advance on the
+  [geoadmin-api mailing list](https://groups.google.com/group/geoadmin-api).
+  When it fails, the search still finds stations by their label.
+- **Labels are HTML.** Each result's `label` carries tags such as `<b>`. The
+  site reads it as text, never as HTML.
+
 ## Other OFCOM datasets
 
 Published on the same portal and not used yet:
