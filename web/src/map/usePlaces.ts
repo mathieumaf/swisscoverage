@@ -25,6 +25,9 @@ export function usePlaces(query: string): PlaceSearch {
   });
 
   useEffect(() => {
+    // Coming back to an earlier query asks again rather than show its old
+    // answer.
+    setAnswer({ text: "", search: { status: "idle" } });
     if (!wanted) {
       return;
     }
