@@ -140,17 +140,20 @@ to their language. The second prints the number of sites and the date of the
 latest snapshot. Open `http://127.0.0.1:4321/fr/` in a browser to see the
 map: the browser itself loads every station from the API, at the origin of
 `SWISSCOVERAGE_API_URL`, and the base map from OpenFreeMap. A click on a
-station opens its sheet. The panel filters the stations and finds one by its
-label; the address keeps the filters, the open station and the map's
-position, so `http://127.0.0.1:4321/fr/?operator=swisscom&technology=5G`
-opens with only Swisscom's 5G sites. With the API stopped, the page still
+station opens its sheet. The panel filters the stations, and its search
+finds a station by its label, or an address, a postcode or a municipality
+through swisstopo's location search, which the browser calls once three
+characters are typed: `Bundesplatz 3 Bern` moves the map to that building.
+The address keeps the filters, the open station and the map's position, so
+`http://127.0.0.1:4321/fr/?operator=swisscom&technology=5G` opens with only
+Swisscom's 5G sites. With the API stopped, the page still
 answers 200 and says the data cannot be loaded. `bun run build` then `bun run preview` serves the
 production build the same way.
 
 Everything above is safe: the downloads are public, read-only files, what is
 written goes to the working tree or to the local database, and `serve`
-listens on this machine only, like the website, which calls the API named by
-`SWISSCOVERAGE_API_URL` and nothing else. The repository holds no credentials
+listens on this machine only, like the website, whose server calls the API
+named by `SWISSCOVERAGE_API_URL` and nothing else. The repository holds no credentials
 beyond the ones of that local database, and there is no deployment today, so
 no command touches production.
 
@@ -160,6 +163,9 @@ Off limits:
   `docs/data-sources.md`, including to build a fixture or to compare results.
 - Downloading the OFCOM file in a loop or in tests. Tests read `testdata/`,
   and the tests of the import read an archive they serve themselves.
+- Calling swisstopo's location search from a script, in a loop or in tests:
+  its terms allow 40 requests a minute. The website's tests read answers
+  written in the tests.
 - Setting `DATABASE_URL` or `SWISSCOVERAGE_TEST_DATABASE_URL` to anything but
   the local database of `deploy/compose.yaml`. `migrate` changes a schema,
   `ingest` writes, `serve` publishes what it reads, and the tests create and
@@ -192,7 +198,8 @@ Flag a change when:
 - **It brings in data we may not use.** A fixture or data file that does not
   come from a source documented in `docs/data-sources.md`, anything scraped
   from another map or app, or a change that drops the attribution to OFCOM,
-  or the base map's to OpenFreeMap, OpenMapTiles and OpenStreetMap.
+  or the base map's to OpenFreeMap, OpenMapTiles and OpenStreetMap, or the
+  search's to swisstopo.
 - **It breaks the parser's boundary.** The parser (`backend/internal/ofcom`)
   reads the network, the file system, the environment, a database or the
   clock. It must stay pure so its tests are deterministic. Reading files is

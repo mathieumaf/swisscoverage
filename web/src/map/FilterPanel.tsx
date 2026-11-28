@@ -12,6 +12,7 @@ import {
   searchStations,
   technologies,
 } from "./filters";
+import { type Place, placeAttribution } from "./places";
 import {
   lv95Of,
   mutedText,
@@ -19,6 +20,7 @@ import {
   operatorDot,
   type Station,
 } from "./stations";
+import { usePlaces } from "./usePlaces";
 
 interface Props {
   locale: Locale;
@@ -28,6 +30,7 @@ interface Props {
   stations: Station[];
   shown: number;
   onFind: (station: Station) => void;
+  onPlace: (place: Place) => void;
   open: boolean;
   onOpen: (open: boolean) => void;
 }
@@ -45,6 +48,7 @@ export function FilterPanel({
   stations,
   shown,
   onFind,
+  onPlace,
   open,
   onOpen,
 }: Props) {
@@ -55,6 +59,13 @@ export function FilterPanel({
     () => searchStations(stations, query, searchLimit),
     [stations, query],
   );
+  const placeSearch = usePlaces(query);
+  // A guess of the service is noise next to the stations a label matches.
+  const places =
+    placeSearch.status === "ready" && !(placeSearch.fuzzy && found.length > 0)
+      ? placeSearch.places
+      : [];
+  const searched = query.trim() !== "";
   const searchId = useId();
   const count = t("filters.count", {
     shown: formatNumber(locale, shown),
@@ -78,7 +89,7 @@ export function FilterPanel({
     return (
       <button
         type="button"
-        className="absolute top-3 right-12 z-[1] cursor-pointer rounded-full border border-border bg-background px-4 py-2 text-[0.875rem] font-semibold text-foreground shadow-[0_2px_8px_rgb(0_0_0/0.2)] phone:top-auto phone:right-auto phone:bottom-10 phone:left-3"
+        className="absolute top-3 right-12 z-[1] cursor-pointer rounded-full border border-border bg-background px-4 py-2 text-[0.875rem] font-semibold text-foreground shadow-[0_2px_8px_rgb(0_0_0/0.2)] phone:top-auto phone:right-auto phone:bottom-24 phone:left-3"
         aria-expanded="false"
         onClick={() => onOpen(true)}
       >
@@ -113,30 +124,40 @@ export function FilterPanel({
         </button>
       </header>
 
-      <div className="mt-3">
-        <label htmlFor={searchId} className="font-semibold">
-          {t("search.label")}
-        </label>
-        <input
-          id={searchId}
-          type="search"
-          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-foreground"
-          placeholder={t("search.placeholder")}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        {query.trim() !== "" &&
-          (found.length === 0 ? (
-            <p className={`mt-2 ${mutedText}`}>{t("search.none")}</p>
-          ) : (
-            <ul className="mt-1">
+      <search className="mt-3">
+        <form
+          onSubmit={(event) => {
+            // Enter chooses the first result.
+            event.preventDefault();
+            const [station] = found;
+            const [place] = places;
+            if (station) {
+              onFind(station);
+            } else if (place) {
+              onPlace(place);
+            }
+          }}
+        >
+          <label htmlFor={searchId} className="font-semibold">
+            {t("search.label")}
+          </label>
+          <input
+            id={searchId}
+            type="search"
+            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-foreground"
+            placeholder={t("search.placeholder")}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {searched && found.length > 0 && (
+            <Results title={t("search.stations")}>
               {found.map((station) => (
                 <li key={station.id}>
                   <button
                     type="button"
-                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-border focus-visible:bg-border"
+                    className={resultButton}
                     onClick={() => onFind(station)}
                   >
                     <span
@@ -156,9 +177,53 @@ export function FilterPanel({
                   </button>
                 </li>
               ))}
-            </ul>
-          ))}
-      </div>
+            </Results>
+          )}
+          {places.length > 0 && (
+            <Results title={t("search.places")}>
+              {places.map((place) => (
+                <li key={place.key}>
+                  <button
+                    type="button"
+                    className={resultButton}
+                    onClick={() => onPlace(place)}
+                  >
+                    <span className="size-2.5 flex-none rounded-full border-2 border-accent" />
+                    <span>
+                      {place.label}
+                      <br />
+                      <span className={mutedText}>
+                        {t(`place.${place.origin}`)}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+              <li className={`px-2 pt-1 ${mutedText}`}>{placeAttribution}</li>
+            </Results>
+          )}
+          {searched && placeSearch.status === "loading" && (
+            <p className={`mt-2 ${mutedText}`} role="status">
+              {t("search.placesLoading")}
+            </p>
+          )}
+          {searched && placeSearch.status === "error" && (
+            <p className={`mt-2 ${mutedText}`} role="status">
+              {t("search.placesError")}
+            </p>
+          )}
+          {searched &&
+            found.length === 0 &&
+            (placeSearch.status === "idle" ||
+              (placeSearch.status === "ready" && places.length === 0)) && (
+              <p className={`mt-2 ${mutedText}`} role="status">
+                {placeSearch.status === "idle"
+                  ? t("search.none")
+                  : t("search.nothing")}
+              </p>
+            )}
+        </form>
+      </search>
 
       <Group title={t("filters.operator")}>
         {operators.map((operator) => (
@@ -218,6 +283,18 @@ export function FilterPanel({
           {t("filters.reset")}
         </button>
       )}
+    </section>
+  );
+}
+
+const resultButton =
+  "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-border focus-visible:bg-border";
+
+function Results({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mt-2">
+      <h3 className={`px-2 ${mutedText}`}>{title}</h3>
+      <ul>{children}</ul>
     </section>
   );
 }
