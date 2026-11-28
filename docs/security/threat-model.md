@@ -158,7 +158,7 @@ personal data.
    answered by a cache is built in full, a 304 included, and the list of every
    station costs about half a second of the database's time. Without a cache
    in front, a client that asks for it in a loop can make the API slow for
-   everyone. Rate limits and the cache in front are for roadmap step 5, with
+   everyone. Rate limits and the cache in front are for roadmap step 6, with
    the deployment.
 5. **API → database.** `ingest`, `migrate` and `serve` connect with
    whatever role `DATABASE_URL` names; no deployment exists yet to give each

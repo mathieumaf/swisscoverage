@@ -56,8 +56,6 @@ export const fr: Messages = {
   "power.medium": "Moyenne, jusqu’à 5000 W",
   "power.high": "Élevée, plus de 5000 W",
   "power.unknown": "Non indiquée",
-  "filters.title": "Filtres",
-  "filters.close": "Masquer les filtres",
   "filters.operator": "Opérateur",
   "filters.technology": "Technologie",
   "filters.kind": "Type",
@@ -126,7 +124,7 @@ export const fr: Messages = {
   "about.privacy1":
     "Ce site ne dépose aucun cookie et ne compte pas ses visiteurs.",
   "about.privacy2":
-    "Pour dessiner la carte, votre navigateur demande à OpenFreeMap le fond de la zone que vous regardez.",
+    "Pour dessiner les cartes, sur l’accueil et sur la page de chaque station, votre navigateur demande à OpenFreeMap le fond de la zone affichée.",
   "about.privacy3":
     "Ce que vous tapez dans le champ de recherche de la carte est envoyé à swisstopo dès le troisième caractère, pour trouver des adresses, des NPA et des communes.",
   "about.codeTitle": "Code source",
@@ -135,4 +133,11 @@ export const fr: Messages = {
   "notFound.title": "Page introuvable",
   "notFound.text": "Cette adresse ne mène à aucune page.",
   "notFound.home": "Retour à l’accueil",
+  "home.legend": "Opérateurs",
+  "sheet.actionPage": "Fiche",
+  "sheet.share": "Partager",
+  "sheet.copied": "Lien copié",
+  "filters.everything": "Tout afficher",
+  "search.clear": "Effacer la recherche",
+  "station.sections": "Sur cette page",
 };

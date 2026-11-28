@@ -53,8 +53,6 @@ export const de: Messages = {
   "power.medium": "Mittel, bis 5000 W",
   "power.high": "Gross, über 5000 W",
   "power.unknown": "Nicht angegeben",
-  "filters.title": "Filter",
-  "filters.close": "Filter ausblenden",
   "filters.operator": "Betreiber",
   "filters.technology": "Technologie",
   "filters.kind": "Typ",
@@ -122,7 +120,7 @@ export const de: Messages = {
   "about.privacy1":
     "Diese Website setzt keine Cookies und zählt ihre Besucherinnen und Besucher nicht.",
   "about.privacy2":
-    "Um die Karte zu zeichnen, fragt Ihr Browser OpenFreeMap nach dem Hintergrund des Gebiets, das Sie ansehen.",
+    "Um die Karten zu zeichnen, auf der Startseite und auf der Seite jeder Anlage, fragt Ihr Browser OpenFreeMap nach dem Hintergrund des angezeigten Gebiets.",
   "about.privacy3":
     "Was Sie in das Suchfeld der Karte eingeben, wird ab dem dritten Zeichen an swisstopo gesendet, um Adressen, Postleitzahlen und Gemeinden zu finden.",
   "about.codeTitle": "Quellcode",
@@ -131,4 +129,11 @@ export const de: Messages = {
   "notFound.title": "Seite nicht gefunden",
   "notFound.text": "Diese Adresse führt zu keiner Seite.",
   "notFound.home": "Zurück zur Startseite",
+  "home.legend": "Betreiber",
+  "sheet.actionPage": "Seite",
+  "sheet.share": "Teilen",
+  "sheet.copied": "Link kopiert",
+  "filters.everything": "Alle anzeigen",
+  "search.clear": "Suche löschen",
+  "station.sections": "Auf dieser Seite",
 };

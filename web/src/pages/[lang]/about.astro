@@ -14,48 +14,117 @@ if (!isLocale(lang)) {
 const locale = lang;
 const t = translator(locale);
 
-const sections: { title: MessageKey; items: MessageKey[] }[] = [
+const sections: { id: string; title: MessageKey; items: MessageKey[] }[] = [
   {
+    id: "data",
     title: "about.dataTitle",
     items: ["about.data1", "about.data2", "about.data3", "about.data4"],
   },
   {
+    id: "sources",
     title: "about.sourcesTitle",
     items: ["about.sourceOfcom", "about.sourceMap", "about.sourceSearch"],
   },
   {
+    id: "privacy",
     title: "about.privacyTitle",
     items: ["about.privacy1", "about.privacy2", "about.privacy3"],
   },
 ];
+const contents = [
+  ...sections.map(({ id, title }) => ({ id, title })),
+  { id: "code", title: "about.codeTitle" as MessageKey },
+];
+const sectionCard = "scroll-mt-6 rounded-3xl bg-surface p-8 phone:p-6";
+const sectionTitle =
+  "flex items-baseline gap-3 text-[1.5rem] leading-tight font-extrabold tracking-[-0.015em]";
+const sectionNumber = "text-[0.875rem] font-bold text-muted";
 ---
 
 <Base locale={locale} title={t("about.title")} description={t("about.intro")}>
-  <h1 class="mb-4 text-[2em] leading-[1.2] font-bold">{t("about.title")}</h1>
-  <p class="text-[1.0625rem]">{t("about.intro")}</p>
-  <p class="mt-3">{t("about.history")}</p>
+  <div class="mx-auto max-w-[68rem] px-4">
+    <header class="max-w-[48rem] pt-10 pb-10 phone:pt-4 phone:pb-6">
+      <h1 class="text-[clamp(2.5rem,6vw,4rem)] leading-none font-extrabold tracking-[-0.035em]">
+        {t("about.title")}
+      </h1>
+      <p class="mt-6 text-[1.25rem] leading-relaxed phone:text-[1.125rem]">
+        {t("about.intro")}
+      </p>
+      <p class="mt-6 flex gap-3 rounded-2xl bg-surface p-5 leading-relaxed">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" class="mt-0.5 flex-none text-accent">
+          <rect x="4" y="5" width="16" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2"></rect>
+          <path d="M4 10h16M9 3v4M15 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+        {t("about.history")}
+      </p>
+    </header>
 
-  {sections.map((section) => (
-    <section>
-      <h2 class="mt-8 mb-3 text-[1.25rem] font-bold">{t(section.title)}</h2>
-      <ul class="list-disc space-y-2 pl-5">
-        {section.items.map((item) => <li>{t(item)}</li>)}
-      </ul>
-      {section.title === "about.dataTitle" && (
-        <p class="mt-3">
-          <a href="https://www.bakom.admin.ch/en/explanations-on-overview-map"
-            >{t("about.dataMore")}</a
-          >
-        </p>
-      )}
-    </section>
-  ))}
+    <div class="grid grid-cols-[13rem_minmax(0,1fr)] items-start gap-10 max-[56rem]:grid-cols-1">
+      <nav
+        aria-label={t("station.sections")}
+        class="sticky top-6 max-[56rem]:hidden"
+      >
+        <ol class="flex flex-col gap-1 text-[0.9375rem] font-bold">
+          {contents.map((section, index) => (
+            <li>
+              <a
+                class="flex min-h-10 items-center gap-3 rounded-xl px-3 text-foreground no-underline hover:bg-surface"
+                href={`#${section.id}`}
+              >
+                <span class="text-[0.8125rem] text-muted">{String(index + 1).padStart(2, "0")}</span>
+                {t(section.title)}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
 
-  <h2 class="mt-8 mb-3 text-[1.25rem] font-bold">{t("about.codeTitle")}</h2>
-  <p>{t("about.code")}</p>
-  <p class="mt-3">
-    <a href="https://github.com/mathieumaf/swisscoverage"
-      >github.com/mathieumaf/swisscoverage</a
-    >
-  </p>
+      <div class="flex min-w-0 flex-col gap-4">
+        {sections.map((section, index) => (
+          <section id={section.id} class={sectionCard}>
+            <h2 class={sectionTitle}>
+              <span class={sectionNumber}>{String(index + 1).padStart(2, "0")}</span>
+              {t(section.title)}
+            </h2>
+            <ul class="mt-4">
+              {section.items.map((item) => (
+                <li class="flex max-w-[44rem] gap-3 border-t border-border py-4 text-[1.0625rem] leading-relaxed first:border-t-0">
+                  <span class="mt-[0.7rem] size-1.5 flex-none rounded-full bg-accent"></span>
+                  {t(item)}
+                </li>
+              ))}
+            </ul>
+            {section.id === "data" && (
+              <p class="mt-2 pl-[1.125rem]">
+                <a
+                  class="font-bold"
+                  href="https://www.bakom.admin.ch/en/explanations-on-overview-map"
+                  >{t("about.dataMore")}</a
+                >
+              </p>
+            )}
+          </section>
+        ))}
+
+        <section id="code" class={sectionCard}>
+          <h2 class={sectionTitle}>
+            <span class={sectionNumber}>{String(sections.length + 1).padStart(2, "0")}</span>
+            {t("about.codeTitle")}
+          </h2>
+          <p class="mt-4 max-w-[44rem] text-[1.0625rem] leading-relaxed">{t("about.code")}</p>
+          <p class="mt-6">
+            <a
+              class="inline-flex min-h-12 items-center gap-2.5 rounded-2xl bg-foreground px-5 font-extrabold text-surface no-underline"
+              href="https://github.com/mathieumaf/swisscoverage"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="M8 7l-5 5 5 5M16 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+              github.com/mathieumaf/swisscoverage
+            </a>
+          </p>
+        </section>
+      </div>
+    </div>
+  </div>
 </Base>

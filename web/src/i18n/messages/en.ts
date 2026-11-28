@@ -53,8 +53,6 @@ export const en = {
   "power.medium": "Medium, up to 5,000 W",
   "power.high": "High, above 5,000 W",
   "power.unknown": "Not stated",
-  "filters.title": "Filters",
-  "filters.close": "Hide the filters",
   "filters.operator": "Operator",
   "filters.technology": "Technology",
   "filters.kind": "Type",
@@ -120,7 +118,7 @@ export const en = {
   "about.privacy1":
     "This site sets no cookies and does not count its visitors.",
   "about.privacy2":
-    "To draw the map, your browser asks OpenFreeMap for the background of the area you look at.",
+    "To draw the maps, on the home page and on the page of each station, your browser asks OpenFreeMap for the background of the area shown.",
   "about.privacy3":
     "What you type in the map's search field is sent to swisstopo from the third character, to find addresses, postcodes and municipalities.",
   "about.codeTitle": "Source code",
@@ -129,6 +127,13 @@ export const en = {
   "notFound.title": "Page not found",
   "notFound.text": "This address does not lead to any page.",
   "notFound.home": "Back to the home page",
+  "home.legend": "Operators",
+  "sheet.actionPage": "Page",
+  "sheet.share": "Share",
+  "sheet.copied": "Link copied",
+  "filters.everything": "Show all",
+  "search.clear": "Clear the search",
+  "station.sections": "On this page",
 } as const;
 
 export type MessageKey = keyof typeof en;

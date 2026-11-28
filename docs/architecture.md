@@ -80,7 +80,7 @@ A typical day:
 | ------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
 | around 22:00        | OFCOM replaces its file.                                                                                     |                                                      |
 | 04:17, 10:17, 16:17 | The archive copies it, verifies its checksum and commits it. The later runs find it archived and do nothing. | exists                                               |
-| 05:00               | The import loads it: it compares it with the day before and writes the differences.                          | exists as a command; scheduled in roadmap step 5     |
+| 05:00               | The import loads it: it compares it with the day before and writes the differences.                          | exists as a command; scheduled in roadmap step 6     |
 | afterwards          | The API serves the day's data as soon as the import commits it; the map and the MCP server read it there.    | the API and the map exist; the MCP server is planned |
 
 ## Parts
@@ -136,8 +136,9 @@ swisscoverage/
 │       ├── i18n/              the four languages and their messages
 │       ├── layouts/           what every page shares
 │       ├── styles/            Tailwind and the site's colours, light and dark
-│       ├── map/               the map and the sheet of a station, in React,
-│       │                      and the words for a station that its page shares
+│       ├── map/               the map, its panel, filters and the sheet of a
+│       │                      station, in React, the map at the head of a
+│       │                      station's page, and the words its page shares
 │       └── pages/             one file per route, under /{language}/
 ├── openapi.json               the API contract, generated and committed; exists
 ├── deploy/
@@ -295,8 +296,10 @@ The TypeScript side runs on Bun, the version in `packageManager` of the root
 `package.json`. At the root, Biome checks Markdown, JSON, YAML and the
 website's TypeScript. `web/` has its own `package.json`: Astro, its adapter
 for a standalone server, `openapi-fetch`, a client typed by the contract,
-React, MapLibre GL, which draws the map, and Tailwind CSS, which styles the
-pages ([decision 26](decisions.md)). Its development tools are
+React, MapLibre GL, which draws the maps, Tailwind CSS, which styles the
+pages ([decision 26](decisions.md)), and the Manrope font, in
+`@fontsource-variable/manrope`, which the site serves itself so that no
+browser asks another server for it. Its development tools are
 `@astrojs/check` with TypeScript, which check the `.astro` files too, and
 `openapi-typescript`, which generates the types. The server reads one
 setting, `SWISSCOVERAGE_API_URL`, the origin of the API; on this machine it

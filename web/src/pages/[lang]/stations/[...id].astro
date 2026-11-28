@@ -9,6 +9,7 @@ import {
   periodFields,
   positionText,
 } from "../../../map/describe";
+import StationHero from "../../../map/StationHero";
 import {
   isStationId,
   operatorColors,
@@ -76,110 +77,218 @@ const entries =
         technologies: text.technologies,
       })
     : undefined}
+  overlay={station !== undefined}
 >
   {station === undefined ||
     current === undefined ||
     text === undefined ||
     position === undefined ? (
-    <>
-      <h1 class="my-[0.67em] text-[2em] font-bold">
-        {t("station.unavailableTitle")}
-      </h1>
-      <p class="my-[1em]">{t("station.unavailable")}</p>
-      <p class="my-[1em]"><a href={`/${locale}/`}>{t("notFound.home")}</a></p>
-    </>
+    <section class="mx-auto mt-6 max-w-[40rem] px-4">
+      <div class="rounded-[1.75rem] bg-surface p-8 shadow-card">
+        <h1 class="text-[2rem] leading-[1.15] font-extrabold tracking-[-0.02em]">
+          {t("station.unavailableTitle")}
+        </h1>
+        <p class="mt-3 text-muted">{t("station.unavailable")}</p>
+        <p class="mt-6">
+          <a
+            class="inline-flex min-h-12 items-center rounded-2xl bg-accent px-5 font-extrabold text-accent-foreground no-underline"
+            href={`/${locale}/`}>{t("notFound.home")}</a
+          >
+        </p>
+      </div>
+    </section>
   ) : (
     <article>
-      <p class={operatorLine}>
-        <span
-          class={operatorDot}
-          style={{ background: operatorColors[station.operator] }}
+      <div class="relative isolate h-[30rem] overflow-hidden bg-[#e3e6e9] phone:h-[22rem]">
+        <StationHero
+          client:only="react"
+          locale={locale}
+          operator={station.operator}
+          position={station.position}
         />
-        {t(`operator.${station.operator}`)}
-      </p>
-      <h1 class="text-[2em] leading-[1.2] font-bold wrap-anywhere">
-        {station.name}
-      </h1>
-      <p class="mt-4">
-        <a href={stationOnMapPath(locale, station.id, station.position)}
-          >{t("station.onMap")}</a
-        >
-      </p>
+      </div>
 
-      {!station.published && current.to && (
-        <p class="mt-6 rounded-lg bg-border px-3 py-2">
-          {t("station.notPublishedSince", { date: date(current.to) })}
-        </p>
-      )}
+      <div class="relative mx-auto -mt-32 flex max-w-[70rem] flex-col gap-4 px-4">
+        <header class="rounded-[1.75rem] bg-surface p-7 shadow-card phone:p-5">
+          <div class="flex flex-wrap items-end justify-between gap-5">
+            <div class="min-w-0">
+              <p class={operatorLine}>
+                <span
+                  class={operatorDot}
+                  style={{ background: operatorColors[station.operator] }}
+                />
+                {t(`operator.${station.operator}`)} · {text.kind}
+              </p>
+              <h1 class="mt-2 text-[clamp(2.25rem,5vw,3.375rem)] leading-none font-extrabold tracking-[-0.03em] wrap-anywhere">
+                {station.name}
+              </h1>
+              <p class="mt-3 text-muted">
+                {position.wgs84}{" · "}{position.lv95}
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <a
+                class="flex min-h-12 items-center rounded-2xl bg-accent px-5 font-extrabold text-accent-foreground no-underline"
+                href={stationOnMapPath(locale, station.id, station.position)}
+                >{t("station.onMap")}</a
+              >
+              <button
+                type="button"
+                class="min-h-12 cursor-pointer rounded-2xl bg-field px-5 font-extrabold text-accent"
+                data-share
+                data-copied={t("sheet.copied")}
+                hidden
+              >{t("sheet.share")}</button>
+            </div>
+          </div>
+          <p class="sr-only" role="status" data-share-status></p>
+          <nav aria-label={t("station.sections")} class="mt-6">
+            <ul class="flex flex-wrap gap-1.5 text-[0.875rem] font-bold">
+              <li>
+                <a
+                  class="flex min-h-10 items-center rounded-full bg-foreground px-4 text-surface no-underline"
+                  href="#published">{station.published ? t("station.published") : t("station.lastPublished")}</a
+                >
+              </li>
+              <li>
+                <a
+                  class="flex min-h-10 items-center rounded-full bg-field px-4 text-foreground no-underline"
+                  href="#history">{t("station.history")}</a
+                >
+              </li>
+            </ul>
+          </nav>
+        </header>
 
-      <h2 class="mt-8 mb-3 text-[1.25rem] font-bold">
-        {station.published ? t("station.published") : t("station.lastPublished")}
-      </h2>
-      <dl class="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-x-4 gap-y-2 [&>dt]:text-muted">
-        {periodFields.map(({ key, label }) => (
-          <Fragment>
-            <dt>{t(label)}</dt>
-            <dd>{text[key]}</dd>
-          </Fragment>
-        ))}
-        <dt>{t("sheet.position")}</dt>
-        <dd>
-          {position.wgs84}
-          <br />
-          <span class="text-[0.875rem] text-muted">{position.lv95}</span>
-        </dd>
-        <dt>{t("sheet.firstSeen")}</dt>
-        <dd>{date(station.firstSeen)}</dd>
-      </dl>
+        {!station.published && current.to && (
+          <p class="rounded-2xl bg-notice px-5 py-4 font-semibold text-notice-foreground">
+            {t("station.notPublishedSince", { date: date(current.to) })}
+          </p>
+        )}
 
-      <h2 class="mt-8 mb-1 text-[1.25rem] font-bold">{t("station.history")}</h2>
-      <p class="mb-4 text-muted">{t("station.historyIntro")}</p>
-      <ol class="border-l-2 border-border">
-        {entries.map((entry) => (
-          <li class="relative mb-5 pl-5">
-            <span
-              class:list={[
-                "absolute top-[0.45em] -left-[0.4rem] size-2.5 rounded-full",
-                entry.type === "gap" ? "border-2 border-border bg-background" : "bg-accent",
-              ]}
-            />
-            <p class="font-semibold">
-              {entry.to === null
-                ? t("history.since", { date: date(entry.from) })
-                : t("history.range", { from: date(entry.from), to: date(entry.to) })}
-            </p>
-            {entry.type === "gap" ? (
-              <p class="text-muted">{t("history.gap")}</p>
-            ) : entry.changes.length > 0 ? (
-              <dl class="mt-1 grid grid-cols-[minmax(8rem,12rem)_1fr] gap-x-4 gap-y-1 [&>dt]:text-muted">
-                {entry.changes.map((change) => (
-                  <Fragment>
-                    <dt>{t(change.label)}</dt>
-                    <dd>
-                      <del class="text-muted">{change.before}</del>{" → "}
-                      <ins class="no-underline">{change.after}</ins>
-                    </dd>
-                  </Fragment>
-                ))}
-              </dl>
-            ) : entry.first ? (
-              <p class="text-muted">{t("history.first")}</p>
-            ) : (
-              <p class="text-muted">
-                {entry === entries.at(-1) ? t("history.earlier") : t("history.unchanged")}
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] items-start gap-4">
+          <section id="published" class="scroll-mt-4 rounded-3xl bg-surface p-6">
+            <h2 class="text-[1.25rem] font-extrabold">
+              {station.published ? t("station.published") : t("station.lastPublished")}
+            </h2>
+            <dl class="mt-3">
+              {periodFields.map(({ key, label }) => (
+                <div class="flex justify-between gap-4 border-b border-border py-3">
+                  <dt class="text-muted">{t(label)}</dt>
+                  <dd class="text-right font-bold">{text[key]}</dd>
+                </div>
+              ))}
+              <div class="flex justify-between gap-4 border-b border-border py-3">
+                <dt class="text-muted">{t("sheet.position")}</dt>
+                <dd class="text-right font-bold">
+                  {position.wgs84}
+                  <br />
+                  <span class="text-[0.875rem] font-semibold text-muted">{position.lv95}</span>
+                </dd>
+              </div>
+              <div class="flex justify-between gap-4 py-3">
+                <dt class="text-muted">{t("sheet.firstSeen")}</dt>
+                <dd class="text-right font-bold">{date(station.firstSeen)}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section id="history" class="scroll-mt-4 rounded-3xl bg-surface p-6">
+            <h2 class="text-[1.25rem] font-extrabold">{t("station.history")}</h2>
+            <p class="mt-1 text-[0.9375rem] text-muted">{t("station.historyIntro")}</p>
+            <ol class="mt-4 flex flex-col gap-2.5">
+              {entries.map((entry, index) => (
+                <li
+                  class:list={[
+                    "flex gap-3 rounded-2xl p-4",
+                    entry.type === "gap" ? "border-[1.5px] border-dashed border-border" : "bg-field",
+                  ]}
+                >
+                  <span
+                    class:list={[
+                      "mt-1.5 size-2.5 flex-none rounded-full",
+                      entry.type === "gap"
+                        ? "border-2 border-muted"
+                        : index === 0 && entry.to === null
+                          ? "bg-accent"
+                          : "bg-muted",
+                    ]}
+                  />
+                  <div class="min-w-0">
+                    <p class="font-extrabold">
+                      {entry.to === null
+                        ? t("history.since", { date: date(entry.from) })
+                        : t("history.range", { from: date(entry.from), to: date(entry.to) })}
+                    </p>
+                    {entry.type === "gap" ? (
+                      <p class="text-[0.9375rem] text-muted">{t("history.gap")}</p>
+                    ) : entry.changes.length > 0 ? (
+                      <dl class="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[0.9375rem]">
+                        {entry.changes.map((change) => (
+                          <Fragment>
+                            <dt class="text-muted">{t(change.label)}</dt>
+                            <dd>
+                              <del class="text-muted">{change.before}</del>{" → "}
+                              <ins class="font-bold no-underline">{change.after}</ins>
+                            </dd>
+                          </Fragment>
+                        ))}
+                      </dl>
+                    ) : entry.first ? (
+                      <p class="text-[0.9375rem] text-muted">{t("history.first")}</p>
+                    ) : (
+                      <p class="text-[0.9375rem] text-muted">
+                        {entry === entries.at(-1) ? t("history.earlier") : t("history.unchanged")}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+            {station.total > station.periods.length && (
+              <p class="mt-3 text-[0.9375rem] text-muted">
+                {t("history.truncated", {
+                  shown: String(station.periods.length),
+                  total: String(station.total),
+                })}
               </p>
             )}
-          </li>
-        ))}
-      </ol>
-      {station.total > station.periods.length && (
-        <p class="text-muted">
-          {t("history.truncated", {
-            shown: String(station.periods.length),
-            total: String(station.total),
-          })}
-        </p>
-      )}
+          </section>
+        </div>
+      </div>
     </article>
   )}
 </Base>
+
+<script>
+  // Sharing needs the browser: the button shows only with JavaScript. It
+  // opens the system's sheet where there is one, and copies the address
+  // otherwise.
+  const button = document.querySelector<HTMLButtonElement>("[data-share]");
+  const status = document.querySelector<HTMLElement>("[data-share-status]");
+  if (button) {
+    button.hidden = false;
+    const label = button.textContent;
+    let restore: ReturnType<typeof setTimeout> | undefined;
+    button.addEventListener("click", async () => {
+      const url = window.location.href.split("#")[0] ?? window.location.href;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: document.title, url });
+        } else {
+          await navigator.clipboard.writeText(url);
+          if (status) {
+            status.textContent = button.dataset.copied ?? "";
+          }
+          button.textContent = button.dataset.copied ?? label;
+          clearTimeout(restore);
+          restore = setTimeout(() => {
+            button.textContent = label;
+          }, 2000);
+        }
+      } catch {
+        // The visitor cancelled, or the browser refused: nothing to say.
+      }
+    });
+  }
+</script>

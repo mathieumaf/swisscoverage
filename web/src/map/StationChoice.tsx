@@ -27,20 +27,20 @@ export function StationChoice({ stations, locale, onChoose, onClose }: Props) {
       closeLabel={translate(locale, "sheet.close")}
       onClose={onClose}
     >
-      <ul>
+      <ul className="mt-4 flex flex-col gap-2">
         {stations.map((station) => (
           <li key={station.id}>
             <button
               type="button"
-              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 text-left text-foreground hover:bg-border focus-visible:bg-border"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-field px-4 py-3 text-left text-foreground hover:bg-border focus-visible:bg-border"
               onClick={() => onChoose(station)}
             >
               <span
                 className={operatorDot}
                 style={{ background: operatorColors[station.operator] }}
               />
-              <span>
-                <strong>{station.name}</strong>
+              <span className="min-w-0">
+                <strong className="wrap-anywhere">{station.name}</strong>
                 <br />
                 <span className={mutedText}>
                   {translate(locale, `operator.${station.operator}`)} ·{" "}

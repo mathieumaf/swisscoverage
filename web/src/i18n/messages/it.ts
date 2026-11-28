@@ -53,8 +53,6 @@ export const it: Messages = {
   "power.medium": "Media, fino a 5000 W",
   "power.high": "Alta, oltre 5000 W",
   "power.unknown": "Non indicata",
-  "filters.title": "Filtri",
-  "filters.close": "Nascondi i filtri",
   "filters.operator": "Operatore",
   "filters.technology": "Tecnologia",
   "filters.kind": "Tipo",
@@ -121,7 +119,7 @@ export const it: Messages = {
   "about.privacy1":
     "Questo sito non imposta cookie e non conta i suoi visitatori.",
   "about.privacy2":
-    "Per disegnare la mappa, il vostro browser chiede a OpenFreeMap lo sfondo della zona che state guardando.",
+    "Per disegnare le mappe, nella pagina iniziale e nella pagina di ogni impianto, il vostro browser chiede a OpenFreeMap lo sfondo della zona mostrata.",
   "about.privacy3":
     "Ciò che digitate nel campo di ricerca della mappa viene inviato a swisstopo dal terzo carattere, per trovare indirizzi, NPA e comuni.",
   "about.codeTitle": "Codice sorgente",
@@ -130,4 +128,11 @@ export const it: Messages = {
   "notFound.title": "Pagina non trovata",
   "notFound.text": "Questo indirizzo non porta a nessuna pagina.",
   "notFound.home": "Torna alla pagina iniziale",
+  "home.legend": "Operatori",
+  "sheet.actionPage": "Scheda",
+  "sheet.share": "Condividi",
+  "sheet.copied": "Link copiato",
+  "filters.everything": "Mostra tutti",
+  "search.clear": "Cancella la ricerca",
+  "station.sections": "In questa pagina",
 };
