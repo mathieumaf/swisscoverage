@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
-import { apiUrl, defaultApiUrl } from "./client";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { apiUrl, createApiClient, defaultApiUrl } from "./client";
 
 describe("apiUrl", () => {
   test("defaults to the local API", () => {
@@ -31,5 +31,66 @@ describe("apiUrl", () => {
     expect(() => apiUrl("https://user:secret@api.example.org")).toThrow(
       /^(?!.*secret)/,
     );
+  });
+});
+
+describe("createApiClient", () => {
+  // An API on this machine: the snapshots answer, the counts send the
+  // client elsewhere, and the list of stations never answers.
+  const snapshots = {
+    attribution: "Source: Federal Office of Communications OFCOM",
+    snapshots: [],
+    total: 0,
+    offset: 0,
+    limit: 100,
+  };
+  let api: ReturnType<typeof Bun.serve>;
+  let elsewhere = 0;
+  beforeAll(() => {
+    api = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch(request) {
+        const { pathname } = new URL(request.url);
+        if (pathname === "/v1/snapshots") {
+          return Response.json(snapshots);
+        }
+        if (pathname === "/v1/stations/counts") {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/elsewhere" },
+          });
+        }
+        if (pathname === "/elsewhere") {
+          elsewhere++;
+          return Response.json({ total: 1 });
+        }
+        return new Promise<Response>(() => {});
+      },
+    });
+  });
+  afterAll(() => api.stop(true));
+
+  test("calls the API at its origin", async () => {
+    const client = createApiClient(api.url.origin, 1_000);
+    const { data, response } = await client.GET("/v1/snapshots");
+    expect(response.status).toBe(200);
+    expect(data).toEqual(snapshots);
+  });
+
+  test("never follows a redirect", async () => {
+    const client = createApiClient(api.url.origin, 1_000);
+    await expect(client.GET("/v1/stations/counts")).rejects.toThrow(
+      /redirect/i,
+    );
+    expect(elsewhere).toBe(0);
+  });
+
+  test("gives up after its timeout", async () => {
+    const client = createApiClient(api.url.origin, 100);
+    const started = performance.now();
+    await expect(client.GET("/v1/stations")).rejects.toThrow(/time/i);
+    // Its own timeout, not a longer one.
+    expect(performance.now() - started).toBeLessThan(900);
   });
 });
