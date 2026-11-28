@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,6 +16,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -429,6 +431,120 @@ func TestTimeout(t *testing.T) {
 	wantEqual(t, "CORS", response.Header.Get("Access-Control-Allow-Origin"), "*")
 	if !strings.Contains(string(body), "the request took too long") {
 		t.Errorf("got %s", body)
+	}
+}
+
+// brokenData fails every read, with an error that names the database.
+type brokenData struct{}
+
+var errBroken = errors.New("connecting to postgres://reader:hunter2@db.internal:5432/swisscoverage")
+
+func (brokenData) Published(context.Context) (store.Published, error) {
+	return store.Published{}, errBroken
+}
+
+func (brokenData) Search(context.Context, store.Search) (store.Found, error) {
+	return store.Found{}, errBroken
+}
+
+func (brokenData) History(context.Context, store.Site, store.Page) (store.History, bool, error) {
+	return store.History{}, false, errBroken
+}
+
+func (brokenData) Counts(context.Context) (store.Counts, error) {
+	return store.Counts{}, errBroken
+}
+
+func (brokenData) SnapshotPage(context.Context, store.Page) (store.SnapshotPage, error) {
+	return store.SnapshotPage{}, errBroken
+}
+
+// lockedBuffer is a log the handlers write while the test reads it.
+type lockedBuffer struct {
+	mutex  sync.Mutex
+	buffer bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(data []byte) (int, error) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.buffer.Write(data)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.buffer.String()
+}
+
+// An error the client cannot act on is logged, and answered 500 without its
+// details, in a response that is not cached.
+func TestInternalErrors(t *testing.T) {
+	var log lockedBuffer
+	server := httptest.NewServer(api.New(brokenData{}, slog.New(slog.NewTextHandler(&log, nil)), time.Minute))
+	defer server.Close()
+
+	for _, path := range []string{
+		"/v1/stations",
+		"/v1/stations/search?lat=46.9&lon=7.4",
+		"/v1/stations/2600640_1199640_Swisscom%20BMAO",
+		"/v1/stations/counts",
+		"/v1/snapshots",
+	} {
+		response, err := http.Get(server.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(response.Body)
+		response.Body.Close()
+		wantEqual(t, path+": status", response.StatusCode, http.StatusInternalServerError)
+		wantEqual(t, path+": Content-Type", response.Header.Get("Content-Type"), "application/problem+json")
+		wantEqual(t, path+": Cache-Control", response.Header.Get("Cache-Control"), "no-store")
+		wantEqual(t, path+": ETag", response.Header.Get("ETag"), "")
+		var problem map[string]any
+		if err := json.Unmarshal(body, &problem); err != nil {
+			t.Fatalf("%s: %v: %s", path, err, body)
+		}
+		wantEqual(t, path+": detail", problem["detail"], any("the request could not be answered"))
+		for _, secret := range []string{"hunter2", "db.internal", "postgres"} {
+			if strings.Contains(string(body), secret) {
+				t.Errorf("%s: the answer shows %q: %s", path, secret, body)
+			}
+		}
+	}
+
+	logged := log.String()
+	if got := strings.Count(logged, "level=ERROR"); got != 5 {
+		t.Errorf("got %d errors logged, want one per request:\n%s", got, logged)
+	}
+	if !strings.Contains(logged, "hunter2@db.internal") {
+		t.Errorf("the log does not hold the error:\n%s", logged)
+	}
+}
+
+// The API only reads: any other method is refused, and the refusal is not
+// cached.
+func TestOtherMethods(t *testing.T) {
+	server := httptest.NewServer(api.New(brokenData{}, slog.New(slog.DiscardHandler), time.Minute))
+	defer server.Close()
+
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch} {
+		for _, path := range []string{"/v1/stations", "/v1/stations/counts", "/v1/openapi.json"} {
+			request, err := http.NewRequest(method, server.URL+path, strings.NewReader("{}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := http.DefaultClient.Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			response.Body.Close()
+			what := method + " " + path
+			wantEqual(t, what+": status", response.StatusCode, http.StatusMethodNotAllowed)
+			wantEqual(t, what+": Cache-Control", response.Header.Get("Cache-Control"), "no-store")
+			wantEqual(t, what+": ETag", response.Header.Get("ETag"), "")
+			wantEqual(t, what+": CORS", response.Header.Get("Access-Control-Allow-Origin"), "*")
+		}
 	}
 }
 

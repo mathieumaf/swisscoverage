@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/mathieumaf/swisscoverage/backend/internal/testdb"
@@ -53,6 +54,25 @@ func TestMigrateCommand(t *testing.T) {
 	stdout, stderr, status = callWith(t, address, "migrate")
 	if stdout != "The schema is up to date (version 3).\n" || stderr != "" || status != 0 {
 		t.Errorf("second run: got status %d, output %q and stderr %q", status, stdout, stderr)
+	}
+}
+
+// A program rolled back to an earlier version finds a newer schema, and
+// leaves it alone.
+func TestMigrateLeavesANewerSchemaAlone(t *testing.T) {
+	address := migrated(t)
+	testdb.Query(t, address,
+		`INSERT INTO schema_migration (version, name) VALUES (9999, '9999_from_the_future.sql')`)
+
+	stdout, stderr, status := callWith(t, address, "migrate")
+
+	const want = "The schema is at version 9999, newer than this program (version 3). Nothing to do.\n"
+	if stdout != want || stderr != "" || status != 0 {
+		t.Errorf("got status %d, output %q and stderr %q", status, stdout, stderr)
+	}
+	recorded := testdb.Query(t, address, `SELECT count(*) FROM schema_migration`)
+	if recorded[0][0] != "4" {
+		t.Errorf("got %s migrations recorded, want the three of this program and the newer one", recorded[0][0])
 	}
 }
 
@@ -258,6 +278,90 @@ func TestIngestReportsWarningsAndStillLoads(t *testing.T) {
 		WHERE s.name = 'Swisscom BIFO'`)
 	if kind[0][0] != "unknown" {
 		t.Errorf("got kind %q, want the station kept as unknown", kind[0][0])
+	}
+}
+
+// A file full of surprises does not flood the output: the first warnings
+// are printed, then how many more there are.
+func TestIngestBoundsTheWarnings(t *testing.T) {
+	address := migrated(t)
+	archive := newArchive(t)
+	archive.add(23, sampleWith(t, func(features []map[string]any) []map[string]any {
+		setProperty(features, 0, "typ_en", "Balloon")
+		// The same site 24 more times: 25 warnings in all.
+		for range 24 {
+			features = append(features, features[1])
+		}
+		return features
+	}))
+
+	stdout, stderr, status := callWith(t, address, archive.arguments()...)
+
+	if !strings.HasPrefix(stdout,
+		"2026-10-23T22:01:35Z: 33 sites, 9 appeared, 0 disappeared, 0 changed, 25 warnings\n") || status != 0 {
+		t.Errorf("got status %d and output %q", status, stdout)
+	}
+	lines := strings.Split(strings.TrimSuffix(stderr, "\n"), "\n")
+	if len(lines) != printedWarnings+1 {
+		t.Fatalf("got %d lines, want %d warnings and a last line:\n%s", len(lines), printedWarnings, stderr)
+	}
+	wantEqual := func(what, got, want string) {
+		t.Helper()
+		if got != want {
+			t.Errorf("%s: got %q, want %q", what, got, want)
+		}
+	}
+	wantEqual("first line", lines[0], `2026-10-23T22:01:35Z: warning: Swisscom BIFO: unrecognised type "Balloon"`)
+	wantEqual("last warning", lines[printedWarnings-1], "2026-10-23T22:01:35Z: warning: "+
+		"Salt TI_3787A at 2705499, 1132611: published more than once, the first is kept")
+	wantEqual("last line", lines[printedWarnings], "2026-10-23T22:01:35Z: and 5 more warnings")
+}
+
+// Two runs at once: the one that finds a snapshot loaded by the other while
+// it downloaded says so, and goes on.
+func TestIngestBesideAnotherRun(t *testing.T) {
+	address := migrated(t)
+	archive := newArchive(t)
+	archive.add(23, sampleWith(t, unchanged))
+	archive.add(24, sampleWith(t, func(features []map[string]any) []map[string]any {
+		return features[1:]
+	}))
+
+	// The first download of the first file starts another run, which loads
+	// the whole archive before the file reaches this run.
+	first := "/releases/raw-2026/mobile-stations_2026-10-23.json.gz"
+	serve := archive.server.Config.Handler
+	var started atomic.Bool
+	type result struct {
+		stdout, stderr string
+		status         int
+	}
+	others := make(chan result, 1)
+	archive.server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == first && started.CompareAndSwap(false, true) {
+			stdout, stderr, status := callWith(t, address, archive.arguments()...)
+			others <- result{stdout, stderr, status}
+		}
+		serve.ServeHTTP(w, r)
+	})
+
+	stdout, stderr, status := callWith(t, address, archive.arguments()...)
+
+	other := <-others
+	if other.status != 0 || other.stderr != "" || !strings.HasSuffix(other.stdout,
+		"Loaded 2 snapshots. The database holds the 2 snapshots of the archive.\n") {
+		t.Fatalf("the other run: got status %d, output %q and stderr %q", other.status, other.stdout, other.stderr)
+	}
+	const want = `2026-10-23T22:01:35Z: already loaded by another run
+2026-10-24T22:01:35Z: already loaded by another run
+Loaded 0 snapshots. The database holds the 2 snapshots of the archive.
+`
+	if stdout != want || stderr != "" || status != 0 {
+		t.Errorf("got status %d, stderr %q and output:\n%s\nwant:\n%s", status, stderr, stdout, want)
+	}
+	counts := testdb.Query(t, address, `SELECT count(*) FROM snapshot`)
+	if counts[0][0] != "2" {
+		t.Errorf("got %s snapshots, want each loaded once", counts[0][0])
 	}
 }
 
