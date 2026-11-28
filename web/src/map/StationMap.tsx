@@ -518,6 +518,9 @@ export default function StationMap({ locale, apiUrl }: Props) {
     if (!instance) {
       return;
     }
+    // The place takes the panel: the open station closes.
+    setChoice([]);
+    setSelected([]);
     const data = {
       type: "FeatureCollection" as const,
       features:
@@ -635,20 +638,25 @@ export default function StationMap({ locale, apiUrl }: Props) {
         className="absolute! inset-0"
         aria-label={t("map.label")}
       />
-      <MapPanel
-        locale={locale}
-        stations={stations}
-        onFind={find}
-        onPlace={showPlace}
-        onClearPlace={clearPlace}
-        detail={detail}
-        detailKey={selected.map((station) => station.id).join(" ") || undefined}
-      />
+      {/* The search shows once the map can move to what it finds. */}
+      {sourceReady && (
+        <MapPanel
+          locale={locale}
+          stations={stations}
+          onFind={find}
+          onPlace={showPlace}
+          onClearPlace={clearPlace}
+          detail={detail}
+          detailKey={
+            selected.map((station) => station.id).join(" ") || undefined
+          }
+        />
+      )}
       {stations.length > 0 && (
         <FilterChips locale={locale} filters={filters} onFilters={setFilters} />
       )}
       {(status !== "ready" || filtered) && (
-        <div className="absolute bottom-6 left-[calc(50%+12.75rem)] z-[2] flex max-w-[calc(100%-27rem)] -translate-x-1/2 items-center gap-1 rounded-full bg-surface py-1 pr-1 pl-4 text-[0.875rem] font-semibold shadow-float phone:top-[7.75rem] phone:bottom-auto phone:left-1/2 phone:max-w-[calc(100%-1.5rem)]">
+        <div className="absolute bottom-6 left-[calc(50%+12.75rem)] z-[2] flex max-w-[calc(100%-27rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-1 rounded-[1.5rem] bg-surface py-1 pr-1 pl-4 text-[0.875rem] font-semibold whitespace-nowrap shadow-float phone:top-[7.75rem] phone:bottom-auto phone:left-1/2 phone:max-w-[calc(100%-1.5rem)]">
           {status !== "ready" ? (
             <p
               className={`py-1.5 pr-3 ${status === "loading" ? "text-foreground" : "text-danger"}`}

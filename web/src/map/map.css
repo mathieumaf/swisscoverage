@@ -20,8 +20,7 @@
 }
 
 /* Buttons like the site's: white, rounded, with the same shadow. */
-.station-map .maplibregl-ctrl-group,
-.station-hero .maplibregl-ctrl-group {
+.station-map .maplibregl-ctrl-group {
   border-radius: 14px;
   overflow: hidden;
   background: var(--surface);
@@ -44,9 +43,10 @@
   }
 }
 
-/* The attribution stays above the panel. */
+/* The attribution stays above the panel, which covers the bottom of a
+   phone. */
 .station-map .maplibregl-ctrl-bottom-right {
-  z-index: 3;
+  z-index: 4;
 }
 
 /* The base map is light whatever the site's theme, so the credits are dark
@@ -68,6 +68,12 @@
    with a halo. */
 .station-hero .maplibregl-ctrl-top-right {
   top: 4.25rem;
+}
+
+@media (max-width: 640px) {
+  .station-hero .maplibregl-ctrl-top-right {
+    top: 7.5rem;
+  }
 }
 
 .station-hero-marker {

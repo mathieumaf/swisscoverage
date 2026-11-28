@@ -123,7 +123,12 @@ export function StationSheet({ id, locale, apiUrl, onClose, back }: Props) {
           )}
           <dl className="mt-4 rounded-2xl bg-field px-4 text-[0.875rem]">
             {periodFields
-              .filter(({ key }) => key !== "technologies")
+              // The technologies show as chips under the title, or here when
+              // none is recognised.
+              .filter(
+                ({ key }) =>
+                  key !== "technologies" || current.technologies.length === 0,
+              )
               .map(({ key, label }) => (
                 <Field key={key} label={t(label)}>
                   {text[key]}

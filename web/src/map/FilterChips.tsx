@@ -20,6 +20,9 @@ interface Props {
 
 type Group = keyof Filters;
 
+// The width of the open list, `w-72`, in pixels.
+const listWidth = 288;
+
 // The filters, one chip per vocabulary over the map, each opening the list
 // of its values. A chip that hides some values is dark.
 export function FilterChips({ locale, filters, onFilters }: Props) {
@@ -112,9 +115,9 @@ export function FilterChips({ locale, filters, onFilters }: Props) {
   return (
     <div
       ref={root}
-      className="pointer-events-none absolute top-4 right-[15rem] left-[26.25rem] z-[2] phone:top-[4.25rem] phone:right-0 phone:left-0"
+      className="pointer-events-none absolute top-4 right-[15rem] left-[26.25rem] z-[4] max-[64rem]:top-[4.25rem] max-[64rem]:right-[4.5rem] phone:right-0 phone:left-0"
     >
-      <ul className="pointer-events-auto flex w-fit max-w-full gap-2 overflow-x-auto p-1 phone:px-3 [scrollbar-width:none]">
+      <ul className="pointer-events-auto flex w-fit max-w-full flex-wrap gap-2 p-1 phone:flex-nowrap phone:overflow-x-auto phone:px-3 [scrollbar-width:none]">
         {groups.map((group) => {
           const values = kept(group.key);
           const full = values.size === group.values.length;
@@ -139,7 +142,15 @@ export function FilterChips({ locale, filters, onFilters }: Props) {
                   const chip = event.currentTarget;
                   const box = root.current?.getBoundingClientRect();
                   const rect = chip.getBoundingClientRect();
-                  setLeft(box ? rect.left - box.left : 0);
+                  // Under its chip, but never past the right edge.
+                  setLeft(
+                    box
+                      ? Math.max(
+                          0,
+                          Math.min(rect.left - box.left, box.width - listWidth),
+                        )
+                      : 0,
+                  );
                   setOpen(group.key);
                 }}
               >
@@ -170,8 +181,8 @@ export function FilterChips({ locale, filters, onFilters }: Props) {
       {current && (
         <fieldset
           id={listId}
-          className="pointer-events-auto absolute top-full mt-1 w-72 max-w-[calc(100vw-1.5rem)] rounded-3xl bg-surface p-2 shadow-card phone:right-3 phone:left-3! phone:w-auto"
-          style={{ left: Math.max(0, left) }}
+          className="pointer-events-auto absolute top-full mt-1 max-h-[calc(100dvh-9rem)] w-72 max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-3xl bg-surface p-2 shadow-card phone:right-3 phone:left-3! phone:w-auto"
+          style={{ left }}
         >
           <legend className="sr-only">{t(current.title)}</legend>
           <ul>

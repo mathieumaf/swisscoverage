@@ -44,15 +44,37 @@ export default function StationHero({ locale, operator, position }: Props) {
         console.error("Creating the map failed:", cause);
         return;
       }
-      // The card of the page covers the bottom of the map: the station is
-      // drawn above it.
-      instance.setPadding({ top: 0, right: 0, bottom: 140, left: 0 });
+      // The card of the page covers the bottom of the map, and on a phone
+      // the header, on two rows, its top: the station is drawn between them.
+      const phone = window.matchMedia("(max-width: 640px)").matches;
+      instance.setPadding({
+        top: phone ? 110 : 0,
+        right: 0,
+        bottom: phone ? 128 : 140,
+        left: 0,
+      });
       // At the top right, under the pages and languages: at the bottom, the
       // card of the page would cover it.
       instance.addControl(
         new AttributionControl({ compact: true }),
         "top-right",
       );
+      // On a phone the credits open folded, as on the map of every station:
+      // unfolded, they would cover the station. MapLibre unfolds them the
+      // first time they fill, with the style; they fold right after. Their
+      // button unfolds them.
+      if (phone) {
+        const fold = () => {
+          const credits = element.querySelector(
+            ".maplibregl-ctrl-attrib.maplibregl-compact",
+          );
+          if (credits) {
+            credits.classList.remove("maplibregl-compact-show");
+            instance?.off("styledata", fold);
+          }
+        };
+        instance.on("styledata", fold);
+      }
       // The station is a marker, drawn whether or not the base map loads.
       const marker = document.createElement("div");
       marker.className = "station-hero-marker";

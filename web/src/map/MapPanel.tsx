@@ -281,8 +281,13 @@ export function MapPanel({
   return (
     <>
       {createPortal(search, targets.search)}
+      {/* The station stays mounted under the results: folding them shows it
+          again without reading it from the API a second time. */}
       {createPortal(
-        view === "search" ? results : view === "detail" ? detail : null,
+        <>
+          {view === "search" && results}
+          <div hidden={view !== "detail"}>{detail}</div>
+        </>,
         targets.view,
       )}
     </>

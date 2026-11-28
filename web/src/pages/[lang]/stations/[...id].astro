@@ -278,7 +278,11 @@ const entries =
           if (status) {
             status.textContent = button.dataset.copied ?? "";
           }
-          button.textContent = button.dataset.copied ?? button.textContent;
+          const label = button.textContent;
+          button.textContent = button.dataset.copied ?? label;
+          setTimeout(() => {
+            button.textContent = label;
+          }, 2000);
         }
       } catch {
         // The visitor cancelled, or the browser refused: nothing to say.
