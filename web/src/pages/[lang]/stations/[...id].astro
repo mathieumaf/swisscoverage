@@ -58,6 +58,7 @@ try {
 
 const current = station?.periods[0];
 const text = current && describePeriod(locale, current);
+const position = station && positionText(station);
 const entries =
   station === undefined
     ? []
@@ -76,7 +77,10 @@ const entries =
       })
     : undefined}
 >
-  {station === undefined || current === undefined || text === undefined ? (
+  {station === undefined ||
+    current === undefined ||
+    text === undefined ||
+    position === undefined ? (
     <>
       <h1 class="my-[0.67em] text-[2em] font-bold">
         {t("station.unavailableTitle")}
@@ -120,11 +124,9 @@ const entries =
         ))}
         <dt>{t("sheet.position")}</dt>
         <dd>
-          {positionText(station).wgs84}
+          {position.wgs84}
           <br />
-          <span class="text-[0.875rem] text-muted">
-            {positionText(station).lv95}
-          </span>
+          <span class="text-[0.875rem] text-muted">{position.lv95}</span>
         </dd>
         <dt>{t("sheet.firstSeen")}</dt>
         <dd>{date(station.firstSeen)}</dd>

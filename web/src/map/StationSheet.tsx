@@ -62,6 +62,7 @@ export function StationSheet({ id, locale, apiUrl, onClose, back }: Props) {
   const station = state.status === "ready" ? state.station : undefined;
   const current = station?.periods[0];
   const text = current && describePeriod(locale, current);
+  const position = station && positionText(station);
 
   return (
     <Sheet
@@ -92,7 +93,7 @@ export function StationSheet({ id, locale, apiUrl, onClose, back }: Props) {
         </p>
       )}
 
-      {station && current && text && (
+      {station && current && text && position && (
         <>
           {!station.published && (
             <p className="my-[1em] rounded-lg bg-border px-3 py-2">
@@ -119,9 +120,9 @@ export function StationSheet({ id, locale, apiUrl, onClose, back }: Props) {
               </Field>
             ))}
             <Field label={t("sheet.position")}>
-              {positionText(station).wgs84}
+              {position.wgs84}
               <br />
-              <span className={mutedText}>{positionText(station).lv95}</span>
+              <span className={mutedText}>{position.lv95}</span>
             </Field>
             <Field label={t("sheet.firstSeen")}>
               {formatDate(locale, new Date(station.firstSeen))}

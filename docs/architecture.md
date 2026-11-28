@@ -256,8 +256,8 @@ as a geography, serve the API's searches in a rectangle and around a point.
 
 A view, `current_station`, joins each site the latest snapshot publishes to
 its current state, with its position in WGS84 in degrees. The API's queries
-read the sites through it, and join `station` when they search by position,
-so that the spatial indexes apply.
+read the sites through it. It leaves the geometry out, so that the rows do
+not carry it, and the searches join `station` for it.
 
 A fourth table, `incoming_station`, is the import's workbench: it holds the
 stations of the snapshot being loaded while they are compared with what is

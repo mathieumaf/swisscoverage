@@ -66,7 +66,7 @@ func run(
 	}
 }
 
-// parseArgs parses the arguments of a command, which takes operands
+// parseArgs parses the arguments of a command, which takes `operands`
 // arguments after its flags. When the command must stop there, it returns
 // false with the exit status: 0 after -h, which printed the usage, and 2 when
 // the command was called the wrong way.

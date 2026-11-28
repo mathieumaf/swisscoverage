@@ -2,10 +2,13 @@
 -- current state, and its position in WGS84, in degrees. The queries of the
 -- API read the sites through it, so that the columns are listed once.
 --
--- It has no position as a geometry: a query that searches by position joins
--- station for it, so that the spatial indexes, which are on station, apply.
--- PostgreSQL 18 sees that the view joins station too, on the same key, and
--- keeps one join: the plans are those of the queries written in full.
+-- It leaves the position as a geometry out, so that the rows read through it
+-- do not carry it: a query that searches by position joins station for it.
+-- From PostgreSQL 18, the planner sees that the view joins station on the
+-- same key and keeps one join; an older server makes one more lookup by key
+-- per site.
+--
+-- A role given SELECT table by table needs it on this view too.
 --
 -- PostgreSQL refuses to drop or change a column of station or station_state
 -- that the view reads: a migration that does must replace the view too.
