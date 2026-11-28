@@ -187,14 +187,18 @@ describe("searchPlaces", () => {
     const caller = new AbortController();
     const search = searchPlaces("Bern", caller.signal);
     caller.abort();
-    await expect(search).rejects.toThrow("Aborted");
+    expect(String(await search.catch((cause: unknown) => cause))).toContain(
+      "Aborted",
+    );
   });
 
   test("refuses an answer that is an error", async () => {
     globalThis.fetch = (async () =>
       new Response("busy", { status: 503 })) as unknown as typeof fetch;
-    await expect(
-      searchPlaces("Bern", new AbortController().signal),
-    ).rejects.toThrow("503");
+    const failure = await searchPlaces(
+      "Bern",
+      new AbortController().signal,
+    ).catch((cause: unknown) => cause);
+    expect(String(failure)).toContain("503");
   });
 });
