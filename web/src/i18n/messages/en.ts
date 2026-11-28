@@ -72,6 +72,61 @@ export const en = {
   "place.address": "Address",
   "place.zipcode": "Postcode",
   "place.gg25": "Municipality",
+  "nav.pages": "Pages",
+  "nav.map": "Map",
+  "nav.about": "About",
+  "sheet.page": "Open this station's page, with its history",
+  "choice.back": "{count} stations at this place",
+  "station.description":
+    "{name}, {operator}: {kind}, {technologies}. A mobile network site published by OFCOM, with its history.",
+  "station.onMap": "Show on the map",
+  "station.published": "As published today",
+  "station.lastPublished": "As last published",
+  "station.notPublishedSince": "No longer published since {date}.",
+  "station.history": "History",
+  "station.historyIntro":
+    "What OFCOM published of this site, the latest first. Each period shows what changed from the one before it.",
+  "station.unavailableTitle": "Station unavailable",
+  "station.unavailable": "This station cannot be loaded right now.",
+  "history.since": "Since {date}",
+  "history.range": "{from} to {to}",
+  "history.first": "First published in the archive.",
+  "history.earlier": "Earlier periods are not shown.",
+  "history.unchanged": "Published again, unchanged.",
+  "history.gap": "Not published.",
+  "history.truncated": "The latest {shown} of {total} periods are shown.",
+  "about.title": "About swisscoverage",
+  "about.intro":
+    "swisscoverage shows on a map the mobile network sites that the Federal Office of Communications (OFCOM) publishes every day, and keeps them in a public API. It is free software, independent of OFCOM and of the operators.",
+  "about.history":
+    "OFCOM replaces its file every day and keeps no history. The project keeps every daily file since 23 November 2026, so the page of each station shows what changed since then.",
+  "about.dataTitle": "What the map shows",
+  "about.data1":
+    "One point per site, at the position of its first mast. Other masts on the same or a nearby roof are not published.",
+  "about.data2":
+    "The power is a class, the highest power radiated in a 90° sector, not a measured value.",
+  "about.data3":
+    "Sites below 1 W are not published, and technologies are given per site, not per antenna.",
+  "about.data4":
+    "Frequencies, the direction of each antenna and exact powers are not published.",
+  "about.dataMore": "OFCOM's notes on its overview map",
+  "about.sourcesTitle": "Sources and credits",
+  "about.sourceOfcom":
+    "Mobile network sites: Federal Office of Communications OFCOM, open government data.",
+  "about.sourceMap":
+    "Background map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap contributors.",
+  "about.sourceSearch":
+    "Search for addresses, postcodes and municipalities: Federal Office of Topography swisstopo.",
+  "about.privacyTitle": "What your browser sends",
+  "about.privacy1":
+    "This site sets no cookies and does not count its visitors.",
+  "about.privacy2":
+    "To draw the map, your browser asks OpenFreeMap for the background of the area you look at.",
+  "about.privacy3":
+    "When you search for a place, your browser sends what you type to swisstopo, from the third character.",
+  "about.codeTitle": "Source code",
+  "about.code":
+    "The code is published under the AGPL-3.0 licence. Errors and suggestions are welcome as issues on GitHub.",
   "notFound.title": "Page not found",
   "notFound.text": "This address does not lead to any page.",
   "notFound.home": "Back to the home page",

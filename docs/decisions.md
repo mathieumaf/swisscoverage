@@ -393,9 +393,10 @@ Three facts shaped most choices:
 
 - **Decision.** The website's pages are rendered on a server: Astro in server
   mode, with the standalone server of `@astrojs/node`, run by Bun. Each
-  station will have its own address, `/{language}/stations/{id}`: on the map
-  it opens as a sheet over the map, and loaded on its own it is a complete
-  page. Every page lives under its language, `/fr/`, `/de/`, `/it/` and
+  station has its own address, `/{language}/stations/{id}`, a complete page
+  with its history. On the map it opens as a sheet over the map, which links
+  to that page; the map's own address names the open station in its query,
+  `?station=`, with the filters and the position. Every page lives under its language, `/fr/`, `/de/`, `/it/` and
   `/en/`; the root sends each visitor to the language their browser ranks
   highest, or to English.
 - **Why.** A station's address can be shared and found by search engines,

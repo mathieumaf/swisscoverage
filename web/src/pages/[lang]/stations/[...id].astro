@@ -1,0 +1,173 @@
+---
+import { api } from "../../../api/server";
+import { formatDate, isLocale } from "../../../i18n/locales";
+import type { MessageKey } from "../../../i18n/messages/en";
+import { translate } from "../../../i18n/translate";
+import Base from "../../../layouts/Base.astro";
+import { describePeriod, history, periodFields } from "../../../map/describe";
+import {
+  isStationId,
+  operatorColors,
+  type StationHistory,
+  stationOnMapPath,
+} from "../../../map/stations";
+
+// The page of one station (decision 24): what OFCOM publishes of it, and what
+// changed since the archive began, rendered by the server from
+// GET /v1/stations/{id}.
+
+const { lang, id } = Astro.params;
+if (!isLocale(lang) || id === undefined || !isStationId(id)) {
+  return Astro.rewrite("/404");
+}
+const locale = lang;
+const t = (key: MessageKey, values?: Record<string, string>) =>
+  translate(locale, key, values);
+const date = (value: string) => formatDate(locale, new Date(value));
+
+// Every period the API keeps for the station, up to the most it gives at once.
+const periodLimit = 1000;
+
+let station: StationHistory | undefined;
+try {
+  const { data, response } = await api().GET("/v1/stations/{id}", {
+    params: { path: { id }, query: { limit: periodLimit } },
+  });
+  if (response.status === 404) {
+    return Astro.rewrite("/404");
+  }
+  if (data === undefined) {
+    throw new Error(`The API answered ${response.status}`);
+  }
+  station = data;
+} catch (cause) {
+  console.error("Reading the station from the API failed:", cause);
+  Astro.response.status = 503;
+}
+
+const current = station?.periods[0];
+const text = current && describePeriod(locale, current);
+const entries =
+  station === undefined
+    ? []
+    : history(locale, station.periods, station.total <= station.periods.length);
+---
+
+<Base
+  locale={locale}
+  title={station?.name ?? t("station.unavailableTitle")}
+  description={station && text
+    ? t("station.description", {
+        name: station.name,
+        operator: t(`operator.${station.operator}`),
+        kind: text.kind,
+        technologies: text.technologies,
+      })
+    : undefined}
+>
+  {station === undefined || current === undefined || text === undefined ? (
+    <>
+      <h1 class="my-[0.67em] text-[2em] font-bold">
+        {t("station.unavailableTitle")}
+      </h1>
+      <p class="my-[1em]">{t("station.unavailable")}</p>
+      <p class="my-[1em]"><a href={`/${locale}/`}>{t("notFound.home")}</a></p>
+    </>
+  ) : (
+    <article>
+      <p class="mb-1 flex items-center gap-[0.4rem] text-[0.8125rem] font-semibold tracking-[0.04em] text-muted uppercase">
+        <span
+          class="size-2.5 flex-none rounded-full"
+          style={{ background: operatorColors[station.operator] }}
+        />
+        {t(`operator.${station.operator}`)}
+      </p>
+      <h1 class="text-[2em] leading-[1.2] font-bold wrap-anywhere">
+        {station.name}
+      </h1>
+      <p class="mt-1 text-muted">LV95 {station.lv95.east}, {station.lv95.north}</p>
+      <p class="mt-4">
+        <a href={stationOnMapPath(locale, station.id, station.position)}
+          >{t("station.onMap")}</a
+        >
+      </p>
+
+      {!station.published && current.to && (
+        <p class="mt-6 rounded-lg bg-border px-3 py-2">
+          {t("station.notPublishedSince", { date: date(current.to) })}
+        </p>
+      )}
+
+      <h2 class="mt-8 mb-3 text-[1.25rem] font-bold">
+        {station.published ? t("station.published") : t("station.lastPublished")}
+      </h2>
+      <dl class="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-x-4 gap-y-2 [&>dt]:text-muted">
+        {periodFields.map(({ key, label }) => (
+          <Fragment>
+            <dt>{t(label)}</dt>
+            <dd>{text[key]}</dd>
+          </Fragment>
+        ))}
+        <dt>{t("sheet.position")}</dt>
+        <dd>
+          {station.position.lat.toFixed(5)}, {station.position.lon.toFixed(5)}
+          <br />
+          <span class="text-[0.875rem] text-muted">
+            LV95 {station.lv95.east}, {station.lv95.north}
+          </span>
+        </dd>
+        <dt>{t("sheet.firstSeen")}</dt>
+        <dd>{date(station.firstSeen)}</dd>
+      </dl>
+
+      <h2 class="mt-8 mb-1 text-[1.25rem] font-bold">{t("station.history")}</h2>
+      <p class="mb-4 text-muted">{t("station.historyIntro")}</p>
+      <ol class="border-l-2 border-border">
+        {entries.map((entry) => (
+          <li class="relative mb-5 pl-5">
+            <span
+              class:list={[
+                "absolute top-[0.45em] -left-[0.4rem] size-2.5 rounded-full",
+                entry.type === "gap" ? "border-2 border-border bg-background" : "bg-accent",
+              ]}
+            />
+            <p class="font-semibold">
+              {entry.to === null
+                ? t("history.since", { date: date(entry.from) })
+                : t("history.range", { from: date(entry.from), to: date(entry.to) })}
+            </p>
+            {entry.type === "gap" ? (
+              <p class="text-muted">{t("history.gap")}</p>
+            ) : entry.changes.length > 0 ? (
+              <dl class="mt-1 grid grid-cols-[minmax(8rem,12rem)_1fr] gap-x-4 gap-y-1 [&>dt]:text-muted">
+                {entry.changes.map((change) => (
+                  <Fragment>
+                    <dt>{t(change.label)}</dt>
+                    <dd>
+                      <del class="text-muted">{change.before}</del>{" → "}
+                      <ins class="no-underline">{change.after}</ins>
+                    </dd>
+                  </Fragment>
+                ))}
+              </dl>
+            ) : entry.first ? (
+              <p class="text-muted">{t("history.first")}</p>
+            ) : (
+              <p class="text-muted">
+                {entry === entries.at(-1) ? t("history.earlier") : t("history.unchanged")}
+              </p>
+            )}
+          </li>
+        ))}
+      </ol>
+      {station.total > station.periods.length && (
+        <p class="text-muted">
+          {t("history.truncated", {
+            shown: String(station.periods.length),
+            total: String(station.total),
+          })}
+        </p>
+      )}
+    </article>
+  )}
+</Base>

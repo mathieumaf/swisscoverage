@@ -25,11 +25,11 @@ in the same pull request, and in particular:
 | Step 1: the `swisscoverage` program in Go, with its `parse` command and the parser for OFCOM's file, tested on real samples                             |
 | Step 2: the database, its schema, and the `migrate` and `ingest` commands, which load the archive and record what changed from one snapshot to the next |
 | Step 3: the public API, read-only, served by the `serve` command, and its contract in `openapi.json`                                                    |
+| Step 4: the website, with the map of every station, its filters and search, a page per station with its history, in four languages                      |
 | Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`), with an index of its snapshots                                    |
 | Architecture and decisions written down                                                                                                                 |
 
-In progress: [step 4](#step-4-website-and-map-in-progress), the website and
-the map. Its foundation is in `web/`.
+Next: [step 5](#step-5-going-online), going online.
 
 Waiting on someone else: a Freedom of Information request for OFCOM's detailed
 antenna database was filed on 24 November 2026. Version 1.0 depends on the
@@ -140,7 +140,7 @@ The parser moved to Go, and the repository got its Go toolchain.
     loaded from the archive.
   - Each appears in the committed `openapi.json`.
 
-### Step 4. Website and map (in progress)
+### Step 4. Website and map (done)
 
 - **Adds.** `web/`: the map with filters by operator, technology, kind and
   power class; a search by station label; the pages; the four languages; types
@@ -157,8 +157,9 @@ The parser moved to Go, and the repository got its Go toolchain.
      the open station and the map's position, so a view can be shared.
   4. The search by address (done), from the same field: swisstopo's
      location search, entered in [data-sources.md](data-sources.md).
-  5. The pages: a page per station, the other pages, every text in four
-     languages.
+  5. The pages (done): a page per station with its history, which the
+     station's sheet links to; a page about the site, its data, its sources
+     and what a visitor's browser sends; every text in four languages.
 - **Decides.**
   - A page per station, or a map only: a page per station, rendered on the
     server ([decision 24](decisions.md)).

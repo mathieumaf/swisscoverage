@@ -87,6 +87,21 @@ export function isStationId(value: string): boolean {
   );
 }
 
+// The address of a station's page (decision 24).
+export function stationPath(locale: Locale, id: string): string {
+  return `/${locale}/stations/${encodeURIComponent(id)}`;
+}
+
+// The address of the map with a station's sheet open, at its position.
+export function stationOnMapPath(
+  locale: Locale,
+  id: string,
+  position: { lat: number; lon: number },
+): string {
+  const station = encodeURIComponent(id);
+  return `/${locale}/?station=${station}#map=16/${position.lat}/${position.lon}`;
+}
+
 // The LV95 position in a station's identifier, `east_north_label`
 // (decision 22), to tell apart stations that share a label.
 export function lv95Of(id: string): string {

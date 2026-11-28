@@ -1,0 +1,61 @@
+---
+import { isLocale } from "../../i18n/locales";
+import type { MessageKey } from "../../i18n/messages/en";
+import { translate } from "../../i18n/translate";
+import Base from "../../layouts/Base.astro";
+
+// What the site is, what OFCOM's data says and does not say, where each part
+// of the page comes from, and what a visitor's browser sends to whom.
+
+const { lang } = Astro.params;
+if (!isLocale(lang)) {
+  return Astro.rewrite("/404");
+}
+const locale = lang;
+const t = (key: MessageKey) => translate(locale, key);
+
+const sections: { title: MessageKey; items: MessageKey[] }[] = [
+  {
+    title: "about.dataTitle",
+    items: ["about.data1", "about.data2", "about.data3", "about.data4"],
+  },
+  {
+    title: "about.sourcesTitle",
+    items: ["about.sourceOfcom", "about.sourceMap", "about.sourceSearch"],
+  },
+  {
+    title: "about.privacyTitle",
+    items: ["about.privacy1", "about.privacy2", "about.privacy3"],
+  },
+];
+---
+
+<Base locale={locale} title={t("about.title")} description={t("about.intro")}>
+  <h1 class="mb-4 text-[2em] leading-[1.2] font-bold">{t("about.title")}</h1>
+  <p class="text-[1.0625rem]">{t("about.intro")}</p>
+  <p class="mt-3">{t("about.history")}</p>
+
+  {sections.map((section) => (
+    <section>
+      <h2 class="mt-8 mb-3 text-[1.25rem] font-bold">{t(section.title)}</h2>
+      <ul class="list-disc space-y-2 pl-5">
+        {section.items.map((item) => <li>{t(item)}</li>)}
+      </ul>
+      {section.title === "about.dataTitle" && (
+        <p class="mt-3">
+          <a href="https://www.bakom.admin.ch/en/explanations-on-overview-map"
+            >{t("about.dataMore")}</a
+          >
+        </p>
+      )}
+    </section>
+  ))}
+
+  <h2 class="mt-8 mb-3 text-[1.25rem] font-bold">{t("about.codeTitle")}</h2>
+  <p>{t("about.code")}</p>
+  <p class="mt-3">
+    <a href="https://github.com/mathieumaf/swisscoverage"
+      >github.com/mathieumaf/swisscoverage</a
+    >
+  </p>
+</Base>

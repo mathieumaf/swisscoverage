@@ -4,6 +4,8 @@ interface Props {
   title: string;
   // A line above the title, such as the operator.
   eyebrow?: ReactNode;
+  // A way back to the view that opened this one.
+  back?: { label: string; onBack: () => void } | undefined;
   closeLabel: string;
   onClose: () => void;
   children: ReactNode;
@@ -14,6 +16,7 @@ interface Props {
 export function Sheet({
   title,
   eyebrow,
+  back,
   closeLabel,
   onClose,
   children,
@@ -38,6 +41,15 @@ export function Sheet({
     >
       <header className="flex items-start justify-between gap-4">
         <div>
+          {back && (
+            <button
+              type="button"
+              className="mb-2 cursor-pointer text-[0.875rem] text-accent underline"
+              onClick={back.onBack}
+            >
+              ← {back.label}
+            </button>
+          )}
           {eyebrow}
           <h2
             id="station-sheet-title"
