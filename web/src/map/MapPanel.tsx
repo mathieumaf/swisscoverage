@@ -1,4 +1,11 @@
-import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import type { Locale } from "../i18n/locales";
 import { translator } from "../i18n/translate";
@@ -62,6 +69,10 @@ export function MapPanel({
   const searched = showResults && query.trim() !== "";
   const view = searched ? "search" : detailKey ? "detail" : "home";
   const searchId = useId();
+  const input = useRef<HTMLInputElement>(null);
+  // Set while focus goes back to the field after Escape, which must not
+  // unfold the results again.
+  const refocusing = useRef(false);
 
   const [targets] = useState(() => ({
     panel: document.getElementById("map-panel"),
@@ -134,6 +145,7 @@ export function MapPanel({
             />
           </svg>
           <input
+            ref={input}
             id={searchId}
             type="search"
             className="h-full min-w-0 flex-1 bg-transparent text-[1rem] text-foreground outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
@@ -146,7 +158,13 @@ export function MapPanel({
                 onClearPlace();
               }
             }}
-            onFocus={() => setShowResults(true)}
+            onFocus={() => {
+              if (refocusing.current) {
+                refocusing.current = false;
+              } else {
+                setShowResults(true);
+              }
+            }}
             onKeyDown={(event) => {
               if (event.key === "Escape" && searched) {
                 // The results fold; the open station, if any, stays.
@@ -189,12 +207,16 @@ export function MapPanel({
   );
 
   const results = (
-    // Escape on a result folds the results, as it does in the field.
+    // Escape on a result folds the results, as it does in the field, and
+    // takes focus back to the field: the result it was on goes away.
     // biome-ignore lint/a11y/noStaticElementInteractions: the key comes from the buttons inside
     <div
       className="px-3 pt-2 pb-4 text-[0.9375rem]"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
+          event.stopPropagation();
+          refocusing.current = true;
+          input.current?.focus();
           setShowResults(false);
         }
       }}

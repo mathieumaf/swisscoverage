@@ -672,7 +672,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
             </p>
           ) : (
             <>
-              <p role="status" className="py-1.5 whitespace-nowrap">
+              <p role="status" className="py-1.5 text-center">
                 {t("filters.count", {
                   shown: formatNumber(locale, shown.length),
                   total: formatNumber(locale, stations.length),

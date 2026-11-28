@@ -35,7 +35,8 @@ export function FilterChips({ locale, filters, onFilters }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const listId = useId();
 
-  // A click elsewhere or Escape closes the list.
+  // A click elsewhere, Escape or a change of the window's size closes the
+  // list.
   useEffect(() => {
     if (open === null) {
       return;
@@ -54,11 +55,15 @@ export function FilterChips({ locale, filters, onFilters }: Props) {
           ?.focus();
       }
     };
+    // Its place and height were measured when it opened.
+    const onResize = () => setOpen(null);
     document.addEventListener("click", onClick);
     window.addEventListener("keydown", onKey, { capture: true });
+    window.addEventListener("resize", onResize);
     return () => {
       document.removeEventListener("click", onClick);
       window.removeEventListener("keydown", onKey, { capture: true });
+      window.removeEventListener("resize", onResize);
     };
   }, [open]);
 
@@ -158,7 +163,10 @@ export function FilterChips({ locale, filters, onFilters }: Props) {
                       : 0,
                   );
                   setMaxHeight(
-                    window.innerHeight - (box?.bottom ?? 0) - 2 * margin,
+                    Math.max(
+                      120,
+                      window.innerHeight - (box?.bottom ?? 0) - 2 * margin,
+                    ),
                   );
                   setOpen(group.key);
                 }}
