@@ -1146,6 +1146,9 @@
             "name": "lat",
             "schema": {
               "description": "The latitude of the point to search around, in WGS84 degrees. Requires lon.",
+              "examples": [
+                46.948
+              ],
               "format": "double",
               "maximum": 90,
               "minimum": -90,
@@ -1159,6 +1162,9 @@
             "name": "lon",
             "schema": {
               "description": "The longitude of the point to search around, in WGS84 degrees. Requires lat.",
+              "examples": [
+                7.4474
+              ],
               "format": "double",
               "maximum": 180,
               "minimum": -180,
@@ -1173,6 +1179,9 @@
             "schema": {
               "default": 1000,
               "description": "Around a point: the distance to search within, in metres.",
+              "examples": [
+                300
+              ],
               "format": "double",
               "maximum": 50000,
               "minimum": 1,
@@ -1381,6 +1390,9 @@
             "required": true,
             "schema": {
               "description": "The station's identifier, as east_north_label, such as 2683000_1247000_Sunrise ZH601-1, percent-encoded in the path.",
+              "examples": [
+                "2683328_1247916_Sunrise ZE416-1"
+              ],
               "maxLength": 200,
               "pattern": "^-?[0-9]+(\\.[0-9]+)?_-?[0-9]+(\\.[0-9]+)?_.+$",
               "type": "string"

@@ -43,7 +43,8 @@ into a map, a public API and an MCP server.
   by `SWISSCOVERAGE_API_URL`, `http://127.0.0.1:8080` by default. It holds no
   credentials and has no access to the database. Locally it listens on
   `127.0.0.1:4321`. Today it serves the map, on the home page of each
-  language, a page per station and a page about the site. The map runs in
+  language, a page per station, a page about the site and a page that
+  documents the API, generated from the `openapi.json` it is built with. The map runs in
   the visitor's browser: it reads the stations
   from the same API origin, the base map from OpenFreeMap
   (`tiles.openfreemap.org`), and the places a visitor searches for from

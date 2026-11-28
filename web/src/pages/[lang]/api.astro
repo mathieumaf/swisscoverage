@@ -1,0 +1,415 @@
+---
+import {
+  type Endpoint,
+  exampleCommand,
+  type Limit,
+  reference,
+  segments,
+  type TypeName,
+} from "../../api/contract";
+import { serverApiUrl } from "../../api/server";
+import { isLocale } from "../../i18n/locales";
+import type { MessageKey } from "../../i18n/messages/en";
+import { translator } from "../../i18n/translate";
+import Base from "../../layouts/Base.astro";
+
+// The documentation of the public API, generated from its contract,
+// openapi.json (decision 28): every endpoint, parameter, limit, response,
+// error and type comes from it, in the English it is written in. Only the
+// frame is translated: the titles, the labels and the introduction.
+
+const { lang } = Astro.params;
+if (!isLocale(lang)) {
+  return Astro.rewrite("/404");
+}
+const locale = lang;
+const t = translator(locale);
+
+// The API's origin, as the map calls it from the browser: the examples use
+// it, so that they work as they are. When it is not usable, the page still
+// renders, without the examples; the reason goes to the log.
+let origin: string | undefined;
+try {
+  origin = serverApiUrl();
+} catch (cause) {
+  console.error("SWISSCOVERAGE_API_URL is not usable:", cause);
+}
+
+// The sentence that names the origin, around it, so that it shows as code.
+const [originBefore, originAfter] = t("api.origin").split("{origin}");
+
+const { endpoints, caching, schemas } = reference;
+// The first request a reader makes: the search around a point.
+const first = endpoints.find((endpoint) => endpoint.id === "search-stations");
+const errors = [
+  ...new Map(
+    endpoints
+      .flatMap((endpoint) => endpoint.responses)
+      .filter((response) => Number(response.status) >= 400)
+      .map((response) => [response.status, response]),
+  ).values(),
+].sort((a, b) => a.status.localeCompare(b.status));
+const errorType = errors.find((error) => error.type !== undefined);
+
+const contents: { id: string; title: MessageKey }[] = [
+  { id: "start", title: "api.startTitle" },
+  { id: "source", title: "api.sourceTitle" },
+  { id: "endpoints", title: "api.endpointsTitle" },
+  { id: "errors", title: "api.errorsTitle" },
+  { id: "caching", title: "api.cachingTitle" },
+  { id: "types", title: "api.typesTitle" },
+  { id: "contract", title: "api.contractTitle" },
+];
+const number = (id: string) =>
+  String(contents.findIndex((section) => section.id === id) + 1).padStart(
+    2,
+    "0",
+  );
+
+function limit(rule: Limit): string {
+  switch (rule.kind) {
+    case "minimum":
+      return t("api.minimum", { value: String(rule.value) });
+    case "maximum":
+      return t("api.maximum", { value: String(rule.value) });
+    case "items":
+      if (rule.min !== undefined && rule.min === rule.max) {
+        return t("api.itemsExact", { count: String(rule.min) });
+      }
+      if (rule.min !== undefined && rule.max !== undefined) {
+        return t("api.itemsRange", {
+          min: String(rule.min),
+          max: String(rule.max),
+        });
+      }
+      return rule.min !== undefined
+        ? t("api.itemsMin", { min: String(rule.min) })
+        : t("api.itemsMax", { max: String(rule.max) });
+    case "maxLength":
+      return t("api.maxLength", { value: String(rule.value) });
+    case "pattern":
+      return t("api.pattern", { value: rule.value });
+  }
+}
+
+const schemaId = (name: string) => `schema-${name}`;
+const endpointId = (endpoint: Endpoint) => `endpoint-${endpoint.id}`;
+const typeHref = (type: TypeName) =>
+  type.schema === undefined ? undefined : `#${schemaId(type.schema)}`;
+
+const sectionCard = "scroll-mt-6 rounded-3xl bg-surface p-8 phone:p-6";
+const sectionTitle =
+  "flex items-baseline gap-3 text-[1.5rem] leading-tight font-extrabold tracking-[-0.015em]";
+const sectionNumber = "text-[0.875rem] font-bold text-muted";
+const prose = "max-w-[44rem] text-[1.0625rem] leading-relaxed";
+// A command wraps rather than scrolls, so that all of it shows: copied, it
+// is still one line.
+const codeBlock =
+  "rounded-2xl bg-field p-4 font-mono text-[0.875rem] leading-relaxed break-all whitespace-pre-wrap";
+const inlineCode =
+  "rounded-md bg-field px-1.5 py-0.5 font-mono text-[0.875em] break-words";
+const subTitle =
+  "text-[0.8125rem] font-extrabold tracking-[0.04em] text-muted uppercase";
+const row = "border-t border-border py-4 first:border-t-0";
+const chip = "rounded-md bg-field px-1.5 py-0.5 font-mono text-[0.8125rem]";
+const badge =
+  "rounded-full bg-field px-2.5 py-0.5 text-[0.8125rem] font-bold text-muted";
+---
+
+<Base locale={locale} title={t("api.title")} description={t("api.intro")}>
+  <div class="mx-auto max-w-[68rem] px-4">
+    <header class="max-w-[48rem] pt-10 pb-10 phone:pt-4 phone:pb-6">
+      <h1 class="text-[clamp(2.5rem,6vw,4rem)] leading-none font-extrabold tracking-[-0.035em]">
+        {t("api.title")}
+      </h1>
+      <p class="mt-6 text-[1.25rem] leading-relaxed phone:text-[1.125rem]">
+        {t("api.intro")}
+      </p>
+      {origin ? (
+        <p class="mt-4 text-[1.0625rem] leading-relaxed">
+          {originBefore}<code class="font-mono font-bold break-all">{origin}</code>{originAfter}
+        </p>
+      ) : (
+        <p class="mt-4 rounded-2xl bg-notice p-5 text-notice-foreground">{t("api.unavailable")}</p>
+      )}
+      <p class="mt-6 rounded-2xl bg-surface p-5 leading-relaxed text-muted">
+        {t("api.generated")}
+      </p>
+    </header>
+
+    <div class="grid grid-cols-[13rem_minmax(0,1fr)] items-start gap-10 max-[56rem]:grid-cols-1">
+      <nav aria-label={t("station.sections")} class="sticky top-6 max-[56rem]:hidden">
+        <ol class="flex flex-col gap-1 text-[0.9375rem] font-bold">
+          {contents.map((section) => (
+            <li>
+              <a
+                class="flex min-h-10 items-center gap-3 rounded-xl px-3 text-foreground no-underline hover:bg-surface"
+                href={`#${section.id}`}
+              >
+                <span class="text-[0.8125rem] text-muted">{number(section.id)}</span>
+                {t(section.title)}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+
+      <div class="flex min-w-0 flex-col gap-4">
+        <section id="start" class={sectionCard}>
+          <h2 class={sectionTitle}>
+            <span class={sectionNumber}>{number("start")}</span>
+            {t("api.startTitle")}
+          </h2>
+          <p class:list={[prose, "mt-4"]}>{t("api.start")}</p>
+          {origin && first && (
+            <pre class:list={[codeBlock, "mt-4"]}><code>{exampleCommand(origin, first)}</code></pre>
+          )}
+        </section>
+
+        <section id="source" class={sectionCard}>
+          <h2 class={sectionTitle}>
+            <span class={sectionNumber}>{number("source")}</span>
+            {t("api.sourceTitle")}
+          </h2>
+          <p class:list={[prose, "mt-4"]}>{t("api.source")}</p>
+          <p class="mt-4">
+            <a class="font-bold" href="https://opendata.swiss/en/terms-of-use/#terms_by">{t("api.terms")}</a>
+          </p>
+          <p class:list={[prose, "mt-6 text-muted"]} lang="en">
+            {segments(reference.description).map((part) =>
+              part.code ? <code class={inlineCode}>{part.text}</code> : part.text,
+            )}
+          </p>
+          <p class="mt-4 flex flex-wrap gap-2">
+            <span class={badge}>{t("api.version", { version: reference.version })}</span>
+            {reference.license && <span class={badge} lang="en">{reference.license}</span>}
+          </p>
+        </section>
+
+        <section id="endpoints" class={sectionCard}>
+          <h2 class={sectionTitle}>
+            <span class={sectionNumber}>{number("endpoints")}</span>
+            {t("api.endpointsTitle")}
+          </h2>
+          <ul class="mt-4 flex flex-col gap-1">
+            {endpoints.map((endpoint) => (
+              <li>
+                <a class="flex flex-wrap items-baseline gap-x-3 no-underline" href={`#${endpointId(endpoint)}`}>
+                  <span class="font-mono text-[0.9375rem] font-bold">{endpoint.method} {endpoint.path}</span>
+                  <span class="text-muted" lang="en">{endpoint.summary}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          {endpoints.map((endpoint) => (
+            <article id={endpointId(endpoint)} class="mt-8 scroll-mt-6 border-t border-border pt-8" lang="en">
+              <h3 class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span class="rounded-md bg-accent px-2 py-0.5 font-mono text-[0.8125rem] font-bold text-accent-foreground">{endpoint.method}</span>
+                <span class="font-mono text-[1.125rem] font-bold break-all">{endpoint.path}</span>
+              </h3>
+              <p class="mt-2 text-[1.125rem] font-bold">{endpoint.summary}</p>
+              <p class:list={[prose, "mt-2"]}>
+                {segments(endpoint.description).map((part) =>
+                  part.code ? <code class={inlineCode}>{part.text}</code> : part.text,
+                )}
+              </p>
+
+              {origin && (
+                <>
+                  <h4 class:list={[subTitle, "mt-6"]} lang={locale}>{t("api.example")}</h4>
+                  <pre class:list={[codeBlock, "mt-2"]}><code>{exampleCommand(origin, endpoint)}</code></pre>
+                </>
+              )}
+
+              {endpoint.parameters.length > 0 && (
+                <>
+                  <h4 class:list={[subTitle, "mt-6"]} lang={locale}>{t("api.parameters")}</h4>
+                  <ul class="mt-2">
+                    {endpoint.parameters.map((parameter) => (
+                      <li class={row}>
+                        <p class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                          <code class="font-mono font-bold">{parameter.name}</code>
+                          <span class="font-mono text-[0.875rem] text-muted">{parameter.type.text}</span>
+                          <span class={badge} lang={locale}>{t(parameter.in === "path" ? "api.inPath" : "api.inQuery")}</span>
+                          {parameter.required && <span class={badge} lang={locale}>{t("api.required")}</span>}
+                        </p>
+                        <p class="mt-1 max-w-[44rem] leading-relaxed">
+                          {segments(parameter.description).map((part) =>
+                            part.code ? <code class={inlineCode}>{part.text}</code> : part.text,
+                          )}
+                        </p>
+                        {parameter.values.length > 0 && (
+                          <p class="mt-2 flex flex-wrap items-baseline gap-1.5 text-[0.875rem]">
+                            <span class="text-muted" lang={locale}>{t("api.values")}</span>
+                            {parameter.values.map((value) => <code class={chip}>{value}</code>)}
+                          </p>
+                        )}
+                        {(parameter.default !== undefined ||
+                          parameter.example !== undefined ||
+                          parameter.limits.length > 0) && (
+                          <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.875rem] text-muted" lang={locale}>
+                            {parameter.default !== undefined && (
+                              <li>{t("api.default")} <code class={chip}>{parameter.default}</code></li>
+                            )}
+                            {parameter.example !== undefined && (
+                              <li>{t("api.exampleValue")} <code class={chip}>{parameter.example}</code></li>
+                            )}
+                            {parameter.limits.map((rule) => <li>{limit(rule)}</li>)}
+                          </ul>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              <h4 class:list={[subTitle, "mt-6"]} lang={locale}>{t("api.responses")}</h4>
+              <ul class="mt-2">
+                {endpoint.responses.map((response) => (
+                  <li class="flex flex-wrap items-baseline gap-x-3 border-t border-border py-2 first:border-t-0">
+                    <code class="font-mono font-bold">{response.status}</code>
+                    <span>{response.description}</span>
+                    {response.type?.schema ? (
+                      <a class="font-mono text-[0.875rem]" href={typeHref(response.type)}>{response.type.text}</a>
+                    ) : (
+                      response.type && <span class="font-mono text-[0.875rem] text-muted">{response.type.text}</span>
+                    )}
+                    {response.contentType && (
+                      <span class="font-mono text-[0.8125rem] text-muted">{response.contentType}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </section>
+
+        <section id="errors" class={sectionCard}>
+          <h2 class={sectionTitle}>
+            <span class={sectionNumber}>{number("errors")}</span>
+            {t("api.errorsTitle")}
+          </h2>
+          {errorType?.type && (
+            <p class:list={[prose, "mt-4"]}>
+              {t("api.errors", { contentType: errorType.contentType ?? "", schema: errorType.type.text })}
+            </p>
+          )}
+          <ul class="mt-4" lang="en">
+            {errors.map((error) => (
+              <li class="flex flex-wrap items-baseline gap-x-3 border-t border-border py-2 first:border-t-0">
+                <code class="font-mono font-bold">{error.status}</code>
+                <span>{error.description}</span>
+              </li>
+            ))}
+          </ul>
+          {errorType?.type && (
+            <p class="mt-4">
+              <a class="font-mono font-bold" href={typeHref(errorType.type)}>{errorType.type.text}</a>
+            </p>
+          )}
+        </section>
+
+        <section id="caching" class={sectionCard}>
+          <h2 class={sectionTitle}>
+            <span class={sectionNumber}>{number("caching")}</span>
+            {t("api.cachingTitle")}
+          </h2>
+          <ul class="mt-4" lang="en">
+            {caching.headers.map((header) => (
+              <li class={row}>
+                <code class="font-mono font-bold">{header.name}</code>
+                <p class="mt-1 max-w-[44rem] leading-relaxed">{header.description}</p>
+              </li>
+            ))}
+            {caching.request && (
+              <li class={row}>
+                <p class="flex flex-wrap items-baseline gap-x-3">
+                  <code class="font-mono font-bold">{caching.request.name}</code>
+                  <span class={badge} lang={locale}>{t("api.request")}</span>
+                </p>
+                <p class="mt-1 max-w-[44rem] leading-relaxed">{caching.request.description}</p>
+              </li>
+            )}
+            {caching.notModified && (
+              <li class={row}>
+                <code class="font-mono font-bold">{caching.notModified.status}</code>
+                <p class="mt-1 max-w-[44rem] leading-relaxed">{caching.notModified.description}</p>
+              </li>
+            )}
+          </ul>
+        </section>
+
+        <section id="types" class={sectionCard}>
+          <h2 class={sectionTitle}>
+            <span class={sectionNumber}>{number("types")}</span>
+            {t("api.typesTitle")}
+          </h2>
+          {schemas.map((schema) => (
+            <article id={schemaId(schema.name)} class="mt-6 scroll-mt-6 border-t border-border pt-6 first-of-type:mt-4" lang="en">
+              <h3 class="font-mono text-[1.125rem] font-bold">{schema.name}</h3>
+              {schema.description && (
+                <p class="mt-1 max-w-[44rem] leading-relaxed">{schema.description}</p>
+              )}
+              <ul class="mt-2">
+                {schema.fields.map((field) => (
+                  <li class="border-t border-border py-3 first:border-t-0">
+                    <p class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <code class="font-mono font-bold">{field.name}</code>
+                      {field.type.schema ? (
+                        <a class="font-mono text-[0.875rem]" href={typeHref(field.type)}>{field.type.text}</a>
+                      ) : (
+                        <span class="font-mono text-[0.875rem] text-muted">{field.type.text}</span>
+                      )}
+                      {field.required && <span class={badge} lang={locale}>{t("api.required")}</span>}
+                    </p>
+                    {field.description && (
+                      <p class="mt-1 max-w-[44rem] leading-relaxed">
+                        {segments(field.description).map((part) =>
+                          part.code ? <code class={inlineCode}>{part.text}</code> : part.text,
+                        )}
+                      </p>
+                    )}
+                    {field.values.length > 0 && (
+                      <p class="mt-2 flex flex-wrap items-baseline gap-1.5 text-[0.875rem]">
+                        <span class="text-muted" lang={locale}>{t("api.values")}</span>
+                        {field.values.map((value) => <code class={chip}>{value}</code>)}
+                      </p>
+                    )}
+                    {(field.default !== undefined || field.limits.length > 0) && (
+                      <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.875rem] text-muted" lang={locale}>
+                        {field.default !== undefined && (
+                          <li>{t("api.default")} <code class={chip}>{field.default}</code></li>
+                        )}
+                        {field.limits.map((rule) => <li>{limit(rule)}</li>)}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </section>
+
+        <section id="contract" class={sectionCard}>
+          <h2 class={sectionTitle}>
+            <span class={sectionNumber}>{number("contract")}</span>
+            {t("api.contractTitle")}
+          </h2>
+          <p class:list={[prose, "mt-4"]}>{t("api.contract")}</p>
+          <ul class="mt-4 flex flex-col gap-2">
+            {origin && (
+              <li>
+                <a class="font-bold" href={`${origin}/v1/openapi.json`}>{t("api.contractServed")}</a>
+                <code class:list={[inlineCode, "ml-2"]}>{origin}/v1/openapi.json</code>
+              </li>
+            )}
+            <li>
+              <a class="font-bold" href="https://github.com/mathieumaf/swisscoverage/blob/main/openapi.json">{t("api.contractRepository")}</a>
+            </li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </div>
+</Base>

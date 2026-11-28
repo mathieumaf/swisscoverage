@@ -134,6 +134,52 @@ export const en = {
   "filters.everything": "Show all",
   "search.clear": "Clear the search",
   "station.sections": "On this page",
+  "nav.api": "API",
+  "api.title": "The API",
+  "api.intro":
+    "A public API, read-only, that serves as JSON the mobile network sites that OFCOM publishes, as they are today and as they were since the archive began. It is free, needs no key, and answers requests from any website.",
+  "api.origin": "Every address on this page starts with {origin}.",
+  "api.generated":
+    "The reference below is generated from the API's contract, openapi.json, and is written in English, as the contract is.",
+  "api.unavailable":
+    "The address of the API is not available right now: the examples cannot be shown.",
+  "api.startTitle": "A first request",
+  "api.start":
+    "Copy this command into a terminal: it lists the stations around a point, the nearest first.",
+  "api.sourceTitle": "Source and terms",
+  "api.source":
+    "The data comes from the Federal Office of Communications OFCOM. Its terms of use ask that the source be given: every response that carries data has an attribution field, to show wherever the data is used.",
+  "api.terms": "OFCOM's terms of use, on opendata.swiss",
+  "api.version": "Version {version} of the contract",
+  "api.endpointsTitle": "Endpoints",
+  "api.errorsTitle": "Errors",
+  "api.errors":
+    "A request that fails is answered with one of the statuses below and a body of type {contentType}, whose fields are those of {schema}.",
+  "api.cachingTitle": "Caching",
+  "api.typesTitle": "Types",
+  "api.contractTitle": "The contract",
+  "api.contract":
+    "The whole API is described in OpenAPI 3.1, in a file that the API serves and that the repository keeps. Clients can be generated from it.",
+  "api.contractServed": "The contract, as the API serves it",
+  "api.contractRepository": "The contract, in the repository",
+  "api.example": "Example",
+  "api.parameters": "Parameters",
+  "api.responses": "Responses",
+  "api.required": "required",
+  "api.inPath": "in the path",
+  "api.inQuery": "in the query",
+  "api.default": "Default",
+  "api.exampleValue": "Example",
+  "api.values": "Values",
+  "api.minimum": "At least {value}",
+  "api.maximum": "At most {value}",
+  "api.itemsRange": "{min} to {max} values",
+  "api.itemsExact": "Exactly {count} values",
+  "api.itemsMin": "At least {min} values",
+  "api.itemsMax": "Up to {max} values",
+  "api.maxLength": "Up to {value} characters",
+  "api.pattern": "Matches {value}",
+  "api.request": "Request header",
 } as const;
 
 export type MessageKey = keyof typeof en;
