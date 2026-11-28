@@ -70,7 +70,8 @@ backend/     The `swisscoverage` program, in Go: the parser for the OFCOM
              dataset, the database schema, the import that records what
              changed from one day to the next, and the read-only API
 web/         The website, in TypeScript with Astro: the map of every
-             station, in French, German, Italian and English
+             station and a page for each, with its history, in French,
+             German, Italian and English
 deploy/      Docker Compose with the database, for local work and tests
 docs/        Architecture, decisions, roadmap, data sources, security
 openapi.json The API's contract, generated from the code

@@ -12,7 +12,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { browserTimeoutMs, createApiClient } from "../api/client";
-import type { Locale } from "../i18n/locales";
+import { formatNumber, type Locale } from "../i18n/locales";
 import { translate } from "../i18n/translate";
 import { FilterPanel } from "./FilterPanel";
 import {
@@ -114,6 +114,8 @@ export default function StationMap({ locale, apiUrl }: Props) {
   // The stations under the last click: one opens its sheet, several are
   // listed to choose from.
   const [selected, setSelected] = useState<MapStation[]>([]);
+  // The list a sheet was chosen from, to go back to it.
+  const [choice, setChoice] = useState<MapStation[]>([]);
   // Every station of the latest snapshot, once loaded, and what the visitor
   // chose to see, read first from the address so that a view can be shared.
   const [stations, setStations] = useState<Station[]>([]);
@@ -406,6 +408,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
       instance.on("click", "stations", (event) => {
         const found = stationsAt(event.features ?? []);
         if (found.length > 0) {
+          setChoice([]);
           setSelected(found);
         }
       });
@@ -526,6 +529,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
   const find = useCallback((station: Station) => {
     setFilters((current) => including(current, station));
     map.current?.flyTo({ center: station.coordinates, zoom: stationZoom });
+    setChoice([]);
     setSelected([station]);
   }, []);
 
@@ -602,7 +606,10 @@ export default function StationMap({ locale, apiUrl }: Props) {
       ?.setData({ type: "FeatureCollection", features: [] });
   }, []);
 
-  const close = useCallback(() => setSelected([]), []);
+  const close = useCallback(() => {
+    setChoice([]);
+    setSelected([]);
+  }, []);
 
   return (
     <div className="station-map absolute inset-0">
@@ -648,13 +655,29 @@ export default function StationMap({ locale, apiUrl }: Props) {
           locale={locale}
           apiUrl={apiUrl}
           onClose={close}
+          back={
+            choice.length > 1
+              ? {
+                  label: translate(locale, "choice.title", {
+                    count: formatNumber(locale, choice.length),
+                  }),
+                  onBack: () => {
+                    setSelected(choice);
+                    setChoice([]);
+                  },
+                }
+              : undefined
+          }
         />
       )}
       {selected.length > 1 && (
         <StationChoice
           stations={selected}
           locale={locale}
-          onChoose={(station) => setSelected([station])}
+          onChoose={(station) => {
+            setChoice(selected);
+            setSelected([station]);
+          }}
           onClose={close}
         />
       )}

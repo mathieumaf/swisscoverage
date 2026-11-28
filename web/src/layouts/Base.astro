@@ -6,6 +6,8 @@ import "../styles/global.css";
 interface Props {
   locale: Locale;
   title?: string;
+  // What the page says, for search engines; the site's own by default.
+  description?: string | undefined;
   // An error page has no translations: its language links lead to the home
   // page of each language.
   error?: boolean;
@@ -14,10 +16,18 @@ interface Props {
   fullscreen?: boolean;
 }
 
-const { locale, title, error = false, fullscreen = false } = Astro.props;
+const {
+  locale,
+  title,
+  description,
+  error = false,
+  fullscreen = false,
+} = Astro.props;
 const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
 const pageTitle = title ? `${title} · swisscoverage` : "swisscoverage";
-const path = Astro.url.pathname;
+// The path as the browser sent it: Astro.url is decoded, which would change
+// the identifier in a station's address (see stationIdFromPath).
+const path = new URL(Astro.request.url).pathname;
 const alternates = !error && isLocale(path.split("/")[1]) ? locales : [];
 const linkTo = (other: Locale) =>
   error ? `/${other}/` : localizedPath(path, other);
@@ -28,7 +38,7 @@ const linkTo = (other: Locale) =>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={t("site.description")} />
+    <meta name="description" content={description ?? t("site.description")} />
     <title>{pageTitle}</title>
     {alternates.map((other) => (
       <link rel="alternate" hreflang={other} href={localizedPath(path, other)} />
@@ -43,9 +53,31 @@ const linkTo = (other: Locale) =>
     <header
       class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3"
     >
-      <a class="font-bold text-foreground no-underline" href={`/${locale}/`}
-        >swisscoverage</a
-      >
+      <div class="flex items-center gap-4">
+        <a class="font-bold text-foreground no-underline" href={`/${locale}/`}
+          >swisscoverage</a
+        >
+        <nav aria-label={t("nav.pages")}>
+          <ul class="flex gap-3 text-[0.875rem]">
+            <li>
+              <a
+                class="text-muted no-underline aria-[current=page]:text-foreground"
+                href={`/${locale}/`}
+                aria-current={path === `/${locale}/` ? "page" : undefined}
+                >{t("nav.map")}</a
+              >
+            </li>
+            <li>
+              <a
+                class="text-muted no-underline aria-[current=page]:text-foreground"
+                href={`/${locale}/about`}
+                aria-current={path === `/${locale}/about` ? "page" : undefined}
+                >{t("nav.about")}</a
+              >
+            </li>
+          </ul>
+        </nav>
+      </div>
       <nav aria-label={t("nav.language")}>
         <ul class="flex gap-1">
           {locales.map((other) => (
@@ -53,6 +85,7 @@ const linkTo = (other: Locale) =>
               <a
                 class="inline-block min-w-11 rounded-md p-2 text-center text-[0.875rem] font-semibold text-muted no-underline aria-[current=page]:bg-border aria-[current=page]:text-foreground"
                 href={linkTo(other)}
+                data-keep-view={fullscreen || undefined}
                 hreflang={other}
                 lang={other}
                 aria-current={!error && other === locale ? "page" : undefined}

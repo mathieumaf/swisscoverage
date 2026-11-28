@@ -30,7 +30,7 @@ export const fr: Messages = {
   "sheet.limitValue": "Valeur limite de l’installation",
   "sheet.permit": "Autorisation",
   "sheet.position": "Position",
-  "sheet.firstSeen": "Première publication",
+  "sheet.firstSeen": "Première apparition dans l’archive",
   "sheet.notPublished": "N’est plus publié",
   "sheet.unknown": "Non indiqué",
   "choice.title": "{count} stations à cet endroit",
@@ -76,6 +76,62 @@ export const fr: Messages = {
   "place.address": "Adresse",
   "place.zipcode": "NPA",
   "place.gg25": "Commune",
+  "nav.pages": "Pages",
+  "nav.map": "Carte",
+  "nav.about": "À propos",
+  "sheet.page": "Ouvrir la page de cette station, avec son historique",
+  "station.description":
+    "{name}, {operator} : {kind}, {technologies}. Un site de téléphonie mobile publié par l’OFCOM, avec son historique.",
+  "station.onMap": "Voir sur la carte",
+  "station.published": "Dans les dernières données publiées",
+  "station.lastPublished": "Tel que publié pour la dernière fois",
+  "station.notPublishedSince": "N’est plus publié depuis le {date}.",
+  "station.history": "Historique",
+  "station.historyIntro":
+    "Données publiées par l’OFCOM pour ce site, de la période la plus récente à la plus ancienne. Chaque période montre ce qui a changé depuis la précédente.",
+  "station.unavailableTitle": "Station indisponible",
+  "station.unavailable":
+    "Cette station ne peut pas être chargée pour l’instant.",
+  "history.since": "Depuis le {date}",
+  "history.range": "Du {from} au {to}",
+  "history.first": "Première publication dans l’archive.",
+  "history.earlier": "Les périodes plus anciennes ne sont pas affichées.",
+  "history.unchanged": "Publié à nouveau, sans changement.",
+  "history.gap": "Non publié.",
+  "history.truncated":
+    "Les {shown} périodes les plus récentes sur {total} sont affichées.",
+  "about.title": "À propos de swisscoverage",
+  "about.intro":
+    "swisscoverage montre sur une carte les sites de téléphonie mobile que l’Office fédéral de la communication (OFCOM) publie chaque jour, et les met à disposition dans une API publique. C’est un logiciel libre, indépendant de l’OFCOM et des opérateurs.",
+  "about.history":
+    "L’OFCOM remplace son fichier chaque jour et n’en garde pas l’historique. Le projet conserve chaque fichier quotidien depuis le 23 novembre 2026 : la page de chaque station montre ce qui a changé depuis.",
+  "about.dataTitle": "Ce que montre la carte",
+  "about.data1":
+    "Un point par site, à la position de son premier mât. Les autres mâts sur le même toit ou un toit voisin ne sont pas publiés.",
+  "about.data2":
+    "La puissance est une classe : la puissance cumulée la plus élevée rayonnée dans un secteur de 90°, et non une valeur mesurée.",
+  "about.data3":
+    "Les sites de moins de 1 W ne sont pas publiés, et les technologies sont données par site, pas par antenne.",
+  "about.data4":
+    "Les fréquences, la direction de chaque antenne et les puissances exactes ne sont pas publiées.",
+  "about.dataMore": "Les explications de l’OFCOM sur sa carte (en anglais)",
+  "about.sourcesTitle": "Sources et crédits",
+  "about.sourceOfcom":
+    "Sites de téléphonie mobile : Office fédéral de la communication OFCOM, données publiques ouvertes.",
+  "about.sourceMap":
+    "Fond de carte : OpenFreeMap, © OpenMapTiles, données des contributeurs d’OpenStreetMap.",
+  "about.sourceSearch":
+    "Recherche d’adresses, de NPA et de communes : Office fédéral de topographie swisstopo.",
+  "about.privacyTitle": "Ce qu’envoie votre navigateur",
+  "about.privacy1":
+    "Ce site ne dépose aucun cookie et ne compte pas ses visiteurs.",
+  "about.privacy2":
+    "Pour dessiner la carte, votre navigateur demande à OpenFreeMap le fond de la zone que vous regardez.",
+  "about.privacy3":
+    "Ce que vous tapez dans le champ de recherche de la carte est envoyé à swisstopo dès le troisième caractère, pour trouver des adresses, des NPA et des communes.",
+  "about.codeTitle": "Code source",
+  "about.code":
+    "Le code est publié sous licence AGPL-3.0. Les erreurs et les suggestions sont les bienvenues sous forme d’issues sur GitHub.",
   "notFound.title": "Page introuvable",
   "notFound.text": "Cette adresse ne mène à aucune page.",
   "notFound.home": "Retour à l’accueil",

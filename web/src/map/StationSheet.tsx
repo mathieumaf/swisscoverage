@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { browserTimeoutMs, createApiClient } from "../api/client";
-import { formatDate, formatNumber, type Locale } from "../i18n/locales";
+import { formatDate, type Locale } from "../i18n/locales";
 import type { MessageKey } from "../i18n/messages/en";
 import { translate } from "../i18n/translate";
+import { describePeriod, periodFields } from "./describe";
 import { Sheet } from "./Sheet";
 import {
   mutedText,
   operatorColors,
   operatorDot,
-  type Period,
   type StationHistory,
+  stationPath,
 } from "./stations";
 
 interface Props {
@@ -17,6 +18,8 @@ interface Props {
   locale: Locale;
   apiUrl: string;
   onClose: () => void;
+  // When the sheet was opened from the list of stations at one place.
+  back?: { label: string; onBack: () => void } | undefined;
 }
 
 type State =
@@ -25,18 +28,19 @@ type State =
   | { status: "ready"; station: StationHistory };
 
 // The sheet of one station, read from GET /v1/stations/{id}: what OFCOM
-// publishes of it today, or last published.
-export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
+// publishes of it today, or last published. Its page has the history.
+export function StationSheet({ id, locale, apiUrl, onClose, back }: Props) {
   const [state, setState] = useState<State>({ status: "loading" });
   const t = (key: MessageKey, values?: Record<string, string>) =>
     translate(locale, key, values);
-  const date = (value: string) => formatDate(locale, new Date(value));
 
   useEffect(() => {
     let cancelled = false;
     const api = createApiClient(apiUrl, browserTimeoutMs);
     api
-      .GET("/v1/stations/{id}", { params: { path: { id } } })
+      .GET("/v1/stations/{id}", {
+        params: { path: { id }, query: { limit: 1 } },
+      })
       .then(({ data, response }) => {
         if (data === undefined) {
           throw new Error(`The API answered ${response.status}`);
@@ -58,6 +62,7 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
 
   const station = state.status === "ready" ? state.station : undefined;
   const current = station?.periods[0];
+  const text = current && describePeriod(locale, current);
 
   return (
     <Sheet
@@ -73,6 +78,7 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
           </p>
         )
       }
+      back={back}
       closeLabel={t("sheet.close")}
       onClose={onClose}
     >
@@ -87,7 +93,7 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
         </p>
       )}
 
-      {station && current && (
+      {station && current && text && (
         <>
           {!station.published && (
             <p className="my-[1em] rounded-lg bg-border px-3 py-2">
@@ -95,52 +101,40 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
             </p>
           )}
           <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-2 [&>dt]:text-muted">
-            <dt>{t("sheet.kind")}</dt>
-            <dd>{t(`kind.${current.kind}`)}</dd>
-            <dt>{t("sheet.powerClass")}</dt>
-            <dd>{t(`power.${current.powerClass}`)}</dd>
-            <dt>{t("sheet.technologies")}</dt>
-            <dd>
-              {current.technologies.length === 0 ? (
-                t("sheet.noTechnology")
-              ) : (
-                <ul className="flex flex-wrap gap-1">
-                  {current.technologies.map((technology) => (
-                    <li
-                      key={technology}
-                      className="rounded-md bg-border px-2 font-semibold"
-                    >
-                      {technology}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </dd>
-            <dt>{t("sheet.adaptive")}</dt>
-            <dd>{adaptive(current, t)}</dd>
-            <dt>{t("sheet.limitValue")}</dt>
-            <dd>
-              {current.installationLimitValue === null
-                ? t("sheet.unknown")
-                : `${formatNumber(locale, current.installationLimitValue, {
-                    minimumFractionDigits: 1,
-                  })} V/m`}
-            </dd>
-            <dt>{t("sheet.permit")}</dt>
-            <dd>{permit(current, t, date)}</dd>
-            <dt>{t("sheet.position")}</dt>
-            <dd>
+            {periodFields.map(({ key, label }) => (
+              <Field key={key} label={t(label)}>
+                {key === "technologies" && current.technologies.length > 0 ? (
+                  <ul className="flex flex-wrap gap-1">
+                    {current.technologies.map((technology) => (
+                      <li
+                        key={technology}
+                        className="rounded-md bg-border px-2 font-semibold"
+                      >
+                        {technology}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  text[key]
+                )}
+              </Field>
+            ))}
+            <Field label={t("sheet.position")}>
               {station.position.lat.toFixed(5)},{" "}
               {station.position.lon.toFixed(5)}
               <br />
               <span className={mutedText}>
                 LV95 {station.lv95.east}, {station.lv95.north}
               </span>
-            </dd>
-            <dt>{t("sheet.firstSeen")}</dt>
-            <dd>{date(station.firstSeen)}</dd>
+            </Field>
+            <Field label={t("sheet.firstSeen")}>
+              {formatDate(locale, new Date(station.firstSeen))}
+            </Field>
           </dl>
 
+          <p className="my-[1em]">
+            <a href={stationPath(locale, station.id)}>{t("sheet.page")}</a>
+          </p>
           <p className={`my-[1em] ${mutedText}`}>{t("footer.source")}</p>
         </>
       )}
@@ -148,25 +142,11 @@ export function StationSheet({ id, locale, apiUrl, onClose }: Props) {
   );
 }
 
-function adaptive(period: Period, t: (key: MessageKey) => string): string {
-  if (period.adaptive === null) {
-    return t("sheet.unknown");
-  }
-  return period.adaptive ? t("adaptive.yes") : t("adaptive.no");
-}
-
-function permit(
-  period: Period,
-  t: (key: MessageKey, values?: Record<string, string>) => string,
-  date: (value: string) => string,
-): string {
-  if (period.permit === null) {
-    return t("sheet.unknown");
-  }
-  if (period.permit.type === "exempt") {
-    return t("permit.exempt");
-  }
-  return period.permit.date === undefined
-    ? t("permit.site_data_sheet")
-    : t("permit.site_data_sheet_dated", { date: date(period.permit.date) });
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <>
+      <dt>{label}</dt>
+      <dd>{children}</dd>
+    </>
+  );
 }

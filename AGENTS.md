@@ -7,8 +7,9 @@ commands, `serve`, `openapi`, `parse`, `migrate` and `ingest`; the parser for
 OFCOM's file; the database, PostgreSQL with PostGIS, with the import that
 loads the archive into it; and the public, read-only API, with its contract
 in `openapi.json`. The website, in TypeScript with Astro under `web/`, is
-started: its pages are rendered on a server that calls the API, and its home
-page is the map of every station. The MCP server is planned.
+started: its pages are rendered on a server that calls the API, its home
+page is the map of every station, and each station has a page with its
+history. The MCP server is planned.
 
 - `docs/architecture.md`: read before adding a module, a command or a
   dependency. It says what exists, what is planned, and where a change belongs.
@@ -133,14 +134,18 @@ how to stop it, `bunx --bun astro dev stop`. In another terminal:
 ```sh
 curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' -H 'Accept-Language: de-CH' http://127.0.0.1:4321/
 curl -sS http://127.0.0.1:4321/fr/ | grep -o 'id="snapshot"[^<]*'
+curl -sS 'http://127.0.0.1:4321/fr/stations/2683328_1247916_Sunrise%20ZE416-1' | grep -o '<h1[^>]*>[^<]*'
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4321/fr/stations/1_2_Nothing
 ```
 
 The first prints `302 http://127.0.0.1:4321/de/`: the root sends each visitor
 to their language. The second prints the number of sites and the date of the
-latest snapshot. Open `http://127.0.0.1:4321/fr/` in a browser to see the
+latest snapshot. The third prints the title of a station's page, which the
+server renders with what OFCOM publishes of it and its history; the fourth
+prints `404`, for a station the API does not know. Open `http://127.0.0.1:4321/fr/` in a browser to see the
 map: the browser itself loads every station from the API, at the origin of
 `SWISSCOVERAGE_API_URL`, and the base map from OpenFreeMap. A click on a
-station opens its sheet. The panel filters the stations, and its search
+station opens its sheet, which links to the station's page. The panel filters the stations, and its search
 finds a station by its label, or an address, a postcode or a municipality
 through swisstopo's location search, which the browser calls once three
 characters are typed: `Bundesplatz 3 Bern` moves the map to that building.

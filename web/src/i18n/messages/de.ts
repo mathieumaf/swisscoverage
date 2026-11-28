@@ -28,7 +28,7 @@ export const de: Messages = {
   "sheet.limitValue": "Anlagegrenzwert",
   "sheet.permit": "Bewilligung",
   "sheet.position": "Position",
-  "sheet.firstSeen": "Erstmals veröffentlicht",
+  "sheet.firstSeen": "Erstmals im Archiv",
   "sheet.notPublished": "Nicht mehr veröffentlicht",
   "sheet.unknown": "Nicht angegeben",
   "choice.title": "{count} Anlagen an diesem Ort",
@@ -72,6 +72,62 @@ export const de: Messages = {
   "place.address": "Adresse",
   "place.zipcode": "PLZ",
   "place.gg25": "Gemeinde",
+  "nav.pages": "Seiten",
+  "nav.map": "Karte",
+  "nav.about": "Über das Projekt",
+  "sheet.page": "Seite dieser Anlage mit Verlauf öffnen",
+  "station.description":
+    "{name}, {operator}: {kind}, {technologies}. Ein vom BAKOM veröffentlichter Mobilfunkstandort, mit seinem Verlauf.",
+  "station.onMap": "Auf der Karte zeigen",
+  "station.published": "In den neuesten veröffentlichten Daten",
+  "station.lastPublished": "Wie zuletzt veröffentlicht",
+  "station.notPublishedSince": "Seit dem {date} nicht mehr veröffentlicht.",
+  "station.history": "Verlauf",
+  "station.historyIntro":
+    "Was das BAKOM zu diesem Standort veröffentlicht hat, das Neueste zuerst. Jeder Zeitraum zeigt, was sich gegenüber dem vorherigen geändert hat.",
+  "station.unavailableTitle": "Anlage nicht verfügbar",
+  "station.unavailable": "Diese Anlage kann im Moment nicht geladen werden.",
+  "history.since": "Seit dem {date}",
+  "history.range": "Vom {from} bis zum {to}",
+  "history.first": "Erste Veröffentlichung im Archiv.",
+  "history.earlier": "Ältere Zeiträume werden nicht angezeigt.",
+  "history.unchanged": "Wieder veröffentlicht, unverändert.",
+  "history.gap": "Nicht veröffentlicht.",
+  "history.truncated":
+    "Angezeigt werden die neuesten {shown} von {total} Zeiträumen.",
+  "about.title": "Über swisscoverage",
+  "about.intro":
+    "swisscoverage zeigt auf einer Karte die Mobilfunkstandorte, die das Bundesamt für Kommunikation (BAKOM) täglich veröffentlicht, und stellt sie über eine öffentliche API bereit. Es ist freie Software, unabhängig vom BAKOM und von den Betreibern.",
+  "about.history":
+    "Das BAKOM ersetzt seine Datei jeden Tag und bewahrt keinen Verlauf auf. Das Projekt bewahrt jede tägliche Datei seit dem 23. November 2026 auf: Die Seite jeder Anlage zeigt, was sich seither geändert hat.",
+  "about.dataTitle": "Was die Karte zeigt",
+  "about.data1":
+    "Ein Punkt pro Standort, an der Position seines ersten Masts. Weitere Masten auf demselben oder einem benachbarten Dach werden nicht veröffentlicht.",
+  "about.data2":
+    "Die Leistung ist eine Klasse: die höchste kumulierte Leistung, die in einem 90°-Sektor abgestrahlt wird, und kein Messwert.",
+  "about.data3":
+    "Standorte unter 1 W werden nicht veröffentlicht, und die Technologien werden pro Standort angegeben, nicht pro Antenne.",
+  "about.data4":
+    "Frequenzen, die Richtung jeder Antenne und genaue Leistungen werden nicht veröffentlicht.",
+  "about.dataMore":
+    "Die Erläuterungen des BAKOM zu seiner Übersichtskarte (auf Englisch)",
+  "about.sourcesTitle": "Quellen und Nachweise",
+  "about.sourceOfcom":
+    "Mobilfunkstandorte: Bundesamt für Kommunikation BAKOM, offene Behördendaten.",
+  "about.sourceMap":
+    "Hintergrundkarte: OpenFreeMap, © OpenMapTiles, Daten der OpenStreetMap-Mitwirkenden.",
+  "about.sourceSearch":
+    "Suche nach Adressen, Postleitzahlen und Gemeinden: Bundesamt für Landestopografie swisstopo.",
+  "about.privacyTitle": "Was Ihr Browser sendet",
+  "about.privacy1":
+    "Diese Website setzt keine Cookies und zählt ihre Besucherinnen und Besucher nicht.",
+  "about.privacy2":
+    "Um die Karte zu zeichnen, fragt Ihr Browser OpenFreeMap nach dem Hintergrund des Gebiets, das Sie ansehen.",
+  "about.privacy3":
+    "Was Sie in das Suchfeld der Karte eingeben, wird ab dem dritten Zeichen an swisstopo gesendet, um Adressen, Postleitzahlen und Gemeinden zu finden.",
+  "about.codeTitle": "Quellcode",
+  "about.code":
+    "Der Code ist unter der Lizenz AGPL-3.0 veröffentlicht. Fehler und Vorschläge sind als Issues auf GitHub willkommen.",
   "notFound.title": "Seite nicht gefunden",
   "notFound.text": "Diese Adresse führt zu keiner Seite.",
   "notFound.home": "Zurück zur Startseite",

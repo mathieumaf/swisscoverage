@@ -87,6 +87,41 @@ export function isStationId(value: string): boolean {
   );
 }
 
+// The address of a station's page (decision 24).
+export function stationPath(locale: Locale, id: string): string {
+  return `/${locale}/stations/${encodeURIComponent(id)}`;
+}
+
+// The identifier in the path of a station's page, as `stationPath` wrote it:
+// decoded once, from the path as the browser sent it. Astro's own parameter
+// is decoded otherwise, and would turn `%2F` or `%41` into another station.
+// A slash at the end is dropped: `stationPath` writes a slash of the label as
+// `%2F`, so a bare one is never part of it.
+export function stationIdFromPath(
+  pathname: string,
+  locale: Locale,
+): string | undefined {
+  const prefix = `/${locale}/stations/`;
+  if (!pathname.startsWith(prefix)) {
+    return undefined;
+  }
+  try {
+    return decodeURIComponent(pathname.slice(prefix.length).replace(/\/$/, ""));
+  } catch {
+    return undefined;
+  }
+}
+
+// The address of the map with a station's sheet open, at its position.
+export function stationOnMapPath(
+  locale: Locale,
+  id: string,
+  position: { lat: number; lon: number },
+): string {
+  const station = encodeURIComponent(id);
+  return `/${locale}/?station=${station}#map=16/${position.lat}/${position.lon}`;
+}
+
 // The LV95 position in a station's identifier, `east_north_label`
 // (decision 22), to tell apart stations that share a label.
 export function lv95Of(id: string): string {

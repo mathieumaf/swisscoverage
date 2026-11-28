@@ -69,3 +69,20 @@ try {
     </p>
   </section>
 </Base>
+
+<script>
+  // Another language keeps what the address holds beyond its path: the map's
+  // filters, its open station and its position, which the map writes there as
+  // the visitor moves it. The link is brought up to date before it is
+  // followed, opened in a new tab, or copied.
+  for (const link of document.querySelectorAll<HTMLAnchorElement>(
+    "a[data-keep-view]",
+  )) {
+    const update = () => {
+      link.href = link.pathname + window.location.search + window.location.hash;
+    };
+    for (const event of ["click", "auxclick", "contextmenu"]) {
+      link.addEventListener(event, update);
+    }
+  }
+</script>
