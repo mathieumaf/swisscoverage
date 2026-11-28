@@ -51,15 +51,8 @@ func runIngest(
 	allowDropAt := flags.String("allow-drop", "",
 		"publication `time` of the one snapshot to load even though it has less than half\n"+
 			"the sites of the one before, as the refusal printed it")
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return 0
-		}
-		return 2
-	}
-	if flags.NArg() != 0 {
-		flags.Usage()
-		return 2
+	if status, ok := parseArgs(flags, args, 0); !ok {
+		return status
 	}
 	// The zero time, which no snapshot has, allows nothing.
 	var allowDrop time.Time

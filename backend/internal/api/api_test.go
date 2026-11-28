@@ -21,56 +21,26 @@ import (
 	"github.com/mathieumaf/swisscoverage/backend/internal/api"
 	"github.com/mathieumaf/swisscoverage/backend/internal/ofcom"
 	"github.com/mathieumaf/swisscoverage/backend/internal/store"
-	"github.com/mathieumaf/swisscoverage/backend/internal/testdb"
+	"github.com/mathieumaf/swisscoverage/backend/internal/store/storetest"
 )
-
-var (
-	day1 = time.Date(2026, 11, 23, 22, 1, 35, 611529000, time.UTC)
-	day2 = time.Date(2026, 11, 24, 22, 1, 55, 936174000, time.UTC)
-	day3 = time.Date(2026, 11, 25, 22, 2, 7, 0, time.UTC)
-)
-
-func pointer[T any](value T) *T { return &value }
-
-// station returns a site with ordinary values, which a test then changes.
-func station(name string, east, north float64) ofcom.MobileStation {
-	operator, code, _ := strings.Cut(name, " ")
-	return ofcom.MobileStation{
-		Name:                   name,
-		Operator:               ofcom.Operator(strings.ToLower(operator)),
-		Code:                   code,
-		Kind:                   ofcom.KindOutdoor,
-		PowerClass:             ofcom.PowerMedium,
-		Technologies:           []ofcom.Technology{ofcom.Technology4G, ofcom.Technology5G},
-		Adaptive:               pointer(true),
-		Permit:                 &ofcom.Permit{Type: ofcom.PermitSiteDataSheet, Date: "2021-06-03"},
-		InstallationLimitValue: pointer(5.0),
-		LV95:                   ofcom.LV95{East: east, North: north},
-	}
-}
-
-func with(original ofcom.MobileStation, change func(*ofcom.MobileStation)) ofcom.MobileStation {
-	change(&original)
-	return original
-}
 
 // Sites in Bern, about 40 metres apart, one in Zurich and one in Lugano.
 var (
-	bernA = station("Swisscom BMAO", 2600640, 1199640)
-	bernB = with(station("Salt BE_0001A", 2600680, 1199620), func(s *ofcom.MobileStation) {
+	bernA = storetest.Station("Swisscom BMAO", 2600640, 1199640)
+	bernB = storetest.With(storetest.Station("Salt BE_0001A", 2600680, 1199620), func(s *ofcom.MobileStation) {
 		s.Technologies = []ofcom.Technology{ofcom.Technology2G}
 		s.Kind = ofcom.KindIndoor
 		s.Adaptive = nil
 		s.Permit = &ofcom.Permit{Type: ofcom.PermitExempt}
 		s.InstallationLimitValue = nil
 	})
-	zurich = station("Sunrise ZH601-1", 2683328, 1247916)
-	lugano = with(station("Salt TI_3787A", 2717696, 1102456), func(s *ofcom.MobileStation) {
+	zurich = storetest.Station("Sunrise ZH601-1", 2683328, 1247916)
+	lugano = storetest.With(storetest.Station("Salt TI_3787A", 2717696, 1102456), func(s *ofcom.MobileStation) {
 		s.PowerClass = ofcom.PowerHigh
 		s.Permit = nil
 	})
 	// A label with what an address must escape.
-	odd = station("Other A/B %1?#", 2600000, 1200000)
+	odd = storetest.Station("Other A/B %1?#", 2600000, 1200000)
 )
 
 type fixture struct {
@@ -82,15 +52,7 @@ type fixture struct {
 // newAPI serves the API on an empty database with the schema applied.
 func newAPI(t *testing.T) *fixture {
 	t.Helper()
-	address := testdb.New(t)
-	writer, err := store.Open(context.Background(), address)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(writer.Close)
-	if _, err := writer.Migrate(context.Background()); err != nil {
-		t.Fatal(err)
-	}
+	writer, address := storetest.Open(t)
 	reader, err := store.OpenReadOnly(context.Background(), address, 10*time.Second)
 	if err != nil {
 		t.Fatal(err)
@@ -103,9 +65,8 @@ func newAPI(t *testing.T) *fixture {
 
 func (f *fixture) load(publishedAt time.Time, stations ...ofcom.MobileStation) {
 	f.t.Helper()
-	checksum := strings.Repeat("0", 60) + publishedAt.Format("0102")
 	_, err := f.database.LoadSnapshot(context.Background(),
-		store.Snapshot{PublishedAt: publishedAt, SHA256: checksum, Sites: len(stations)}, stations, false)
+		storetest.Snapshot(publishedAt, len(stations)), stations, false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -168,8 +129,8 @@ func ids(list any) []string {
 
 func TestListStations(t *testing.T) {
 	f := newAPI(t)
-	f.load(day1, bernA, zurich, lugano)
-	f.load(day2, bernA, bernB, zurich)
+	f.load(storetest.Day1, bernA, zurich, lugano)
+	f.load(storetest.Day2, bernA, bernB, zurich)
 
 	response, body := f.get("/v1/stations")
 	wantEqual(t, "status", response.StatusCode, http.StatusOK)
@@ -207,9 +168,9 @@ func TestCaching(t *testing.T) {
 	// Enough sites for the response to be worth compressing.
 	many := []ofcom.MobileStation{}
 	for number := range 20 {
-		many = append(many, station("Swisscom B"+strconv.Itoa(number), 2600000+float64(number), 1200000))
+		many = append(many, storetest.Station("Swisscom B"+strconv.Itoa(number), 2600000+float64(number), 1200000))
 	}
-	f.load(day1, many...)
+	f.load(storetest.Day1, many...)
 
 	response, body := f.get("/v1/stations")
 	etag := response.Header.Get("ETag")
@@ -278,7 +239,7 @@ func TestCaching(t *testing.T) {
 	}
 
 	// A new snapshot is a new response.
-	f.load(day2, append(many, zurich)...)
+	f.load(storetest.Day2, append(many, zurich)...)
 	changed, _ := f.get("/v1/stations", "If-None-Match", etag)
 	wantEqual(t, "status after an import", changed.StatusCode, http.StatusOK)
 	if changed.Header.Get("ETag") == etag {
@@ -294,7 +255,7 @@ func TestCaching(t *testing.T) {
 
 func TestSearchAroundAPoint(t *testing.T) {
 	f := newAPI(t)
-	f.load(day1, bernA, bernB, zurich, lugano)
+	f.load(storetest.Day1, bernA, bernB, zurich, lugano)
 
 	// Bern's Zytglogge, a few dozen metres from both Bern sites.
 	found := f.getJSON("/v1/stations/search?lat=46.948&lon=7.4474&radius=300", http.StatusOK)
@@ -327,7 +288,7 @@ func TestSearchAroundAPoint(t *testing.T) {
 
 func TestSearchInABox(t *testing.T) {
 	f := newAPI(t)
-	f.load(day1, bernA, bernB, zurich, lugano)
+	f.load(storetest.Day1, bernA, bernB, zurich, lugano)
 	// All of Switzerland.
 	const country = "/v1/stations/search?bbox=5.9,45.8,10.5,47.9"
 
@@ -382,7 +343,7 @@ func TestSearchInABox(t *testing.T) {
 
 func TestSearchRefusesWhatItCannotAnswer(t *testing.T) {
 	f := newAPI(t)
-	f.load(day1, bernA)
+	f.load(storetest.Day1, bernA)
 
 	for _, query := range []string{
 		"",
@@ -473,11 +434,11 @@ func TestTimeout(t *testing.T) {
 
 func TestStationHistory(t *testing.T) {
 	f := newAPI(t)
-	f.load(day1, bernA, zurich, odd)
-	f.load(day2, with(bernA, func(s *ofcom.MobileStation) {
+	f.load(storetest.Day1, bernA, zurich, odd)
+	f.load(storetest.Day2, storetest.With(bernA, func(s *ofcom.MobileStation) {
 		s.Technologies = []ofcom.Technology{ofcom.Technology5G}
 	}), odd)
-	f.load(day3, with(bernA, func(s *ofcom.MobileStation) {
+	f.load(storetest.Day3, storetest.With(bernA, func(s *ofcom.MobileStation) {
 		s.Technologies = []ofcom.Technology{ofcom.Technology5G}
 	}), zurich)
 
@@ -526,7 +487,7 @@ func TestStationHistory(t *testing.T) {
 
 func TestCounts(t *testing.T) {
 	f := newAPI(t)
-	f.load(day1, bernA, bernB, zurich, lugano)
+	f.load(storetest.Day1, bernA, bernB, zurich, lugano)
 
 	counts := f.getJSON("/v1/stations/counts", http.StatusOK)
 	wantEqual(t, "stations", counts["stations"], any(4.0))
@@ -559,8 +520,8 @@ func TestSnapshots(t *testing.T) {
 	empty := f.getJSON("/v1/snapshots", http.StatusOK)
 	wantEqual(t, "before the first import", []any{empty["snapshots"], empty["total"]}, []any{[]any{}, 0.0})
 
-	f.load(day1, bernA)
-	f.load(day2, bernA, zurich)
+	f.load(storetest.Day1, bernA)
+	f.load(storetest.Day2, bernA, zurich)
 	list := f.getJSON("/v1/snapshots", http.StatusOK)
 	wantEqual(t, "snapshots", list["snapshots"], any([]any{
 		map[string]any{"publishedAt": "2026-11-24T22:01:55.936174Z", "sha256": strings.Repeat("0", 60) + "1124", "sites": 2.0},
@@ -590,7 +551,7 @@ func TestBeforeTheFirstImport(t *testing.T) {
 // The API serves its own contract, and nothing it does not describe.
 func TestContract(t *testing.T) {
 	f := newAPI(t)
-	f.load(day1, bernA)
+	f.load(storetest.Day1, bernA)
 	response, body := f.get("/v1/openapi.json")
 	wantEqual(t, "status", response.StatusCode, http.StatusOK)
 	wantEqual(t, "Content-Type", response.Header.Get("Content-Type"), "application/openapi+json")

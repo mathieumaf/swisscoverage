@@ -45,13 +45,13 @@ func TestMigrateCommand(t *testing.T) {
 
 	stdout, stderr, status := callWith(t, address, "migrate")
 	if stdout != "applied 0001_stations.sql\napplied 0002_station_position_indexes.sql\n"+
-		"The schema is now at version 2.\n" ||
+		"applied 0003_current_station.sql\nThe schema is now at version 3.\n" ||
 		stderr != "" || status != 0 {
 		t.Errorf("first run: got status %d, output %q and stderr %q", status, stdout, stderr)
 	}
 
 	stdout, stderr, status = callWith(t, address, "migrate")
-	if stdout != "The schema is up to date (version 2).\n" || stderr != "" || status != 0 {
+	if stdout != "The schema is up to date (version 3).\n" || stderr != "" || status != 0 {
 		t.Errorf("second run: got status %d, output %q and stderr %q", status, stdout, stderr)
 	}
 }

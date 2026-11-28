@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -23,15 +22,8 @@ func runMigrate(
 	flags := flag.NewFlagSet("migrate", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	flags.Usage = func() { fmt.Fprint(stderr, migrateUsage) }
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return 0
-		}
-		return 2
-	}
-	if flags.NArg() != 0 {
-		flags.Usage()
-		return 2
+	if status, ok := parseArgs(flags, args, 0); !ok {
+		return status
 	}
 
 	database, err := openStore(ctx, getenv)

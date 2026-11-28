@@ -13,7 +13,7 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { browserTimeoutMs, createApiClient } from "../api/client";
 import { formatNumber, type Locale } from "../i18n/locales";
-import { translate } from "../i18n/translate";
+import { translate, translator } from "../i18n/translate";
 import { FilterPanel } from "./FilterPanel";
 import {
   type Filters,
@@ -139,7 +139,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
     () => stations.filter((station) => matches(station, filters)),
     [stations, filters],
   );
-  const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
+  const t = translator(locale);
 
   useEffect(() => {
     const element = container.current;
@@ -658,7 +658,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
           back={
             choice.length > 1
               ? {
-                  label: translate(locale, "choice.title", {
+                  label: t("choice.title", {
                     count: formatNumber(locale, choice.length),
                   }),
                   onBack: () => {

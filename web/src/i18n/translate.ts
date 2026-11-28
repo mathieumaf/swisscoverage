@@ -20,6 +20,17 @@ export function translate(
   );
 }
 
+// A function that translates into one language, as the pages and components
+// call it: t("sheet.close").
+export type Translate = (
+  key: MessageKey,
+  values?: Record<string, string>,
+) => string;
+
+export function translator(locale: Locale): Translate {
+  return (key, values) => translate(locale, key, values);
+}
+
 // The names of the languages, each written in its own language, for the
 // language switcher.
 export const languageNames: Record<Locale, string> = {

@@ -125,7 +125,8 @@ swisscoverage/
 │       ├── store/             the database; exists
 │       │   ├── migrations/    the schema, one SQL file per change
 │       │   ├── queries.sql    every query, written by hand
-│       │   └── query/         the Go code generated from them
+│       │   ├── query/         the Go code generated from them
+│       │   └── storetest/     what the tests of the store and the API share
 │       ├── testdb/            a database of its own for each test; exists
 │       ├── api/               REST routes and the contract they generate; exists
 │       └── mcp/               MCP tools; calls the API over HTTP
@@ -252,6 +253,11 @@ reference.
 
 Two spatial indexes on `station`, one on `position` and one on the same point
 as a geography, serve the API's searches in a rectangle and around a point.
+
+A view, `current_station`, joins each site the latest snapshot publishes to
+its current state, with its position in WGS84 in degrees. The API's queries
+read the sites through it, and join `station` when they search by position,
+so that the spatial indexes apply.
 
 A fourth table, `incoming_station`, is the import's workbench: it holds the
 stations of the snapshot being loaded while they are compared with what is

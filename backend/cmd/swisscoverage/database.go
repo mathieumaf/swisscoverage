@@ -9,11 +9,20 @@ import (
 
 // openStore connects to the database named by DATABASE_URL.
 func openStore(ctx context.Context, getenv func(string) string) (*store.Store, error) {
-	databaseURL := getenv("DATABASE_URL")
-	if databaseURL == "" {
-		return nil, errDatabaseURL
+	address, err := databaseURL(getenv)
+	if err != nil {
+		return nil, err
 	}
-	return store.Open(ctx, databaseURL)
+	return store.Open(ctx, address)
+}
+
+// databaseURL returns the address of the database, which DATABASE_URL holds.
+func databaseURL(getenv func(string) string) (string, error) {
+	address := getenv("DATABASE_URL")
+	if address == "" {
+		return "", errDatabaseURL
+	}
+	return address, nil
 }
 
 var errDatabaseURL = errors.New("DATABASE_URL is not set: it holds the address of the database, " +

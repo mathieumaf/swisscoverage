@@ -199,12 +199,7 @@ func (s *Store) Published(ctx context.Context) (Published, error) {
 		}
 		result.Stations = make([]PublishedStation, 0, len(rows))
 		for _, row := range rows {
-			result.Stations = append(result.Stations, PublishedStation{
-				Station: station(row.Name, row.Operator, row.Code, row.East, row.North,
-					row.Latitude, row.Longitude, row.FirstSeen),
-				State: state(row.Kind, row.PowerClass, row.Technologies, row.Adaptive,
-					row.PermitType, row.PermitDate, row.InstallationLimitValue),
-			})
+			result.Stations = append(result.Stations, published(row.CurrentStation))
 		}
 		return nil
 	})
@@ -384,47 +379,48 @@ func searchPage(ctx context.Context, queries *query.Queries, search Search, page
 	technologies := texts(search.Technologies)
 	stations := []PublishedStation{}
 	total := 0
+	var err error
 	if search.Box != nil {
-		rows, err := queries.SearchStationsInBox(ctx, query.SearchStationsInBoxParams{
+		var rows []query.SearchStationsInBoxRow
+		rows, err = queries.SearchStationsInBox(ctx, query.SearchStationsInBoxParams{
 			West: search.Box.West, South: search.Box.South,
 			East: search.Box.East, North: search.Box.North,
 			Operators: operators, Kinds: kinds, PowerClasses: powerClasses, Technologies: technologies,
 			RowLimit: int32(page.Limit), RowOffset: int32(page.Offset),
 		})
-		if err != nil {
-			return nil, 0, fmt.Errorf("searching the sites: %w", err)
-		}
 		for _, row := range rows {
 			total = int(row.Total)
-			stations = append(stations, PublishedStation{
-				Station: station(row.Name, row.Operator, row.Code, row.East, row.North,
-					row.Latitude, row.Longitude, row.FirstSeen),
-				State: state(row.Kind, row.PowerClass, row.Technologies, row.Adaptive,
-					row.PermitType, row.PermitDate, row.InstallationLimitValue),
-			})
+			stations = append(stations, published(row.CurrentStation))
 		}
-		return stations, total, nil
+	} else {
+		var rows []query.SearchStationsAroundRow
+		rows, err = queries.SearchStationsAround(ctx, query.SearchStationsAroundParams{
+			Latitude: search.Around.Center.Latitude, Longitude: search.Around.Center.Longitude,
+			Radius:    search.Around.Radius,
+			Operators: operators, Kinds: kinds, PowerClasses: powerClasses, Technologies: technologies,
+			RowLimit: int32(page.Limit), RowOffset: int32(page.Offset),
+		})
+		for _, row := range rows {
+			total = int(row.Total)
+			found := published(row.CurrentStation)
+			found.Distance = row.Distance
+			stations = append(stations, found)
+		}
 	}
-	rows, err := queries.SearchStationsAround(ctx, query.SearchStationsAroundParams{
-		Latitude: search.Around.Center.Latitude, Longitude: search.Around.Center.Longitude,
-		Radius:    search.Around.Radius,
-		Operators: operators, Kinds: kinds, PowerClasses: powerClasses, Technologies: technologies,
-		RowLimit: int32(page.Limit), RowOffset: int32(page.Offset),
-	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("searching the sites: %w", err)
 	}
-	for _, row := range rows {
-		total = int(row.Total)
-		stations = append(stations, PublishedStation{
-			Station: station(row.Name, row.Operator, row.Code, row.East, row.North,
-				row.Latitude, row.Longitude, row.FirstSeen),
-			State: state(row.Kind, row.PowerClass, row.Technologies, row.Adaptive,
-				row.PermitType, row.PermitDate, row.InstallationLimitValue),
-			Distance: row.Distance,
-		})
-	}
 	return stations, total, nil
+}
+
+// published returns a site as the current_station view gives it.
+func published(cs query.CurrentStation) PublishedStation {
+	return PublishedStation{
+		Station: station(cs.Name, cs.Operator, cs.Code, cs.East, cs.North,
+			cs.Latitude, cs.Longitude, cs.FirstSeen),
+		State: state(cs.Kind, cs.PowerClass, cs.Technologies, cs.Adaptive,
+			cs.PermitType, cs.PermitDate, cs.InstallationLimitValue),
+	}
 }
 
 func station(

@@ -132,61 +132,47 @@ LIMIT @row_limit OFFSET @row_offset;
 
 -- name: ListCurrentStations :many
 -- Every site the latest snapshot shows, with what it shows of it.
-SELECT s.name, s.operator, s.code, s.east, s.north,
-       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
-       s.first_seen,
-       st.kind, st.power_class, st.technologies, st.adaptive,
-       st.permit_type, st.permit_date, st.installation_limit_value
-FROM station s
-JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
-ORDER BY s.name, s.east, s.north;
+SELECT sqlc.embed(cs)
+FROM current_station cs
+ORDER BY cs.name, cs.east, cs.north;
 
 -- name: SearchStationsInBox :many
 -- The sites the latest snapshot shows inside a rectangle in WGS84, edges
 -- included, that match every filter. An empty filter matches every site; a
 -- site matches the technologies when it has one of them.
-SELECT s.name, s.operator, s.code, s.east, s.north,
-       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
-       s.first_seen,
-       st.kind, st.power_class, st.technologies, st.adaptive,
-       st.permit_type, st.permit_date, st.installation_limit_value,
-       count(*) OVER () AS total
+SELECT sqlc.embed(cs), count(*) OVER () AS total
 FROM station s
-JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+JOIN current_station cs ON cs.id = s.id
 -- The index finds the boxes that overlap, which it rounds outward; the
 -- coordinates then decide exactly. A rectangle may be a line or a point.
 WHERE s.position && ST_MakeEnvelope(@west::float8, @south::float8, @east::float8, @north::float8, 4326)
   AND ST_X(s.position) BETWEEN @west::float8 AND @east::float8
   AND ST_Y(s.position) BETWEEN @south::float8 AND @north::float8
-  AND (cardinality(@operators::text[]) = 0 OR s.operator = ANY (@operators::text[]))
-  AND (cardinality(@kinds::text[]) = 0 OR st.kind = ANY (@kinds::text[]))
-  AND (cardinality(@power_classes::text[]) = 0 OR st.power_class = ANY (@power_classes::text[]))
-  AND (cardinality(@technologies::text[]) = 0 OR st.technologies && @technologies::text[])
-ORDER BY s.name, s.east, s.north
+  AND (cardinality(@operators::text[]) = 0 OR cs.operator = ANY (@operators::text[]))
+  AND (cardinality(@kinds::text[]) = 0 OR cs.kind = ANY (@kinds::text[]))
+  AND (cardinality(@power_classes::text[]) = 0 OR cs.power_class = ANY (@power_classes::text[]))
+  AND (cardinality(@technologies::text[]) = 0 OR cs.technologies && @technologies::text[])
+ORDER BY cs.name, cs.east, cs.north
 LIMIT @row_limit OFFSET @row_offset;
 
 -- name: SearchStationsAround :many
 -- The sites the latest snapshot shows within a distance of a point in WGS84,
 -- nearest first, that match every filter as in SearchStationsInBox.
 -- Distances are in metres, on the ellipsoid.
-SELECT s.name, s.operator, s.code, s.east, s.north,
-       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
-       s.first_seen,
-       st.kind, st.power_class, st.technologies, st.adaptive,
-       st.permit_type, st.permit_date, st.installation_limit_value,
+SELECT sqlc.embed(cs),
        ST_Distance(s.position::geography, center.point)::float8 AS distance,
        count(*) OVER () AS total
 FROM station s
-JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+JOIN current_station cs ON cs.id = s.id
 CROSS JOIN (
     SELECT ST_SetSRID(ST_MakePoint(@longitude::float8, @latitude::float8), 4326)::geography AS point
 ) center
 WHERE ST_DWithin(s.position::geography, center.point, @radius::float8)
-  AND (cardinality(@operators::text[]) = 0 OR s.operator = ANY (@operators::text[]))
-  AND (cardinality(@kinds::text[]) = 0 OR st.kind = ANY (@kinds::text[]))
-  AND (cardinality(@power_classes::text[]) = 0 OR st.power_class = ANY (@power_classes::text[]))
-  AND (cardinality(@technologies::text[]) = 0 OR st.technologies && @technologies::text[])
-ORDER BY distance, s.name, s.east, s.north
+  AND (cardinality(@operators::text[]) = 0 OR cs.operator = ANY (@operators::text[]))
+  AND (cardinality(@kinds::text[]) = 0 OR cs.kind = ANY (@kinds::text[]))
+  AND (cardinality(@power_classes::text[]) = 0 OR cs.power_class = ANY (@power_classes::text[]))
+  AND (cardinality(@technologies::text[]) = 0 OR cs.technologies && @technologies::text[])
+ORDER BY distance, cs.name, cs.east, cs.north
 LIMIT @row_limit OFFSET @row_offset;
 
 -- name: GetStation :many

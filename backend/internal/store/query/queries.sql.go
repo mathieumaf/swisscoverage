@@ -340,32 +340,13 @@ func (q *Queries) ListChanges(ctx context.Context, arg ListChangesParams) ([]Lis
 }
 
 const listCurrentStations = `-- name: ListCurrentStations :many
-SELECT s.name, s.operator, s.code, s.east, s.north,
-       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
-       s.first_seen,
-       st.kind, st.power_class, st.technologies, st.adaptive,
-       st.permit_type, st.permit_date, st.installation_limit_value
-FROM station s
-JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
-ORDER BY s.name, s.east, s.north
+SELECT cs.id, cs.name, cs.operator, cs.code, cs.east, cs.north, cs.latitude, cs.longitude, cs.first_seen, cs.kind, cs.power_class, cs.technologies, cs.adaptive, cs.permit_type, cs.permit_date, cs.installation_limit_value
+FROM current_station cs
+ORDER BY cs.name, cs.east, cs.north
 `
 
 type ListCurrentStationsRow struct {
-	Name                   string
-	Operator               string
-	Code                   string
-	East                   float64
-	North                  float64
-	Latitude               float64
-	Longitude              float64
-	FirstSeen              time.Time
-	Kind                   string
-	PowerClass             string
-	Technologies           []string
-	Adaptive               pgtype.Bool
-	PermitType             pgtype.Text
-	PermitDate             pgtype.Date
-	InstallationLimitValue pgtype.Float8
+	CurrentStation CurrentStation
 }
 
 // Every site the latest snapshot shows, with what it shows of it.
@@ -379,21 +360,22 @@ func (q *Queries) ListCurrentStations(ctx context.Context) ([]ListCurrentStation
 	for rows.Next() {
 		var i ListCurrentStationsRow
 		if err := rows.Scan(
-			&i.Name,
-			&i.Operator,
-			&i.Code,
-			&i.East,
-			&i.North,
-			&i.Latitude,
-			&i.Longitude,
-			&i.FirstSeen,
-			&i.Kind,
-			&i.PowerClass,
-			&i.Technologies,
-			&i.Adaptive,
-			&i.PermitType,
-			&i.PermitDate,
-			&i.InstallationLimitValue,
+			&i.CurrentStation.ID,
+			&i.CurrentStation.Name,
+			&i.CurrentStation.Operator,
+			&i.CurrentStation.Code,
+			&i.CurrentStation.East,
+			&i.CurrentStation.North,
+			&i.CurrentStation.Latitude,
+			&i.CurrentStation.Longitude,
+			&i.CurrentStation.FirstSeen,
+			&i.CurrentStation.Kind,
+			&i.CurrentStation.PowerClass,
+			&i.CurrentStation.Technologies,
+			&i.CurrentStation.Adaptive,
+			&i.CurrentStation.PermitType,
+			&i.CurrentStation.PermitDate,
+			&i.CurrentStation.InstallationLimitValue,
 		); err != nil {
 			return nil, err
 		}
@@ -584,24 +566,20 @@ func (q *Queries) OpenNewStates(ctx context.Context, publishedAt time.Time) (int
 }
 
 const searchStationsAround = `-- name: SearchStationsAround :many
-SELECT s.name, s.operator, s.code, s.east, s.north,
-       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
-       s.first_seen,
-       st.kind, st.power_class, st.technologies, st.adaptive,
-       st.permit_type, st.permit_date, st.installation_limit_value,
+SELECT cs.id, cs.name, cs.operator, cs.code, cs.east, cs.north, cs.latitude, cs.longitude, cs.first_seen, cs.kind, cs.power_class, cs.technologies, cs.adaptive, cs.permit_type, cs.permit_date, cs.installation_limit_value,
        ST_Distance(s.position::geography, center.point)::float8 AS distance,
        count(*) OVER () AS total
 FROM station s
-JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+JOIN current_station cs ON cs.id = s.id
 CROSS JOIN (
     SELECT ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)::geography AS point
 ) center
 WHERE ST_DWithin(s.position::geography, center.point, $3::float8)
-  AND (cardinality($4::text[]) = 0 OR s.operator = ANY ($4::text[]))
-  AND (cardinality($5::text[]) = 0 OR st.kind = ANY ($5::text[]))
-  AND (cardinality($6::text[]) = 0 OR st.power_class = ANY ($6::text[]))
-  AND (cardinality($7::text[]) = 0 OR st.technologies && $7::text[])
-ORDER BY distance, s.name, s.east, s.north
+  AND (cardinality($4::text[]) = 0 OR cs.operator = ANY ($4::text[]))
+  AND (cardinality($5::text[]) = 0 OR cs.kind = ANY ($5::text[]))
+  AND (cardinality($6::text[]) = 0 OR cs.power_class = ANY ($6::text[]))
+  AND (cardinality($7::text[]) = 0 OR cs.technologies && $7::text[])
+ORDER BY distance, cs.name, cs.east, cs.north
 LIMIT $9 OFFSET $8
 `
 
@@ -618,23 +596,9 @@ type SearchStationsAroundParams struct {
 }
 
 type SearchStationsAroundRow struct {
-	Name                   string
-	Operator               string
-	Code                   string
-	East                   float64
-	North                  float64
-	Latitude               float64
-	Longitude              float64
-	FirstSeen              time.Time
-	Kind                   string
-	PowerClass             string
-	Technologies           []string
-	Adaptive               pgtype.Bool
-	PermitType             pgtype.Text
-	PermitDate             pgtype.Date
-	InstallationLimitValue pgtype.Float8
-	Distance               float64
-	Total                  int64
+	CurrentStation CurrentStation
+	Distance       float64
+	Total          int64
 }
 
 // The sites the latest snapshot shows within a distance of a point in WGS84,
@@ -660,21 +624,22 @@ func (q *Queries) SearchStationsAround(ctx context.Context, arg SearchStationsAr
 	for rows.Next() {
 		var i SearchStationsAroundRow
 		if err := rows.Scan(
-			&i.Name,
-			&i.Operator,
-			&i.Code,
-			&i.East,
-			&i.North,
-			&i.Latitude,
-			&i.Longitude,
-			&i.FirstSeen,
-			&i.Kind,
-			&i.PowerClass,
-			&i.Technologies,
-			&i.Adaptive,
-			&i.PermitType,
-			&i.PermitDate,
-			&i.InstallationLimitValue,
+			&i.CurrentStation.ID,
+			&i.CurrentStation.Name,
+			&i.CurrentStation.Operator,
+			&i.CurrentStation.Code,
+			&i.CurrentStation.East,
+			&i.CurrentStation.North,
+			&i.CurrentStation.Latitude,
+			&i.CurrentStation.Longitude,
+			&i.CurrentStation.FirstSeen,
+			&i.CurrentStation.Kind,
+			&i.CurrentStation.PowerClass,
+			&i.CurrentStation.Technologies,
+			&i.CurrentStation.Adaptive,
+			&i.CurrentStation.PermitType,
+			&i.CurrentStation.PermitDate,
+			&i.CurrentStation.InstallationLimitValue,
 			&i.Distance,
 			&i.Total,
 		); err != nil {
@@ -689,22 +654,17 @@ func (q *Queries) SearchStationsAround(ctx context.Context, arg SearchStationsAr
 }
 
 const searchStationsInBox = `-- name: SearchStationsInBox :many
-SELECT s.name, s.operator, s.code, s.east, s.north,
-       ST_Y(s.position)::float8 AS latitude, ST_X(s.position)::float8 AS longitude,
-       s.first_seen,
-       st.kind, st.power_class, st.technologies, st.adaptive,
-       st.permit_type, st.permit_date, st.installation_limit_value,
-       count(*) OVER () AS total
+SELECT cs.id, cs.name, cs.operator, cs.code, cs.east, cs.north, cs.latitude, cs.longitude, cs.first_seen, cs.kind, cs.power_class, cs.technologies, cs.adaptive, cs.permit_type, cs.permit_date, cs.installation_limit_value, count(*) OVER () AS total
 FROM station s
-JOIN station_state st ON st.station_id = s.id AND st.valid_to IS NULL
+JOIN current_station cs ON cs.id = s.id
 WHERE s.position && ST_MakeEnvelope($1::float8, $2::float8, $3::float8, $4::float8, 4326)
   AND ST_X(s.position) BETWEEN $1::float8 AND $3::float8
   AND ST_Y(s.position) BETWEEN $2::float8 AND $4::float8
-  AND (cardinality($5::text[]) = 0 OR s.operator = ANY ($5::text[]))
-  AND (cardinality($6::text[]) = 0 OR st.kind = ANY ($6::text[]))
-  AND (cardinality($7::text[]) = 0 OR st.power_class = ANY ($7::text[]))
-  AND (cardinality($8::text[]) = 0 OR st.technologies && $8::text[])
-ORDER BY s.name, s.east, s.north
+  AND (cardinality($5::text[]) = 0 OR cs.operator = ANY ($5::text[]))
+  AND (cardinality($6::text[]) = 0 OR cs.kind = ANY ($6::text[]))
+  AND (cardinality($7::text[]) = 0 OR cs.power_class = ANY ($7::text[]))
+  AND (cardinality($8::text[]) = 0 OR cs.technologies && $8::text[])
+ORDER BY cs.name, cs.east, cs.north
 LIMIT $10 OFFSET $9
 `
 
@@ -722,22 +682,8 @@ type SearchStationsInBoxParams struct {
 }
 
 type SearchStationsInBoxRow struct {
-	Name                   string
-	Operator               string
-	Code                   string
-	East                   float64
-	North                  float64
-	Latitude               float64
-	Longitude              float64
-	FirstSeen              time.Time
-	Kind                   string
-	PowerClass             string
-	Technologies           []string
-	Adaptive               pgtype.Bool
-	PermitType             pgtype.Text
-	PermitDate             pgtype.Date
-	InstallationLimitValue pgtype.Float8
-	Total                  int64
+	CurrentStation CurrentStation
+	Total          int64
 }
 
 // The sites the latest snapshot shows inside a rectangle in WGS84, edges
@@ -766,21 +712,22 @@ func (q *Queries) SearchStationsInBox(ctx context.Context, arg SearchStationsInB
 	for rows.Next() {
 		var i SearchStationsInBoxRow
 		if err := rows.Scan(
-			&i.Name,
-			&i.Operator,
-			&i.Code,
-			&i.East,
-			&i.North,
-			&i.Latitude,
-			&i.Longitude,
-			&i.FirstSeen,
-			&i.Kind,
-			&i.PowerClass,
-			&i.Technologies,
-			&i.Adaptive,
-			&i.PermitType,
-			&i.PermitDate,
-			&i.InstallationLimitValue,
+			&i.CurrentStation.ID,
+			&i.CurrentStation.Name,
+			&i.CurrentStation.Operator,
+			&i.CurrentStation.Code,
+			&i.CurrentStation.East,
+			&i.CurrentStation.North,
+			&i.CurrentStation.Latitude,
+			&i.CurrentStation.Longitude,
+			&i.CurrentStation.FirstSeen,
+			&i.CurrentStation.Kind,
+			&i.CurrentStation.PowerClass,
+			&i.CurrentStation.Technologies,
+			&i.CurrentStation.Adaptive,
+			&i.CurrentStation.PermitType,
+			&i.CurrentStation.PermitDate,
+			&i.CurrentStation.InstallationLimitValue,
 			&i.Total,
 		); err != nil {
 			return nil, err

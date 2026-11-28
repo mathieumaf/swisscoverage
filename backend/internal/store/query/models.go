@@ -10,6 +10,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CurrentStation struct {
+	ID                     int64
+	Name                   string
+	Operator               string
+	Code                   string
+	East                   float64
+	North                  float64
+	Latitude               float64
+	Longitude              float64
+	FirstSeen              time.Time
+	Kind                   string
+	PowerClass             string
+	Technologies           []string
+	Adaptive               pgtype.Bool
+	PermitType             pgtype.Text
+	PermitDate             pgtype.Date
+	InstallationLimitValue pgtype.Float8
+}
+
 type IncomingStation struct {
 	Name                   string
 	Operator               string

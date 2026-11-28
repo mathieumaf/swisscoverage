@@ -1,7 +1,7 @@
 ---
 import { isLocale } from "../../i18n/locales";
 import type { MessageKey } from "../../i18n/messages/en";
-import { translate } from "../../i18n/translate";
+import { translator } from "../../i18n/translate";
 import Base from "../../layouts/Base.astro";
 
 // What the site is, what OFCOM's data says and does not say, where each part
@@ -12,7 +12,7 @@ if (!isLocale(lang)) {
   return Astro.rewrite("/404");
 }
 const locale = lang;
-const t = (key: MessageKey) => translate(locale, key);
+const t = translator(locale);
 
 const sections: { title: MessageKey; items: MessageKey[] }[] = [
   {

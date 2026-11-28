@@ -10,72 +10,20 @@ import (
 
 	"github.com/mathieumaf/swisscoverage/backend/internal/ofcom"
 	"github.com/mathieumaf/swisscoverage/backend/internal/store"
+	"github.com/mathieumaf/swisscoverage/backend/internal/store/storetest"
 	"github.com/mathieumaf/swisscoverage/backend/internal/testdb"
 )
-
-var (
-	day1 = time.Date(2026, 11, 23, 22, 1, 35, 611529000, time.UTC)
-	day2 = time.Date(2026, 11, 24, 22, 1, 55, 936174000, time.UTC)
-	day3 = time.Date(2026, 11, 25, 22, 2, 7, 0, time.UTC)
-)
-
-// open returns a store on an empty database with the schema applied, and the
-// address of that database for assertions.
-func open(t *testing.T) (*store.Store, string) {
-	t.Helper()
-	address := testdb.New(t)
-	database, err := store.Open(context.Background(), address)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(database.Close)
-	if _, err := database.Migrate(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	return database, address
-}
-
-func pointer[T any](value T) *T { return &value }
-
-// station returns a site with ordinary values, which a test then changes.
-func station(name string, east, north float64) ofcom.MobileStation {
-	operator, code, _ := strings.Cut(name, " ")
-	return ofcom.MobileStation{
-		Name:                   name,
-		Operator:               ofcom.Operator(strings.ToLower(operator)),
-		Code:                   code,
-		Kind:                   ofcom.KindOutdoor,
-		PowerClass:             ofcom.PowerMedium,
-		Technologies:           []ofcom.Technology{ofcom.Technology4G, ofcom.Technology5G},
-		Adaptive:               pointer(true),
-		Permit:                 &ofcom.Permit{Type: ofcom.PermitSiteDataSheet, Date: "2021-06-03"},
-		InstallationLimitValue: pointer(5.0),
-		LV95:                   ofcom.LV95{East: east, North: north},
-	}
-}
-
-// with returns a copy of a station after change has edited it.
-func with(original ofcom.MobileStation, change func(*ofcom.MobileStation)) ofcom.MobileStation {
-	change(&original)
-	return original
-}
 
 // load loads a snapshot made of stations and fails the test on an error.
 func load(
 	t *testing.T, database *store.Store, publishedAt time.Time, stations ...ofcom.MobileStation,
 ) store.Loaded {
 	t.Helper()
-	loaded, err := database.LoadSnapshot(context.Background(), snapshotAt(publishedAt, len(stations)), stations, false)
+	loaded, err := database.LoadSnapshot(context.Background(), storetest.Snapshot(publishedAt, len(stations)), stations, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return loaded
-}
-
-// snapshotAt returns a snapshot whose checksum depends on its time only.
-func snapshotAt(publishedAt time.Time, sites int) store.Snapshot {
-	checksum := strings.Repeat("0", 60) + publishedAt.Format("0102")
-	return store.Snapshot{PublishedAt: publishedAt, SHA256: checksum, Sites: sites}
 }
 
 func wantEqual[T any](t *testing.T, got, want T) {
@@ -100,10 +48,10 @@ func changes(t *testing.T, database *store.Store, from, to time.Time) []string {
 }
 
 var (
-	bifo = station("Swisscom BIFO", 2676878, 1246069)
-	dibh = station("Swisscom DIBH", 2692356, 1233045)
-	salt = station("Salt TI_3787A", 2717696, 1102456)
-	sbb  = station("SBB AU-WAE-02202", 2600000, 1200000)
+	bifo = storetest.Station("Swisscom BIFO", 2676878, 1246069)
+	dibh = storetest.Station("Swisscom DIBH", 2692356, 1233045)
+	salt = storetest.Station("Salt TI_3787A", 2717696, 1102456)
+	sbb  = storetest.Station("SBB AU-WAE-02202", 2600000, 1200000)
 )
 
 // The first migration runs on a database nobody prepared: it creates PostGIS
@@ -153,7 +101,7 @@ func TestMigrate(t *testing.T) {
 // A program rolled back to an earlier version finds a schema it does not
 // know. That is expected: the schema stays compatible with it.
 func TestMigrateLeavesANewerSchemaAlone(t *testing.T) {
-	database, address := open(t)
+	database, address := storetest.Open(t)
 	testdb.Query(t, address,
 		`INSERT INTO schema_migration (version, name) VALUES (9999, '9999_from_the_future.sql')`)
 
@@ -195,23 +143,23 @@ func TestMigrateFromSeveralProgramsAtOnce(t *testing.T) {
 }
 
 func TestLoadFirstSnapshot(t *testing.T) {
-	database, address := open(t)
+	database, address := storetest.Open(t)
 
-	loaded := load(t, database, day1, bifo, dibh)
+	loaded := load(t, database, storetest.Day1, bifo, dibh)
 
 	wantEqual(t, loaded, store.Loaded{Appeared: 2})
 	snapshots, err := database.Snapshots(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantEqual(t, snapshots, []store.Snapshot{snapshotAt(day1, 2)})
+	wantEqual(t, snapshots, []store.Snapshot{storetest.Snapshot(storetest.Day1, 2)})
 
 	wantEqual(t, testdb.Query(t, address, `
 		SELECT s.name, s.operator, s.code, s.east, s.north, s.first_seen = $1,
 		       st.valid_from = $1, st.valid_to, st.kind, st.power_class, st.technologies,
 		       st.adaptive, st.permit_type, st.permit_date, st.installation_limit_value
 		FROM station s JOIN station_state st ON st.station_id = s.id
-		ORDER BY s.name`, day1),
+		ORDER BY s.name`, storetest.Day1),
 		[][]string{
 			{"Swisscom BIFO", "swisscom", "BIFO", "2676878", "1246069", "t",
 				"t", "NULL", "outdoor", "medium", "{4G,5G}", "t", "site_data_sheet", "2021-06-03", "5"},
@@ -222,23 +170,23 @@ func TestLoadFirstSnapshot(t *testing.T) {
 }
 
 func TestLoadKeepsWhatTheFileLeavesBlank(t *testing.T) {
-	database, address := open(t)
-	blank := with(bifo, func(s *ofcom.MobileStation) {
+	database, address := storetest.Open(t)
+	blank := storetest.With(bifo, func(s *ofcom.MobileStation) {
 		s.Technologies = []ofcom.Technology{}
 		s.Adaptive = nil
 		s.Permit = nil
 		s.InstallationLimitValue = nil
 	})
-	exempt := with(dibh, func(s *ofcom.MobileStation) {
-		s.Adaptive = pointer(false)
+	exempt := storetest.With(dibh, func(s *ofcom.MobileStation) {
+		s.Adaptive = storetest.Pointer(false)
 		s.Permit = &ofcom.Permit{Type: ofcom.PermitExempt}
 	})
 	// A data sheet whose published date the parser could not keep.
-	undated := with(salt, func(s *ofcom.MobileStation) {
+	undated := storetest.With(salt, func(s *ofcom.MobileStation) {
 		s.Permit = &ofcom.Permit{Type: ofcom.PermitSiteDataSheet}
 	})
 
-	load(t, database, day1, blank, exempt, undated)
+	load(t, database, storetest.Day1, blank, exempt, undated)
 
 	wantEqual(t, testdb.Query(t, address, `
 		SELECT s.name, st.technologies, st.adaptive, st.permit_type, st.permit_date,
@@ -255,10 +203,10 @@ func TestLoadKeepsWhatTheFileLeavesBlank(t *testing.T) {
 // Every value the parser can return must be one the schema accepts: a value
 // added to the parser without a migration would stop the import.
 func TestLoadAcceptsEveryValueOfTheParser(t *testing.T) {
-	database, _ := open(t)
+	database, _ := storetest.Open(t)
 	var stations []ofcom.MobileStation
 	add := func(change func(*ofcom.MobileStation)) {
-		site := with(bifo, change)
+		site := storetest.With(bifo, change)
 		site.LV95.East += float64(len(stations))
 		stations = append(stations, site)
 	}
@@ -276,7 +224,7 @@ func TestLoadAcceptsEveryValueOfTheParser(t *testing.T) {
 		add(func(s *ofcom.MobileStation) { s.Permit = &ofcom.Permit{Type: permit} })
 	}
 
-	loaded := load(t, database, day1, stations...)
+	loaded := load(t, database, storetest.Day1, stations...)
 
 	wantEqual(t, loaded.Appeared, len(stations))
 }
@@ -284,9 +232,9 @@ func TestLoadAcceptsEveryValueOfTheParser(t *testing.T) {
 // PostGIS computes the WGS84 position. LV95 2600000 / 1200000 is the origin
 // of the Swiss grid, the old observatory of Bern: 46.95108 N, 7.43864 E.
 func TestLoadConvertsThePositionToWGS84(t *testing.T) {
-	database, address := open(t)
+	database, address := storetest.Open(t)
 
-	load(t, database, day1, sbb)
+	load(t, database, storetest.Day1, sbb)
 
 	position := testdb.Query(t, address, `
 		SELECT abs(ST_Y(position) - 46.95108) < 0.00001, abs(ST_X(position) - 7.43864) < 0.00001,
@@ -296,17 +244,17 @@ func TestLoadConvertsThePositionToWGS84(t *testing.T) {
 }
 
 func TestLoadRecordsWhatChanged(t *testing.T) {
-	database, address := open(t)
-	load(t, database, day1, bifo, dibh, salt)
+	database, address := storetest.Open(t)
+	load(t, database, storetest.Day1, bifo, dibh, salt)
 
 	// BIFO is unchanged, DIBH gains a technology, Salt leaves, SBB arrives.
-	upgraded := with(dibh, func(s *ofcom.MobileStation) {
+	upgraded := storetest.With(dibh, func(s *ofcom.MobileStation) {
 		s.Technologies = []ofcom.Technology{ofcom.Technology3G, ofcom.Technology4G, ofcom.Technology5G}
 	})
-	loaded := load(t, database, day2, bifo, upgraded, sbb)
+	loaded := load(t, database, storetest.Day2, bifo, upgraded, sbb)
 
 	wantEqual(t, loaded, store.Loaded{Appeared: 1, Disappeared: 1, Changed: 1})
-	wantEqual(t, changes(t, database, day1, day2), []string{
+	wantEqual(t, changes(t, database, storetest.Day1, storetest.Day2), []string{
 		"disappeared Salt TI_3787A",
 		"appeared SBB AU-WAE-02202",
 		"changed Swisscom DIBH",
@@ -315,7 +263,7 @@ func TestLoadRecordsWhatChanged(t *testing.T) {
 	wantEqual(t, testdb.Query(t, address, `
 		SELECT s.name, st.valid_from = $1, st.valid_to = $2, st.valid_to IS NULL, st.technologies
 		FROM station s JOIN station_state st ON st.station_id = s.id
-		ORDER BY s.name, st.valid_from`, day1, day2),
+		ORDER BY s.name, st.valid_from`, storetest.Day1, storetest.Day2),
 		[][]string{
 			// Left the file: its only state has an end.
 			{"Salt TI_3787A", "t", "t", "f", "{4G,5G}"},
@@ -328,7 +276,7 @@ func TestLoadRecordsWhatChanged(t *testing.T) {
 			{"Swisscom DIBH", "f", "NULL", "t", "{3G,4G,5G}"},
 		})
 	wantEqual(t, testdb.Query(t, address,
-		`SELECT name, first_seen = $1 FROM station ORDER BY name`, day1),
+		`SELECT name, first_seen = $1 FROM station ORDER BY name`, storetest.Day1),
 		[][]string{
 			{"Salt TI_3787A", "t"}, {"SBB AU-WAE-02202", "f"}, {"Swisscom BIFO", "t"}, {"Swisscom DIBH", "t"},
 		})
@@ -347,15 +295,15 @@ func TestLoadSeesAChangeInEachValue(t *testing.T) {
 			s.Permit = &ofcom.Permit{Type: ofcom.PermitSiteDataSheet, Date: "2024-08-29"}
 		},
 		"no permit":   func(s *ofcom.MobileStation) { s.Permit = nil },
-		"limit value": func(s *ofcom.MobileStation) { s.InstallationLimitValue = pointer(6.0) },
+		"limit value": func(s *ofcom.MobileStation) { s.InstallationLimitValue = storetest.Pointer(6.0) },
 		"no limit":    func(s *ofcom.MobileStation) { s.InstallationLimitValue = nil },
 	}
 	for name, edit := range edits {
 		t.Run(name, func(t *testing.T) {
-			database, _ := open(t)
-			load(t, database, day1, bifo, dibh)
+			database, _ := storetest.Open(t)
+			load(t, database, storetest.Day1, bifo, dibh)
 
-			loaded := load(t, database, day2, with(bifo, edit), dibh)
+			loaded := load(t, database, storetest.Day2, storetest.With(bifo, edit), dibh)
 
 			wantEqual(t, loaded, store.Loaded{Changed: 1})
 		})
@@ -364,36 +312,36 @@ func TestLoadSeesAChangeInEachValue(t *testing.T) {
 
 // The same label at another position is another site.
 func TestLoadTreatsAMovedSiteAsAnotherSite(t *testing.T) {
-	database, _ := open(t)
-	load(t, database, day1, bifo)
+	database, _ := storetest.Open(t)
+	load(t, database, storetest.Day1, bifo)
 
-	moved := with(bifo, func(s *ofcom.MobileStation) { s.LV95.East += 3 })
-	loaded := load(t, database, day2, moved)
+	moved := storetest.With(bifo, func(s *ofcom.MobileStation) { s.LV95.East += 3 })
+	loaded := load(t, database, storetest.Day2, moved)
 
 	wantEqual(t, loaded, store.Loaded{Appeared: 1, Disappeared: 1})
 }
 
 func TestLoadAnIdenticalSnapshotAddsNothing(t *testing.T) {
-	database, address := open(t)
-	load(t, database, day1, bifo, dibh)
+	database, address := storetest.Open(t)
+	load(t, database, storetest.Day1, bifo, dibh)
 
-	loaded := load(t, database, day2, dibh, bifo)
+	loaded := load(t, database, storetest.Day2, dibh, bifo)
 
 	wantEqual(t, loaded, store.Loaded{})
-	wantEqual(t, changes(t, database, day1, day2), []string{})
+	wantEqual(t, changes(t, database, storetest.Day1, storetest.Day2), []string{})
 	wantEqual(t, testdb.Query(t, address, `SELECT count(*) FROM station_state`), [][]string{{"2"}})
 }
 
 func TestLoadASiteThatComesBack(t *testing.T) {
-	database, address := open(t)
-	load(t, database, day1, bifo, dibh)
-	load(t, database, day2, bifo)
+	database, address := storetest.Open(t)
+	load(t, database, storetest.Day1, bifo, dibh)
+	load(t, database, storetest.Day2, bifo)
 
-	loaded := load(t, database, day3, bifo, dibh)
+	loaded := load(t, database, storetest.Day3, bifo, dibh)
 
 	wantEqual(t, loaded, store.Loaded{Appeared: 1})
 	// Published at the first and the third moment with the same values.
-	wantEqual(t, changes(t, database, day1, day3), []string{})
+	wantEqual(t, changes(t, database, storetest.Day1, storetest.Day3), []string{})
 	wantEqual(t, testdb.Query(t, address, `
 		SELECT count(DISTINCT s.id), count(*), count(*) FILTER (WHERE st.valid_to IS NULL)
 		FROM station s JOIN station_state st ON st.station_id = s.id
@@ -402,32 +350,32 @@ func TestLoadASiteThatComesBack(t *testing.T) {
 }
 
 func TestChangesBetweenAnyTwoMoments(t *testing.T) {
-	database, _ := open(t)
-	high := with(bifo, func(s *ofcom.MobileStation) { s.PowerClass = ofcom.PowerHigh })
-	load(t, database, day1, bifo, dibh)
-	load(t, database, day2, high, dibh)
-	load(t, database, day3, bifo, dibh, salt)
+	database, _ := storetest.Open(t)
+	high := storetest.With(bifo, func(s *ofcom.MobileStation) { s.PowerClass = ofcom.PowerHigh })
+	load(t, database, storetest.Day1, bifo, dibh)
+	load(t, database, storetest.Day2, high, dibh)
+	load(t, database, storetest.Day3, bifo, dibh, salt)
 
 	// Changed and changed back: the same at both ends.
-	wantEqual(t, changes(t, database, day1, day3), []string{"appeared Salt TI_3787A"})
-	wantEqual(t, changes(t, database, day2, day3), []string{
+	wantEqual(t, changes(t, database, storetest.Day1, storetest.Day3), []string{"appeared Salt TI_3787A"})
+	wantEqual(t, changes(t, database, storetest.Day2, storetest.Day3), []string{
 		"appeared Salt TI_3787A", "changed Swisscom BIFO",
 	})
 	// A moment between two snapshots shows the earlier one.
-	wantEqual(t, changes(t, database, day1.Add(time.Hour), day2.Add(time.Hour)),
+	wantEqual(t, changes(t, database, storetest.Day1.Add(time.Hour), storetest.Day2.Add(time.Hour)),
 		[]string{"changed Swisscom BIFO"})
 	// Before the first snapshot, nothing was published.
-	wantEqual(t, changes(t, database, day1.Add(-time.Hour), day1), []string{
+	wantEqual(t, changes(t, database, storetest.Day1.Add(-time.Hour), storetest.Day1), []string{
 		"appeared Swisscom BIFO", "appeared Swisscom DIBH",
 	})
-	wantEqual(t, changes(t, database, day3, day1), []string{"disappeared Salt TI_3787A"})
+	wantEqual(t, changes(t, database, storetest.Day3, storetest.Day1), []string{"disappeared Salt TI_3787A"})
 }
 
 func TestLoadKeepsTheFirstOfASitePublishedTwice(t *testing.T) {
-	database, address := open(t)
-	again := with(bifo, func(s *ofcom.MobileStation) { s.PowerClass = ofcom.PowerHigh })
+	database, address := storetest.Open(t)
+	again := storetest.With(bifo, func(s *ofcom.MobileStation) { s.PowerClass = ofcom.PowerHigh })
 
-	loaded := load(t, database, day1, bifo, again, dibh)
+	loaded := load(t, database, storetest.Day1, bifo, again, dibh)
 
 	wantEqual(t, loaded, store.Loaded{
 		Appeared:   2,
@@ -442,23 +390,23 @@ func TestLoadKeepsTheFirstOfASitePublishedTwice(t *testing.T) {
 }
 
 func TestLoadRefusesWhatWouldRewriteHistory(t *testing.T) {
-	database, address := open(t)
+	database, address := storetest.Open(t)
 	ctx := context.Background()
-	load(t, database, day2, bifo)
+	load(t, database, storetest.Day2, bifo)
 
-	_, err := database.LoadSnapshot(ctx, snapshotAt(day2, 1), []ofcom.MobileStation{bifo}, false)
+	_, err := database.LoadSnapshot(ctx, storetest.Snapshot(storetest.Day2, 1), []ofcom.MobileStation{bifo}, false)
 	if !errors.Is(err, store.ErrAlreadyLoaded) {
 		t.Errorf("the same snapshot again: got %v, want ErrAlreadyLoaded", err)
 	}
 
-	other := snapshotAt(day2, 1)
+	other := storetest.Snapshot(storetest.Day2, 1)
 	other.SHA256 = strings.Repeat("f", 64)
 	_, err = database.LoadSnapshot(ctx, other, []ofcom.MobileStation{bifo, dibh}, false)
 	if err == nil || !strings.Contains(err.Error(), "already loaded with another checksum") {
 		t.Errorf("the same time with another checksum: got %v", err)
 	}
 
-	_, err = database.LoadSnapshot(ctx, snapshotAt(day1, 1), []ofcom.MobileStation{dibh}, false)
+	_, err = database.LoadSnapshot(ctx, storetest.Snapshot(storetest.Day1, 1), []ofcom.MobileStation{dibh}, false)
 	if err == nil || !strings.Contains(err.Error(), "older than the latest one loaded") {
 		t.Errorf("an older snapshot: got %v", err)
 	}
@@ -471,12 +419,12 @@ func TestLoadRefusesWhatWouldRewriteHistory(t *testing.T) {
 // Sites are counted as the database sees them, so a file cannot hide that it
 // lost most of them by repeating the ones it kept.
 func TestLoadRefusesASnapshotThatLostMostSites(t *testing.T) {
-	database, address := open(t)
+	database, address := storetest.Open(t)
 	ctx := context.Background()
-	load(t, database, day1, bifo, dibh, salt, sbb)
+	load(t, database, storetest.Day1, bifo, dibh, salt, sbb)
 	padded := []ofcom.MobileStation{bifo, bifo, bifo, bifo}
 
-	_, err := database.LoadSnapshot(ctx, snapshotAt(day2, 4), padded, false)
+	_, err := database.LoadSnapshot(ctx, storetest.Snapshot(storetest.Day2, 4), padded, false)
 
 	var tooFew *store.TooFewSitesError
 	if !errors.As(err, &tooFew) || tooFew.Sites != 1 || tooFew.Current != 4 {
@@ -485,10 +433,10 @@ func TestLoadRefusesASnapshotThatLostMostSites(t *testing.T) {
 	wantEqual(t, testdb.Query(t, address, `SELECT count(*) FROM snapshot`), [][]string{{"1"}})
 
 	// Exactly half is not a drop.
-	wantEqual(t, load(t, database, day2, bifo, dibh), store.Loaded{Disappeared: 2})
+	wantEqual(t, load(t, database, storetest.Day2, bifo, dibh), store.Loaded{Disappeared: 2})
 
 	// And a person can allow one.
-	loaded, err := database.LoadSnapshot(ctx, snapshotAt(day3, 0), nil, true)
+	loaded, err := database.LoadSnapshot(ctx, storetest.Snapshot(storetest.Day3, 0), nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -498,7 +446,7 @@ func TestLoadRefusesASnapshotThatLostMostSites(t *testing.T) {
 // Two imports of the same snapshot at once: one loads it, the other waits and
 // then finds it loaded.
 func TestLoadFromSeveralProgramsAtOnce(t *testing.T) {
-	_, address := open(t)
+	_, address := storetest.Open(t)
 	results := make(chan error, 4)
 	for range cap(results) {
 		go func() {
@@ -508,7 +456,7 @@ func TestLoadFromSeveralProgramsAtOnce(t *testing.T) {
 				return
 			}
 			defer database.Close()
-			_, err = database.LoadSnapshot(context.Background(), snapshotAt(day1, 2),
+			_, err = database.LoadSnapshot(context.Background(), storetest.Snapshot(storetest.Day1, 2),
 				[]ofcom.MobileStation{bifo, dibh}, false)
 			results <- err
 		}()
@@ -531,11 +479,11 @@ func TestLoadFromSeveralProgramsAtOnce(t *testing.T) {
 // A failure leaves no trace: the snapshot, its sites and their states are
 // written together or not at all.
 func TestLoadIsAllOrNothing(t *testing.T) {
-	database, address := open(t)
-	load(t, database, day1, bifo)
+	database, address := storetest.Open(t)
+	load(t, database, storetest.Day1, bifo)
 
-	broken := with(dibh, func(s *ofcom.MobileStation) { s.Kind = "balloon" })
-	_, err := database.LoadSnapshot(context.Background(), snapshotAt(day2, 2),
+	broken := storetest.With(dibh, func(s *ofcom.MobileStation) { s.Kind = "balloon" })
+	_, err := database.LoadSnapshot(context.Background(), storetest.Snapshot(storetest.Day2, 2),
 		[]ofcom.MobileStation{broken, salt}, false)
 	if err == nil {
 		t.Fatal("a value the schema does not know was accepted")
@@ -546,16 +494,16 @@ func TestLoadIsAllOrNothing(t *testing.T) {
 		       (SELECT count(*) FROM station_state), (SELECT count(*) FROM incoming_station)`),
 		[][]string{{"1", "1", "1", "0"}})
 	// And the next import works.
-	wantEqual(t, load(t, database, day2, bifo, salt), store.Loaded{Appeared: 1})
+	wantEqual(t, load(t, database, storetest.Day2, bifo, salt), store.Loaded{Appeared: 1})
 }
 
 func TestLoadRefusesAPermitDateThatIsNotADate(t *testing.T) {
-	database, _ := open(t)
-	wrong := with(bifo, func(s *ofcom.MobileStation) {
+	database, _ := storetest.Open(t)
+	wrong := storetest.With(bifo, func(s *ofcom.MobileStation) {
 		s.Permit = &ofcom.Permit{Type: ofcom.PermitSiteDataSheet, Date: "2021-02-30"}
 	})
 
-	_, err := database.LoadSnapshot(context.Background(), snapshotAt(day1, 1), []ofcom.MobileStation{wrong}, false)
+	_, err := database.LoadSnapshot(context.Background(), storetest.Snapshot(storetest.Day1, 1), []ofcom.MobileStation{wrong}, false)
 
 	if err == nil || !strings.Contains(err.Error(), `the permit date "2021-02-30" is not a date`) {
 		t.Errorf("got %v", err)
@@ -583,13 +531,13 @@ func TestOpenDoesNotShowThePassword(t *testing.T) {
 
 // The API's connections refuse to write, whatever the role may do.
 func TestOpenReadOnlyRefusesWrites(t *testing.T) {
-	_, address := open(t)
+	_, address := storetest.Open(t)
 	reader, err := store.OpenReadOnly(context.Background(), address, time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reader.Close()
-	_, err = reader.LoadSnapshot(context.Background(), snapshotAt(day1, 1), []ofcom.MobileStation{bifo}, false)
+	_, err = reader.LoadSnapshot(context.Background(), storetest.Snapshot(storetest.Day1, 1), []ofcom.MobileStation{bifo}, false)
 	if err == nil || !strings.Contains(err.Error(), "read-only transaction") {
 		t.Errorf("got %v, want a refusal", err)
 	}

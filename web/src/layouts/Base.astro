@@ -1,6 +1,6 @@
 ---
 import { isLocale, type Locale, locales, localizedPath } from "../i18n/locales";
-import { languageNames, translate } from "../i18n/translate";
+import { languageNames, translator } from "../i18n/translate";
 import "../styles/global.css";
 
 interface Props {
@@ -23,7 +23,7 @@ const {
   error = false,
   fullscreen = false,
 } = Astro.props;
-const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
+const t = translator(locale);
 const pageTitle = title ? `${title} · swisscoverage` : "swisscoverage";
 // The path as the browser sent it: Astro.url is decoded, which would change
 // the identifier in a station's address (see stationIdFromPath).
