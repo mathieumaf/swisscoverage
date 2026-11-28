@@ -268,6 +268,8 @@ const entries =
   const status = document.querySelector<HTMLElement>("[data-share-status]");
   if (button) {
     button.hidden = false;
+    const label = button.textContent;
+    let restore: ReturnType<typeof setTimeout> | undefined;
     button.addEventListener("click", async () => {
       const url = window.location.href.split("#")[0] ?? window.location.href;
       try {
@@ -278,9 +280,9 @@ const entries =
           if (status) {
             status.textContent = button.dataset.copied ?? "";
           }
-          const label = button.textContent;
           button.textContent = button.dataset.copied ?? label;
-          setTimeout(() => {
+          clearTimeout(restore);
+          restore = setTimeout(() => {
             button.textContent = label;
           }, 2000);
         }

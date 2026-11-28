@@ -30,6 +30,8 @@ export function FilterChips({ locale, filters, onFilters }: Props) {
   const [open, setOpen] = useState<Group | null>(null);
   // Where the open list stands, under its chip.
   const [left, setLeft] = useState(0);
+  // How tall it may grow: down to the bottom of the screen.
+  const [maxHeight, setMaxHeight] = useState(0);
   const root = useRef<HTMLDivElement>(null);
   const listId = useId();
 
@@ -142,14 +144,21 @@ export function FilterChips({ locale, filters, onFilters }: Props) {
                   const chip = event.currentTarget;
                   const box = root.current?.getBoundingClientRect();
                   const rect = chip.getBoundingClientRect();
-                  // Under its chip, but never past the right edge.
+                  // Under its chip, but within the screen, with a margin.
+                  const margin = 12;
                   setLeft(
                     box
                       ? Math.max(
-                          0,
-                          Math.min(rect.left - box.left, box.width - listWidth),
+                          margin - box.left,
+                          Math.min(
+                            rect.left - box.left,
+                            window.innerWidth - margin - box.left - listWidth,
+                          ),
                         )
                       : 0,
+                  );
+                  setMaxHeight(
+                    window.innerHeight - (box?.bottom ?? 0) - 2 * margin,
                   );
                   setOpen(group.key);
                 }}
@@ -181,8 +190,8 @@ export function FilterChips({ locale, filters, onFilters }: Props) {
       {current && (
         <fieldset
           id={listId}
-          className="pointer-events-auto absolute top-full mt-1 max-h-[calc(100dvh-9rem)] w-72 max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-3xl bg-surface p-2 shadow-card phone:right-3 phone:left-3! phone:w-auto"
-          style={{ left }}
+          className="pointer-events-auto absolute top-full mt-1 w-72 max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-3xl bg-surface p-2 shadow-card phone:right-3 phone:left-3! phone:w-auto"
+          style={{ left, maxHeight }}
         >
           <legend className="sr-only">{t(current.title)}</legend>
           <ul>

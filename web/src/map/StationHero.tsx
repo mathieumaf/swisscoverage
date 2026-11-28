@@ -61,7 +61,7 @@ export default function StationHero({ locale, operator, position }: Props) {
       );
       // On a phone the credits open folded, as on the map of every station:
       // unfolded, they would cover the station. MapLibre unfolds them the
-      // first time they fill, with the style; they fold right after. Their
+      // first time they fill; they fold right after. Their
       // button unfolds them.
       if (phone) {
         const fold = () => {
@@ -70,10 +70,10 @@ export default function StationHero({ locale, operator, position }: Props) {
           );
           if (credits) {
             credits.classList.remove("maplibregl-compact-show");
-            instance?.off("styledata", fold);
+            instance?.off("data", fold);
           }
         };
-        instance.on("styledata", fold);
+        instance.on("data", fold);
       }
       // The station is a marker, drawn whether or not the base map loads.
       const marker = document.createElement("div");

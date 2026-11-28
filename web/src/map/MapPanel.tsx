@@ -189,7 +189,16 @@ export function MapPanel({
   );
 
   const results = (
-    <div className="px-3 pt-2 pb-4 text-[0.9375rem]">
+    // Escape on a result folds the results, as it does in the field.
+    // biome-ignore lint/a11y/noStaticElementInteractions: the key comes from the buttons inside
+    <div
+      className="px-3 pt-2 pb-4 text-[0.9375rem]"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setShowResults(false);
+        }
+      }}
+    >
       {found.length > 0 && (
         <Results title={t("search.stations")}>
           {found.map((station) => (

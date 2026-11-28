@@ -25,12 +25,15 @@ export function Sheet({
   children,
 }: Props) {
   const closeButton = useRef<HTMLButtonElement>(null);
+  const section = useRef<HTMLElement>(null);
   const titleId = useId();
 
   useEffect(() => {
     closeButton.current?.focus({ preventScroll: true });
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      // A sheet under the search results is hidden, and Escape folds the
+      // results instead.
+      if (event.key === "Escape" && !section.current?.closest("[hidden]")) {
         onClose();
       }
     };
@@ -39,7 +42,7 @@ export function Sheet({
   }, [onClose]);
 
   return (
-    <section className="px-5 pt-4 pb-5" aria-labelledby={titleId}>
+    <section ref={section} className="px-5 pt-4 pb-5" aria-labelledby={titleId}>
       {back && (
         <button
           type="button"

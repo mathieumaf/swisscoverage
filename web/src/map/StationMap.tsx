@@ -656,7 +656,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
         <FilterChips locale={locale} filters={filters} onFilters={setFilters} />
       )}
       {(status !== "ready" || filtered) && (
-        <div className="absolute bottom-6 left-[calc(50%+12.75rem)] z-[2] flex max-w-[calc(100%-27rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-1 rounded-[1.5rem] bg-surface py-1 pr-1 pl-4 text-[0.875rem] font-semibold whitespace-nowrap shadow-float phone:top-[7.75rem] phone:bottom-auto phone:left-1/2 phone:max-w-[calc(100%-1.5rem)]">
+        <div className="absolute bottom-6 left-[calc(50%+12.75rem)] z-[2] flex max-w-[calc(100%-27rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-1 rounded-[1.5rem] bg-surface py-1 pr-1 pl-4 text-[0.875rem] font-semibold shadow-float phone:top-[7.75rem] phone:bottom-auto phone:left-1/2 phone:max-w-[calc(100%-1.5rem)]">
           {status !== "ready" ? (
             <p
               className={`py-1.5 pr-3 ${status === "loading" ? "text-foreground" : "text-danger"}`}
@@ -672,7 +672,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
             </p>
           ) : (
             <>
-              <p role="status" className="py-1.5">
+              <p role="status" className="py-1.5 whitespace-nowrap">
                 {t("filters.count", {
                   shown: formatNumber(locale, shown.length),
                   total: formatNumber(locale, stations.length),
@@ -680,7 +680,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
               </p>
               <button
                 type="button"
-                className="min-h-9 cursor-pointer rounded-full bg-field px-3 font-bold text-accent"
+                className="min-h-9 cursor-pointer rounded-full bg-field px-3 font-bold whitespace-nowrap text-accent"
                 onClick={() => setFilters(allFilters())}
               >
                 {t("filters.reset")}
