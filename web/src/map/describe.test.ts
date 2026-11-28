@@ -96,7 +96,7 @@ describe("history", () => {
     expect(entries[0]).toMatchObject({ changes: [], first: false });
   });
 
-  test("shows a change that rounds to the same words", () => {
+  test("shows a small change of the limit value", () => {
     const close: Period = { ...newer, powerClass: "medium" };
     const entries = history(
       "en",
