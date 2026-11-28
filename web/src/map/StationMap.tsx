@@ -6,23 +6,25 @@ import {
   Map as MapLibreMap,
   NavigationControl,
   type StyleSpecification,
-  setWorkerUrl,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { browserTimeoutMs, createApiClient } from "../api/client";
 import { formatNumber, type Locale } from "../i18n/locales";
 import { translate, translator } from "../i18n/translate";
-import { FilterPanel } from "./FilterPanel";
+import { loadBaseMap } from "./basemap";
+import { FilterChips } from "./FilterChips";
 import {
+  allFilters,
   type Filters,
   hasMapPosition,
   including,
+  isEveryStationShown,
   matches,
   readFilters,
   writeFilters,
 } from "./filters";
+import { MapPanel } from "./MapPanel";
 import "./map.css";
 import { type Place, placeAttribution } from "./places";
 import { StationChoice } from "./StationChoice";
@@ -37,27 +39,6 @@ import {
   toMapData,
   toStations,
 } from "./stations";
-
-// MapLibre draws in a worker, served from this site. Its default address is
-// relative to the library, which the bundler moves.
-setWorkerUrl(workerUrl);
-
-// The base map: OpenFreeMap's Liberty style (docs/data-sources.md).
-const baseMapStyle = "https://tiles.openfreemap.org/styles/liberty";
-
-// What the map is drawn on when the base map's style cannot be loaded: a plain
-// background, so that the stations stay on screen.
-const fallbackStyle: StyleSpecification = {
-  version: 8,
-  sources: {},
-  layers: [
-    {
-      id: "background",
-      type: "background",
-      paint: { "background-color": "#e8eaed" },
-    },
-  ],
-};
 
 // Switzerland, with a margin for the stations near the border.
 const switzerland: [[number, number], [number, number]] = [
@@ -77,8 +58,22 @@ const stationZoom = 15;
 const addressZoom = 17;
 const areaMaxZoom = 15;
 
-// The room the filter panel takes at the right of a large screen.
-const panelWidth = 380;
+// The room the panel takes: at the left of a large screen, its width and
+// margins; at the bottom of a phone, about this share of the height.
+const panelWidth = 408;
+const phonePanelShare = 0.45;
+
+function isPhone(): boolean {
+  return window.matchMedia("(max-width: 640px)").matches;
+}
+
+// How far from the middle of the map a point must be drawn to be seen beside
+// the panel, in pixels.
+function besidePanel(): [number, number] {
+  return isPhone()
+    ? [0, (-window.innerHeight * phonePanelShare) / 2]
+    : [panelWidth / 2, 0];
+}
 
 // Rewrites the parameters of the page's address without reloading it, and
 // keeps the map's position, which MapLibre writes after `#map=`. Commas stay
@@ -131,9 +126,6 @@ export default function StationMap({ locale, apiUrl }: Props) {
   // Whether the station the address names was opened, or found missing: the
   // address keeps it until then.
   const [restored, setRestored] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(
-    () => !window.matchMedia("(max-width: 640px)").matches,
-  );
   const [sourceReady, setSourceReady] = useState(false);
   const shown = useMemo(
     () => stations.filter((station) => matches(station, filters)),
@@ -164,28 +156,13 @@ export default function StationMap({ locale, apiUrl }: Props) {
       }
     });
 
-    // The base map's style is read here rather than by MapLibre, which would
-    // never finish loading without it: when it fails, the map is drawn on a
-    // plain background and the stations stay on screen.
-    fetch(baseMapStyle, { signal: AbortSignal.timeout(browserTimeoutMs) })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`The base map answered ${response.status}`);
-        }
-        return response.json() as Promise<StyleSpecification>;
-      })
-      .then(
-        (style) => ({ style, styleFailed: false }),
-        (cause: unknown) => {
-          console.error("Loading the base map failed:", cause);
-          return { style: fallbackStyle, styleFailed: true };
-        },
-      )
-      .then(({ style, styleFailed }) => {
-        if (!cancelled) {
-          instance = start(style, styleFailed);
-        }
-      });
+    // When the base map's style fails, the map is drawn on a plain
+    // background and the stations stay on screen.
+    loadBaseMap().then(({ style, failed }) => {
+      if (!cancelled) {
+        instance = start(style, failed);
+      }
+    });
 
     function start(
       style: StyleSpecification,
@@ -288,7 +265,7 @@ export default function StationMap({ locale, apiUrl }: Props) {
           source: "stations",
           filter: ["has", "point_count"],
           paint: {
-            "circle-color": "#1e293b",
+            "circle-color": "#16181c",
             "circle-opacity": 0.85,
             "circle-radius": [
               "step",
@@ -336,12 +313,20 @@ export default function StationMap({ locale, apiUrl }: Props) {
               8,
               4,
               12,
-              6,
+              6.5,
               16,
-              9,
+              10,
             ],
             "circle-stroke-color": "#ffffff",
-            "circle-stroke-width": 1.5,
+            "circle-stroke-width": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              8,
+              1,
+              14,
+              2.5,
+            ],
           },
         });
         instance.addLayer({
@@ -362,8 +347,8 @@ export default function StationMap({ locale, apiUrl }: Props) {
               16,
               15,
             ],
-            "circle-stroke-color": "#0f172a",
-            "circle-stroke-width": 3,
+            "circle-stroke-color": "#16181c",
+            "circle-stroke-width": 3.5,
           },
         });
 
@@ -474,31 +459,16 @@ export default function StationMap({ locale, apiUrl }: Props) {
     });
   }, [openId, restored]);
 
-  // On a phone, a sheet and the filters cannot both fit: opening a station
-  // folds the filters.
-  useEffect(() => {
-    if (
-      selected.length > 0 &&
-      window.matchMedia("(max-width: 640px)").matches
-    ) {
-      setPanelOpen(false);
-    }
-  }, [selected]);
-
   // On a small map MapLibre shows its attribution unfolded until the map is
-  // dragged, over the bottom of the panel or of a sheet: opening either, or
-  // one in place of the other, folds it, as a drag would. Its button unfolds
-  // it again.
+  // dragged, over the bottom of the panel: once the stations show, it folds,
+  // as a drag would. Its button unfolds it again.
   useEffect(() => {
-    if (
-      (panelOpen || selected.length > 0) &&
-      window.matchMedia("(max-width: 640px)").matches
-    ) {
+    if (status !== "loading" && isPhone()) {
       container.current
         ?.querySelector(".maplibregl-compact-show")
         ?.classList.remove("maplibregl-compact-show");
     }
-  }, [panelOpen, selected]);
+  }, [status]);
 
   // Open the station the address names, once the stations are loaded, and
   // show it unless the address also gives the map's position.
@@ -519,7 +489,12 @@ export default function StationMap({ locale, apiUrl }: Props) {
     if (station) {
       setFilters((current) => including(current, station));
       if (!namedPosition) {
-        map.current?.jumpTo({ center: station.coordinates, zoom: stationZoom });
+        map.current?.easeTo({
+          center: station.coordinates,
+          zoom: stationZoom,
+          offset: besidePanel(),
+          duration: 0,
+        });
       }
     }
   }, [stations, namedStation, namedPosition]);
@@ -528,7 +503,11 @@ export default function StationMap({ locale, apiUrl }: Props) {
   // open its sheet.
   const find = useCallback((station: Station) => {
     setFilters((current) => including(current, station));
-    map.current?.flyTo({ center: station.coordinates, zoom: stationZoom });
+    map.current?.flyTo({
+      center: station.coordinates,
+      zoom: stationZoom,
+      offset: besidePanel(),
+    });
     setChoice([]);
     setSelected([station]);
   }, []);
@@ -581,15 +560,16 @@ export default function StationMap({ locale, apiUrl }: Props) {
         },
       });
     }
-    // On a phone the panel folds; on a large screen it stays open at the
-    // right, and the place is framed beside it.
-    const phone = window.matchMedia("(max-width: 640px)").matches;
-    if (phone) {
-      setPanelOpen(false);
-    }
-    const padding = phone
-      ? 48
-      : { top: 48, bottom: 48, left: 48, right: panelWidth + 48 };
+    // The place is framed beside the panel: at its right on a large screen,
+    // above it on a phone.
+    const padding = isPhone()
+      ? {
+          top: 120,
+          bottom: window.innerHeight * phonePanelShare + 24,
+          left: 24,
+          right: 24,
+        }
+      : { top: 80, bottom: 48, left: panelWidth + 48, right: 80 };
     // The padding frames this view only: given to `flyTo`, it would stay
     // for every later move.
     const zoom = place.origin === "address" ? addressZoom : areaMaxZoom;
@@ -611,6 +591,41 @@ export default function StationMap({ locale, apiUrl }: Props) {
     setSelected([]);
   }, []);
 
+  const filtered = !isEveryStationShown(filters);
+  const detail =
+    selected.length === 1 && only ? (
+      <StationSheet
+        key={only.id}
+        id={only.id}
+        locale={locale}
+        apiUrl={apiUrl}
+        onClose={close}
+        back={
+          choice.length > 1
+            ? {
+                label: t("choice.title", {
+                  count: formatNumber(locale, choice.length),
+                }),
+                onBack: () => {
+                  setSelected(choice);
+                  setChoice([]);
+                },
+              }
+            : undefined
+        }
+      />
+    ) : selected.length > 1 ? (
+      <StationChoice
+        stations={selected}
+        locale={locale}
+        onChoose={(station) => {
+          setChoice(selected);
+          setSelected([station]);
+        }}
+        onClose={close}
+      />
+    ) : null;
+
   return (
     <div className="station-map absolute inset-0">
       {/* `absolute!`: MapLibre's own stylesheet, outside Tailwind's layers,
@@ -620,66 +635,51 @@ export default function StationMap({ locale, apiUrl }: Props) {
         className="absolute! inset-0"
         aria-label={t("map.label")}
       />
-      {status !== "ready" && (
-        <p
-          className={`absolute bottom-10 left-1/2 max-w-[calc(100%-1.5rem)] phone:bottom-40 -translate-x-1/2 rounded-full bg-background px-4 py-2 text-center text-[0.875rem] shadow-[0_2px_8px_rgb(0_0_0/0.2)] ${status === "loading" ? "text-foreground" : "text-danger"}`}
-          role="status"
-        >
-          {
-            {
-              loading: t("map.loading"),
-              error: t("map.error"),
-              baseMapError: t("map.baseMapError"),
-            }[status]
-          }
-        </p>
-      )}
+      <MapPanel
+        locale={locale}
+        stations={stations}
+        onFind={find}
+        onPlace={showPlace}
+        onClearPlace={clearPlace}
+        detail={detail}
+        detailKey={selected.map((station) => station.id).join(" ") || undefined}
+      />
       {stations.length > 0 && (
-        <FilterPanel
-          locale={locale}
-          filters={filters}
-          onFilters={setFilters}
-          stations={stations}
-          shown={shown.length}
-          onFind={find}
-          onPlace={showPlace}
-          onClearPlace={clearPlace}
-          open={panelOpen}
-          onOpen={setPanelOpen}
-        />
+        <FilterChips locale={locale} filters={filters} onFilters={setFilters} />
       )}
-      {selected.length === 1 && only && (
-        <StationSheet
-          key={only.id}
-          id={only.id}
-          locale={locale}
-          apiUrl={apiUrl}
-          onClose={close}
-          back={
-            choice.length > 1
-              ? {
-                  label: t("choice.title", {
-                    count: formatNumber(locale, choice.length),
-                  }),
-                  onBack: () => {
-                    setSelected(choice);
-                    setChoice([]);
-                  },
-                }
-              : undefined
-          }
-        />
-      )}
-      {selected.length > 1 && (
-        <StationChoice
-          stations={selected}
-          locale={locale}
-          onChoose={(station) => {
-            setChoice(selected);
-            setSelected([station]);
-          }}
-          onClose={close}
-        />
+      {(status !== "ready" || filtered) && (
+        <div className="absolute bottom-6 left-[calc(50%+12.75rem)] z-[2] flex max-w-[calc(100%-27rem)] -translate-x-1/2 items-center gap-1 rounded-full bg-surface py-1 pr-1 pl-4 text-[0.875rem] font-semibold shadow-float phone:top-[7.75rem] phone:bottom-auto phone:left-1/2 phone:max-w-[calc(100%-1.5rem)]">
+          {status !== "ready" ? (
+            <p
+              className={`py-1.5 pr-3 ${status === "loading" ? "text-foreground" : "text-danger"}`}
+              role="status"
+            >
+              {
+                {
+                  loading: t("map.loading"),
+                  error: t("map.error"),
+                  baseMapError: t("map.baseMapError"),
+                }[status]
+              }
+            </p>
+          ) : (
+            <>
+              <p role="status" className="py-1.5">
+                {t("filters.count", {
+                  shown: formatNumber(locale, shown.length),
+                  total: formatNumber(locale, stations.length),
+                })}
+              </p>
+              <button
+                type="button"
+                className="min-h-9 cursor-pointer rounded-full bg-field px-3 font-bold text-accent"
+                onClick={() => setFilters(allFilters())}
+              >
+                {t("filters.reset")}
+              </button>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

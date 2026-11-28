@@ -1,6 +1,8 @@
 ---
 import { isLocale, type Locale, locales, localizedPath } from "../i18n/locales";
-import { languageNames, translator } from "../i18n/translate";
+import { translator } from "../i18n/translate";
+import Logo from "./Logo.astro";
+import SiteNav from "./SiteNav.astro";
 import "../styles/global.css";
 
 interface Props {
@@ -11,9 +13,13 @@ interface Props {
   // An error page has no translations: its language links lead to the home
   // page of each language.
   error?: boolean;
-  // A page that fills the screen, such as the map, under the header and
-  // without the footer. Its content must then credit OFCOM itself.
+  // A page that fills the screen, such as the map, without the header and
+  // the footer: the navigation floats over it. Its content must then credit
+  // OFCOM itself.
   fullscreen?: boolean;
+  // The header floats over the top of the content, such as the map at the
+  // head of a station's page.
+  overlay?: boolean;
 }
 
 const {
@@ -22,6 +28,7 @@ const {
   description,
   error = false,
   fullscreen = false,
+  overlay = false,
 } = Astro.props;
 const t = translator(locale);
 const pageTitle = title ? `${title} · swisscoverage` : "swisscoverage";
@@ -40,6 +47,7 @@ const linkTo = (other: Locale) =>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description ?? t("site.description")} />
     <title>{pageTitle}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     {alternates.map((other) => (
       <link rel="alternate" hreflang={other} href={localizedPath(path, other)} />
     ))}
@@ -50,65 +58,40 @@ const linkTo = (other: Locale) =>
       fullscreen && "h-dvh overflow-hidden",
     ]}
   >
-    <header
-      class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3"
-    >
-      <div class="flex items-center gap-4">
-        <a class="font-bold text-foreground no-underline" href={`/${locale}/`}
-          >swisscoverage</a
-        >
-        <nav aria-label={t("nav.pages")}>
-          <ul class="flex gap-3 text-[0.875rem]">
-            <li>
-              <a
-                class="text-muted no-underline aria-[current=page]:text-foreground"
-                href={`/${locale}/`}
-                aria-current={path === `/${locale}/` ? "page" : undefined}
-                >{t("nav.map")}</a
-              >
-            </li>
-            <li>
-              <a
-                class="text-muted no-underline aria-[current=page]:text-foreground"
-                href={`/${locale}/about`}
-                aria-current={path === `/${locale}/about` ? "page" : undefined}
-                >{t("nav.about")}</a
-              >
-            </li>
-          </ul>
-        </nav>
+    {fullscreen ? (
+      <div class="pointer-events-none absolute top-3 right-3 z-[4]">
+        <SiteNav
+          locale={locale}
+          path={path}
+          linkTo={linkTo}
+          current={!error}
+          keepView
+          hideCurrent
+        />
       </div>
-      <nav aria-label={t("nav.language")}>
-        <ul class="flex gap-1">
-          {locales.map((other) => (
-            <li>
-              <a
-                class="inline-block min-w-11 rounded-md p-2 text-center text-[0.875rem] font-semibold text-muted no-underline aria-[current=page]:bg-border aria-[current=page]:text-foreground"
-                href={linkTo(other)}
-                data-keep-view={fullscreen || undefined}
-                hreflang={other}
-                lang={other}
-                aria-current={!error && other === locale ? "page" : undefined}
-              >
-                {other.toUpperCase()}
-                <span class="sr-only"> {languageNames[other]}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-    </header>
-    <main
-      class:list={[
-        "mx-auto w-full flex-1",
-        fullscreen ? "relative" : "max-w-3xl px-4 py-8",
-      ]}
-    >
+    ) : (
+      <header
+        class:list={[
+          "flex flex-wrap items-center justify-between gap-2 p-3",
+          overlay && "pointer-events-none absolute inset-x-0 top-0 z-[4]",
+        ]}
+      >
+        <a
+          class="pointer-events-auto flex min-h-12 items-center gap-2.5 rounded-full bg-surface pr-5 pl-2.5 font-extrabold text-foreground no-underline shadow-float"
+          href={`/${locale}/`}
+        >
+          <Logo />
+          swisscoverage
+        </a>
+        <SiteNav locale={locale} path={path} linkTo={linkTo} current={!error} />
+      </header>
+    )}
+    <main class:list={["w-full flex-1", fullscreen && "relative"]}>
       <slot />
     </main>
     {!fullscreen && (
       <footer
-        class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border px-4 py-3 text-[0.875rem] text-muted"
+        class="mx-auto flex w-full max-w-[70rem] flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-8 text-[0.8125rem] text-muted"
       >
         <p>{t("footer.source")}</p>
         <p>
@@ -116,5 +99,30 @@ const linkTo = (other: Locale) =>
         </p>
       </footer>
     )}
+    <script>
+      // The menu of languages closes when the visitor clicks elsewhere or
+      // presses Escape, as other menus do.
+      const menus = document.querySelectorAll<HTMLDetailsElement>(
+        "details.language-menu",
+      );
+      document.addEventListener("click", (event) => {
+        for (const menu of menus) {
+          if (menu.open && !menu.contains(event.target as Node)) {
+            menu.open = false;
+          }
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+        for (const menu of menus) {
+          if (menu.open) {
+            menu.open = false;
+            menu.querySelector("summary")?.focus();
+          }
+        }
+      });
+    </script>
   </body>
 </html>

@@ -15,11 +15,48 @@ Astro.response.headers.set("Vary", "Accept-Language");
 ---
 
 <Base locale={locale} title={translate(locale, "notFound.title")} error>
-  <h1 class="my-[0.67em] text-[2em] font-bold">
-    {translate(locale, "notFound.title")}
-  </h1>
-  <p class="my-[1em]">{translate(locale, "notFound.text")}</p>
-  <p class="my-[1em]">
-    <a href={`/${locale}/`}>{translate(locale, "notFound.home")}</a>
-  </p>
+  <section class="mx-auto flex max-w-[56rem] px-4 pt-10 phone:pt-4">
+    <div
+      class="flex w-full flex-wrap items-center gap-x-12 gap-y-6 rounded-[2rem] bg-surface p-10 shadow-card phone:p-6"
+    >
+      {/* A mast that lost its signal. */}
+      <svg
+        viewBox="0 0 220 220"
+        width="220"
+        height="220"
+        aria-hidden="true"
+        class="flex-none phone:mx-auto phone:size-40"
+      >
+        <circle cx="110" cy="110" r="110" class="fill-field"></circle>
+        <g fill="none" stroke-linecap="round" class="stroke-muted">
+          <path d="M84 76a36 36 0 0 1 52 0" stroke-width="6" stroke-dasharray="2 12"></path>
+          <path d="M66 58a62 62 0 0 1 88 0" stroke-width="6" stroke-dasharray="2 14" opacity="0.55"></path>
+        </g>
+        <g class="stroke-foreground" fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M110 98L84 176M110 98l26 78M93 150h34M98 132h24"></path>
+        </g>
+        <circle cx="110" cy="96" r="9" class="fill-accent"></circle>
+        <circle cx="160" cy="150" r="22" class="fill-surface"></circle>
+        <circle cx="160" cy="150" r="18" class="fill-accent"></circle>
+        <path d="M153 143l14 14M167 143l-14 14" stroke-width="4" stroke-linecap="round" class="stroke-accent-foreground"></path>
+      </svg>
+      <div class="min-w-0 flex-1 basis-72">
+        <p class="text-[4rem] leading-none font-extrabold tracking-[-0.04em] text-accent">404</p>
+        <h1 class="mt-3 text-[2rem] leading-[1.15] font-extrabold tracking-[-0.02em]">
+          {translate(locale, "notFound.title")}
+        </h1>
+        <p class="mt-3 text-[1.0625rem] text-muted">{translate(locale, "notFound.text")}</p>
+        <p class="mt-8 flex flex-wrap gap-2">
+          <a
+            class="inline-flex min-h-12 items-center rounded-2xl bg-accent px-5 font-extrabold text-accent-foreground no-underline"
+            href={`/${locale}/`}>{translate(locale, "notFound.home")}</a
+          >
+          <a
+            class="inline-flex min-h-12 items-center rounded-2xl bg-field px-5 font-extrabold text-accent no-underline"
+            href={`/${locale}/about`}>{translate(locale, "nav.about")}</a
+          >
+        </p>
+      </div>
+    </div>
+  </section>
 </Base>

@@ -29,7 +29,8 @@ in the same pull request, and in particular:
 | Daily archive of OFCOM's file, running since 23 November 2026 (`swisscoverage-data`), with an index of its snapshots                                    |
 | Architecture and decisions written down                                                                                                                 |
 
-Next: [step 5](#step-5-going-online), going online.
+Next: [step 5](#step-5-api-documentation), the API's documentation, then
+[step 6](#step-6-going-online), going online.
 
 Waiting on someone else: a Freedom of Information request for OFCOM's detailed
 antenna database was filed on 24 November 2026. Version 1.0 depends on the
@@ -160,6 +161,10 @@ The parser moved to Go, and the repository got its Go toolchain.
   5. The pages (done): a page per station with its history, which the
      station's sheet links to; a page about the site, its data, its sources
      and what a visitor's browser sends; every text in four languages.
+  6. A new look (done): the map's panel, small until a search or a station
+     fills it; the filters as chips over the map; a map at the head of each
+     station's page; the Manrope font, served by the site; the site's mark
+     and its favicon.
 - **Decides.**
   - A page per station, or a map only: a page per station, rendered on the
     server ([decision 24](decisions.md)).
@@ -170,7 +175,18 @@ The parser moved to Go, and the repository got its Go toolchain.
 - **Done when.** The site runs locally against the local API, shows every
   station of the day, filters them, and is usable on a phone-sized screen.
 
-### Step 5. Going online
+### Step 5. API documentation
+
+- **Adds.** A page on the website, in four languages, that explains the public
+  API: what it serves and from where, each endpoint with its parameters and
+  limits, the errors it answers, OFCOM's attribution, and examples to copy,
+  with a link to the contract in `openapi.json`.
+- **Decides.** Whether the page is written by hand or generated from
+  `openapi.json`, and whether it also serves an interactive reference.
+- **Done when.** Someone who has never seen the project reads the page and
+  lists the stations around a point with `curl`, without opening the code.
+
+### Step 6. Going online
 
 - **Adds.** The two images and their build in CI; the Helm chart, checked in
   CI; the cluster; the database with backups; DNS at Cloudflare; the protected
@@ -185,7 +201,7 @@ The parser moved to Go, and the repository got its Go toolchain.
 
 ## Version 0.2: history and assistants
 
-### Step 6. MCP server
+### Step 7. MCP server
 
 - **Adds.** The `mcp` command, with a client generated from `openapi.json`;
   the test that fails when `internal/mcp` imports the API package, the store
@@ -194,14 +210,14 @@ The parser moved to Go, and the repository got its Go toolchain.
   answers "which sites are within one kilometre of these coordinates, and from
   which operators" from live data.
 
-### Step 7. Visible history
+### Step 8. Visible history
 
 - **Adds.** Endpoints for what was added, removed or changed between two dates;
   the deployment map on the website.
 - **Done when.** The site shows, for any period since the archive started, the
   sites that appeared, disappeared or changed.
 
-### Step 8. Statistics and downloads
+### Step 9. Statistics and downloads
 
 - **Adds.** Charts per operator and technology over time; downloads of the
   current data and of each chart's series, in open formats.

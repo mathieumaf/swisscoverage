@@ -12,7 +12,7 @@ export const operatorDot = "size-2.5 flex-none rounded-full";
 // The line above the title of a station, with its operator, on its sheet and
 // on its page.
 export const operatorLine =
-  "mb-1 flex items-center gap-[0.4rem] text-[0.8125rem] font-semibold tracking-[0.04em] text-muted uppercase";
+  "mb-1 flex items-center gap-1.5 text-[0.8125rem] font-bold text-muted";
 
 // One colour per operator, readable on the base map and with white text or a
 // white outline.

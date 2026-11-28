@@ -1,0 +1,93 @@
+---
+import { type Locale, locales } from "../i18n/locales";
+import { languageNames, translator } from "../i18n/translate";
+
+// The pages and the languages, in one pill. The languages open from a menu
+// that needs no script: a `<details>`.
+interface Props {
+  locale: Locale;
+  // The path as the browser sent it, to mark the current page.
+  path: string;
+  // Where each language leads.
+  linkTo: (other: Locale) => string;
+  // Whether a language is the one of this page: not on an error page, whose
+  // links lead to the home page of each language.
+  current: boolean;
+  // Whether the links to the other languages keep the map's view: on the map,
+  // which writes its filters and position into the address.
+  keepView?: boolean;
+  // Leave out the link to the current page: on the map, whose pill must stay
+  // small on a phone.
+  hideCurrent?: boolean;
+}
+
+const {
+  locale,
+  path,
+  linkTo,
+  current,
+  keepView = false,
+  hideCurrent = false,
+} = Astro.props;
+const t = translator(locale);
+const pages = [
+  { href: `/${locale}/`, label: t("nav.map") },
+  { href: `/${locale}/about`, label: t("nav.about") },
+].filter((page) => !(hideCurrent && page.href === path));
+const link =
+  "flex min-h-10 items-center rounded-full px-3.5 text-muted no-underline hover:text-foreground aria-[current=page]:bg-field aria-[current=page]:text-foreground";
+---
+
+<div
+  class="pointer-events-auto flex items-center gap-1 rounded-full bg-surface p-1 text-[0.875rem] font-bold shadow-float"
+>
+  <nav aria-label={t("nav.pages")}>
+    <ul class="flex gap-1">
+      {pages.map((page) => (
+        <li>
+          <a
+            class={link}
+            href={page.href}
+            aria-current={path === page.href ? "page" : undefined}
+          >{page.label}</a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+  <nav aria-label={t("nav.language")}>
+    <details class="language-menu relative">
+      <summary
+        class="flex min-h-10 cursor-pointer list-none items-center gap-1 rounded-full bg-field px-3.5 text-foreground [&::-webkit-details-marker]:hidden"
+      >
+        <span aria-hidden="true">{locale.toUpperCase()}</span>
+        <span class="sr-only">{languageNames[locale]}</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"
+          ><path
+            d="M6 9l6 6 6-6"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"></path></svg
+        >
+      </summary>
+      <ul
+        class="absolute top-full right-0 z-10 mt-2 min-w-44 rounded-2xl bg-surface p-1.5 shadow-card"
+      >
+        {locales.map((other) => (
+          <li>
+            <a
+              class="flex min-h-11 items-center justify-between gap-4 rounded-xl px-3 text-foreground no-underline hover:bg-field aria-[current=page]:bg-field"
+              href={linkTo(other)}
+              data-keep-view={keepView || undefined}
+              hreflang={other}
+              lang={other}
+              aria-current={current && other === locale ? "page" : undefined}
+            >
+              {languageNames[other]}
+              <span class="text-[0.75rem] text-muted">{other.toUpperCase()}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </details>
+  </nav>
+</div>

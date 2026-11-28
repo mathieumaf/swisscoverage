@@ -1,6 +1,50 @@
 /* MapLibre's own controls, which Tailwind's classes do not reach. */
 
-/* The attribution stays above an open sheet. */
+/* The controls stand under the pill of the pages and languages, and on a
+   phone under the filters too. */
+.station-map .maplibregl-ctrl-top-right {
+  top: 4rem;
+  right: 0.25rem;
+}
+
+@media (max-width: 640px) {
+  .station-map .maplibregl-ctrl-top-right {
+    top: 7.25rem;
+  }
+
+  /* Pinching zooms on a phone: the buttons would only cover the map. */
+  .station-map .maplibregl-ctrl-zoom-in,
+  .station-map .maplibregl-ctrl-zoom-out {
+    display: none;
+  }
+}
+
+/* Buttons like the site's: white, rounded, with the same shadow. */
+.station-map .maplibregl-ctrl-group,
+.station-hero .maplibregl-ctrl-group {
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: 0 2px 10px rgb(22 24 28 / 0.14);
+}
+
+.station-map .maplibregl-ctrl-group button {
+  width: 48px;
+  height: 48px;
+}
+
+.station-map .maplibregl-ctrl-group button + button {
+  border-top-color: var(--border);
+}
+
+/* MapLibre draws its icons dark: on a dark surface they are inverted. */
+@media (prefers-color-scheme: dark) {
+  .station-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+    filter: invert(1);
+  }
+}
+
+/* The attribution stays above the panel. */
 .station-map .maplibregl-ctrl-bottom-right {
   z-index: 3;
 }
@@ -8,11 +52,32 @@
 /* The base map is light whatever the site's theme, so the credits are dark
    text on a light band: inherited from a dark page, they would be light grey
    on white. */
-.station-map .maplibregl-ctrl-attrib {
+.station-map .maplibregl-ctrl-attrib,
+.station-hero .maplibregl-ctrl-attrib {
   background: rgb(255 255 255 / 0.85);
   color: #1f2328;
 }
 
-.station-map .maplibregl-ctrl-attrib a {
+.station-map .maplibregl-ctrl-attrib a,
+.station-hero .maplibregl-ctrl-attrib a {
   color: #1f2328;
+}
+
+/* The map at the head of a station's page: its credits under the pill of the
+   pages and languages, and the station as a dot in its operator's colour,
+   with a halo. */
+.station-hero .maplibregl-ctrl-top-right {
+  top: 4.25rem;
+}
+
+.station-hero-marker {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--operator);
+  border: 4px solid #ffffff;
+  box-sizing: border-box;
+  box-shadow:
+    0 0 0 18px color-mix(in srgb, var(--operator) 20%, transparent),
+    0 2px 8px rgb(0 0 0 / 0.3);
 }
