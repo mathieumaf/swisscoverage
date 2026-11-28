@@ -281,42 +281,6 @@ func TestIngestReportsWarningsAndStillLoads(t *testing.T) {
 	}
 }
 
-// A file full of surprises does not flood the output: the first warnings
-// are printed, then how many more there are.
-func TestIngestBoundsTheWarnings(t *testing.T) {
-	address := migrated(t)
-	archive := newArchive(t)
-	archive.add(23, sampleWith(t, func(features []map[string]any) []map[string]any {
-		setProperty(features, 0, "typ_en", "Balloon")
-		// The same site 24 more times: 25 warnings in all.
-		for range 24 {
-			features = append(features, features[1])
-		}
-		return features
-	}))
-
-	stdout, stderr, status := callWith(t, address, archive.arguments()...)
-
-	if !strings.HasPrefix(stdout,
-		"2026-10-23T22:01:35Z: 33 sites, 9 appeared, 0 disappeared, 0 changed, 25 warnings\n") || status != 0 {
-		t.Errorf("got status %d and output %q", status, stdout)
-	}
-	lines := strings.Split(strings.TrimSuffix(stderr, "\n"), "\n")
-	if len(lines) != printedWarnings+1 {
-		t.Fatalf("got %d lines, want %d warnings and a last line:\n%s", len(lines), printedWarnings, stderr)
-	}
-	wantEqual := func(what, got, want string) {
-		t.Helper()
-		if got != want {
-			t.Errorf("%s: got %q, want %q", what, got, want)
-		}
-	}
-	wantEqual("first line", lines[0], `2026-10-23T22:01:35Z: warning: Swisscom BIFO: unrecognised type "Balloon"`)
-	wantEqual("last warning", lines[printedWarnings-1], "2026-10-23T22:01:35Z: warning: "+
-		"Salt TI_3787A at 2705499, 1132611: published more than once, the first is kept")
-	wantEqual("last line", lines[printedWarnings], "2026-10-23T22:01:35Z: and 5 more warnings")
-}
-
 // Two runs at once: the one that finds a snapshot loaded by the other while
 // it downloaded says so, and goes on.
 func TestIngestBesideAnotherRun(t *testing.T) {
@@ -347,7 +311,12 @@ func TestIngestBesideAnotherRun(t *testing.T) {
 
 	stdout, stderr, status := callWith(t, address, archive.arguments()...)
 
-	other := <-others
+	var other result
+	select {
+	case other = <-others:
+	default:
+		t.Fatalf("the other run never started: got status %d, stderr %q and output %q", status, stderr, stdout)
+	}
 	if other.status != 0 || other.stderr != "" || !strings.HasSuffix(other.stdout,
 		"Loaded 2 snapshots. The database holds the 2 snapshots of the archive.\n") {
 		t.Fatalf("the other run: got status %d, output %q and stderr %q", other.status, other.stdout, other.stderr)

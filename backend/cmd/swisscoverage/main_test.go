@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -196,6 +197,31 @@ func TestParseReportsAFailedWrite(t *testing.T) {
 		if status != 1 || !strings.Contains(stderr.String(), "the pipe is closed") {
 			t.Errorf("%v: got status %d and stderr %q, want 1 and the write error",
 				args, status, stderr.String())
+		}
+	}
+}
+
+// A file full of surprises does not flood the output: the first warnings are
+// printed, then how many more there are.
+func TestPrintWarningsStopsAtTheLimit(t *testing.T) {
+	var warnings []string
+	for number := range printedWarnings + 3 {
+		warnings = append(warnings, fmt.Sprintf("warning %d", number+1))
+	}
+	var stderr bytes.Buffer
+	printWarnings(&stderr, "2026-10-23T22:01:35Z", warnings, []string{"Salt TI_3787A at 2705499, 1132611"})
+
+	lines := strings.Split(strings.TrimSuffix(stderr.String(), "\n"), "\n")
+	if len(lines) != printedWarnings+1 {
+		t.Fatalf("got %d lines, want %d warnings and a last line:\n%s", len(lines), printedWarnings, stderr.String())
+	}
+	for index, want := range map[int]string{
+		0:                   "2026-10-23T22:01:35Z: warning: warning 1",
+		printedWarnings - 1: fmt.Sprintf("2026-10-23T22:01:35Z: warning: warning %d", printedWarnings),
+		printedWarnings:     "2026-10-23T22:01:35Z: and 4 more warnings",
+	} {
+		if lines[index] != want {
+			t.Errorf("line %d: got %q, want %q", index+1, lines[index], want)
 		}
 	}
 }

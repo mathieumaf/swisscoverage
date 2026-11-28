@@ -55,7 +55,15 @@ const markup: StationHistory = {
 const received: string[] = [];
 let api: ReturnType<typeof Bun.serve>;
 let site: Awaited<ReturnType<typeof dev>>;
-let previousApiUrl: string | undefined;
+// What the test sets for the site, and what it restores after: the API, and
+// no telemetry nor update check, which would call out and write the
+// settings that make the dev server restart.
+const environment = {
+  SWISSCOVERAGE_API_URL: "",
+  ASTRO_TELEMETRY_DISABLED: "1",
+  ASTRO_DISABLE_UPDATE_CHECK: "true",
+};
+const previous: Record<string, string | undefined> = {};
 
 beforeAll(async () => {
   api = Bun.serve({
@@ -88,23 +96,36 @@ beforeAll(async () => {
       );
     },
   });
-  // Read by the site on its first call to the API.
-  previousApiUrl = process.env.SWISSCOVERAGE_API_URL;
-  process.env.SWISSCOVERAGE_API_URL = api.url.origin;
+  // The API is read by the site on its first call to it.
+  environment.SWISSCOVERAGE_API_URL = api.url.origin;
+  for (const [name, value] of Object.entries(environment)) {
+    previous[name] = process.env[name];
+    process.env[name] = value;
+  }
+  // A port chosen once: should the dev server restart, it comes back on it.
+  const free = Bun.listen({
+    hostname: "127.0.0.1",
+    port: 0,
+    socket: { data() {} },
+  });
+  const port = free.port;
+  free.stop(true);
   site = await dev({
     root: new URL("..", import.meta.url).pathname,
     logLevel: "silent",
-    server: { host: "127.0.0.1", port: 0 },
+    server: { host: "127.0.0.1", port },
   });
 }, 60_000);
 
 afterAll(async () => {
   await site?.stop();
   api?.stop(true);
-  if (previousApiUrl === undefined) {
-    delete process.env.SWISSCOVERAGE_API_URL;
-  } else {
-    process.env.SWISSCOVERAGE_API_URL = previousApiUrl;
+  for (const [name, value] of Object.entries(previous)) {
+    if (value === undefined) {
+      delete process.env[name];
+    } else {
+      process.env[name] = value;
+    }
   }
 });
 
@@ -116,6 +137,8 @@ async function page(path: string): Promise<{ status: number; html: string }> {
 }
 
 const heading = (html: string) => html.match(/<h1[^>]*>([^<]*)/)?.[1]?.trim();
+// What the visitor reads: the content of the page, without its head.
+const main = (html: string) => html.match(/<main[^>]*>([\s\S]*)<\/main>/)?.[1];
 
 describe("the page of a station", () => {
   test("shows what OFCOM publishes of it and its history", async () => {
@@ -143,9 +166,13 @@ describe("the page of a station", () => {
       `/en/stations/${encodeURIComponent(markup.id)}`,
     );
     expect(status).toBe(200);
-    // Inside a quoted attribute, such as the description, markup is text.
-    const outsideAttributes = html.replace(/"[^"]*"/g, '""');
-    expect(outsideAttributes).not.toContain("<script>alert(1)</script>");
+    // The description is the one place it is written as it is, inside a
+    // quoted attribute, where it is text.
+    const description = `<meta name="description" content="${markup.name}, Other:`;
+    expect(html).toContain(description);
+    expect(html.replace(description, "")).not.toContain(
+      "<script>alert(1)</script>",
+    );
     expect(heading(html)).toBe("Other &lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).toContain(
       "<title>Other &lt;script&gt;alert(1)&lt;/script&gt; · swisscoverage</title>",
@@ -178,7 +205,8 @@ describe("the page of a station", () => {
       expect(status).toBe(503);
       expect(heading(html)).toBe("Anlage nicht verfügbar");
       expect(html).not.toContain("hunter2");
-      expect(html).not.toContain("500");
+      expect(main(html)).toBeDefined();
+      expect(main(html)).not.toContain("500");
     } finally {
       logged.mockRestore();
     }

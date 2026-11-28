@@ -90,6 +90,7 @@ describe("createApiClient", () => {
     const client = createApiClient(api.url.origin, 100);
     const started = performance.now();
     await expect(client.GET("/v1/stations")).rejects.toThrow(/time/i);
-    expect(performance.now() - started).toBeLessThan(2_000);
+    // Its own timeout, not a longer one.
+    expect(performance.now() - started).toBeLessThan(900);
   });
 });
