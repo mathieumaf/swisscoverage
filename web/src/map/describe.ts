@@ -1,7 +1,7 @@
 import { formatDate, formatNumber, type Locale } from "../i18n/locales";
 import type { MessageKey } from "../i18n/messages/en";
-import { translate } from "../i18n/translate";
-import type { Period } from "./stations";
+import { translator } from "../i18n/translate";
+import type { Period, StationHistory } from "./stations";
 
 // What a period says, in words, for the sheet on the map and the station's
 // page.
@@ -23,9 +23,20 @@ export const periodFields: { key: keyof PeriodText; label: MessageKey }[] = [
   { key: "permit", label: "sheet.permit" },
 ];
 
+// Where a station stands: in WGS84, to five decimals, about a metre, and in
+// LV95 as OFCOM publishes it.
+export function positionText(
+  station: Pick<StationHistory, "position" | "lv95">,
+): { wgs84: string; lv95: string } {
+  const { position, lv95 } = station;
+  return {
+    wgs84: `${position.lat.toFixed(5)}, ${position.lon.toFixed(5)}`,
+    lv95: `LV95 ${lv95.east}, ${lv95.north}`,
+  };
+}
+
 export function describePeriod(locale: Locale, period: Period): PeriodText {
-  const t = (key: MessageKey, values?: Record<string, string>) =>
-    translate(locale, key, values);
+  const t = translator(locale);
   return {
     kind: t(`kind.${period.kind}`),
     powerClass: t(`power.${period.powerClass}`),
@@ -49,15 +60,16 @@ export function describePeriod(locale: Locale, period: Period): PeriodText {
 }
 
 function permitText(locale: Locale, period: Period): string {
+  const t = translator(locale);
   if (period.permit === null) {
-    return translate(locale, "sheet.unknown");
+    return t("sheet.unknown");
   }
   if (period.permit.type === "exempt") {
-    return translate(locale, "permit.exempt");
+    return t("permit.exempt");
   }
   return period.permit.date === undefined
-    ? translate(locale, "permit.site_data_sheet")
-    : translate(locale, "permit.site_data_sheet_dated", {
+    ? t("permit.site_data_sheet")
+    : t("permit.site_data_sheet_dated", {
         date: formatDate(locale, new Date(period.permit.date)),
       });
 }

@@ -5,6 +5,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -62,4 +64,22 @@ func run(
 		fmt.Fprintf(stderr, "swisscoverage: unknown command %q\n\n%s", args[0], usage)
 		return 2
 	}
+}
+
+// parseArgs parses the arguments of a command, which takes `operands`
+// arguments after its flags. When the command must stop there, it returns
+// false with the exit status: 0 after -h, which printed the usage, and 2 when
+// the command was called the wrong way.
+func parseArgs(flags *flag.FlagSet, args []string, operands int) (int, bool) {
+	if err := flags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0, false
+		}
+		return 2, false
+	}
+	if flags.NArg() != operands {
+		flags.Usage()
+		return 2, false
+	}
+	return 0, true
 }

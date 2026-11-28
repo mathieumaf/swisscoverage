@@ -1,7 +1,6 @@
 import { type ReactNode, useId, useMemo, useState } from "react";
 import { formatNumber, type Locale } from "../i18n/locales";
-import type { MessageKey } from "../i18n/messages/en";
-import { translate } from "../i18n/translate";
+import { translator } from "../i18n/translate";
 import {
   allFilters,
   type Filters,
@@ -55,8 +54,7 @@ export function FilterPanel({
   open,
   onOpen,
 }: Props) {
-  const t = (key: MessageKey, values?: Record<string, string>) =>
-    translate(locale, key, values);
+  const t = translator(locale);
   const [query, setQuery] = useState("");
   const found = useMemo(
     () => searchStations(stations, query, searchLimit),

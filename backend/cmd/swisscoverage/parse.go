@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -34,15 +33,8 @@ func runParse(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		flags.PrintDefaults()
 	}
 	asJSON := flags.Bool("json", false, "print every station and every warning as JSON")
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return 0
-		}
-		return 2
-	}
-	if flags.NArg() != 1 {
-		flags.Usage()
-		return 2
+	if status, ok := parseArgs(flags, args, 1); !ok {
+		return status
 	}
 
 	data, err := readSource(flags.Arg(0), stdin)

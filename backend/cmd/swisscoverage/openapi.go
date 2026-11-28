@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -25,15 +24,8 @@ func runOpenAPI(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("openapi", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	flags.Usage = func() { fmt.Fprint(stderr, openapiUsage) }
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return 0
-		}
-		return 2
-	}
-	if flags.NArg() != 0 {
-		flags.Usage()
-		return 2
+	if status, ok := parseArgs(flags, args, 0); !ok {
+		return status
 	}
 	// The routes are only described: nothing is read, nothing is served.
 	contract, err := api.New(nil, slog.New(slog.DiscardHandler), 0).OpenAPI()

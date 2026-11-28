@@ -1,13 +1,19 @@
 ---
 import { api } from "../../../api/server";
 import { formatDate, isLocale } from "../../../i18n/locales";
-import type { MessageKey } from "../../../i18n/messages/en";
-import { translate } from "../../../i18n/translate";
+import { translator } from "../../../i18n/translate";
 import Base from "../../../layouts/Base.astro";
-import { describePeriod, history, periodFields } from "../../../map/describe";
+import {
+  describePeriod,
+  history,
+  periodFields,
+  positionText,
+} from "../../../map/describe";
 import {
   isStationId,
   operatorColors,
+  operatorDot,
+  operatorLine,
   type StationHistory,
   stationIdFromPath,
   stationOnMapPath,
@@ -27,8 +33,7 @@ const id = stationIdFromPath(new URL(Astro.request.url).pathname, locale);
 if (id === undefined || !isStationId(id)) {
   return Astro.rewrite("/404");
 }
-const t = (key: MessageKey, values?: Record<string, string>) =>
-  translate(locale, key, values);
+const t = translator(locale);
 const date = (value: string) => formatDate(locale, new Date(value));
 
 // Every period the API keeps for the station, up to the most it gives at once.
@@ -53,6 +58,7 @@ try {
 
 const current = station?.periods[0];
 const text = current && describePeriod(locale, current);
+const position = station && positionText(station);
 const entries =
   station === undefined
     ? []
@@ -71,7 +77,10 @@ const entries =
       })
     : undefined}
 >
-  {station === undefined || current === undefined || text === undefined ? (
+  {station === undefined ||
+    current === undefined ||
+    text === undefined ||
+    position === undefined ? (
     <>
       <h1 class="my-[0.67em] text-[2em] font-bold">
         {t("station.unavailableTitle")}
@@ -81,9 +90,9 @@ const entries =
     </>
   ) : (
     <article>
-      <p class="mb-1 flex items-center gap-[0.4rem] text-[0.8125rem] font-semibold tracking-[0.04em] text-muted uppercase">
+      <p class={operatorLine}>
         <span
-          class="size-2.5 flex-none rounded-full"
+          class={operatorDot}
           style={{ background: operatorColors[station.operator] }}
         />
         {t(`operator.${station.operator}`)}
@@ -115,11 +124,9 @@ const entries =
         ))}
         <dt>{t("sheet.position")}</dt>
         <dd>
-          {station.position.lat.toFixed(5)}, {station.position.lon.toFixed(5)}
+          {position.wgs84}
           <br />
-          <span class="text-[0.875rem] text-muted">
-            LV95 {station.lv95.east}, {station.lv95.north}
-          </span>
+          <span class="text-[0.875rem] text-muted">{position.lv95}</span>
         </dd>
         <dt>{t("sheet.firstSeen")}</dt>
         <dd>{date(station.firstSeen)}</dd>

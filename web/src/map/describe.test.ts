@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { describePeriod, history } from "./describe";
+import { describePeriod, history, positionText } from "./describe";
 import {
   type Period,
   stationIdFromPath,
@@ -152,5 +152,16 @@ describe("station addresses", () => {
     ).toBe(
       "/fr/?station=2636501_1240299_Swisscom%20OFTR#map=16/47.3125586/7.9213609",
     );
+  });
+});
+
+describe("positionText", () => {
+  test("gives WGS84 to five decimals and LV95 as published", () => {
+    expect(
+      positionText({
+        position: { lat: 46.9480012, lon: 7.4474 },
+        lv95: { east: 2600640, north: 1199640.5 },
+      }),
+    ).toEqual({ wgs84: "46.94800, 7.44740", lv95: "LV95 2600640, 1199640.5" });
   });
 });

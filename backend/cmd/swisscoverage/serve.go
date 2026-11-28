@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -49,15 +48,8 @@ func runServe(
 	}
 	listen := flags.String("listen", "127.0.0.1:8080",
 		"`address` to listen on, as host:port; :8080 listens on every interface")
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return 0
-		}
-		return 2
-	}
-	if flags.NArg() != 0 {
-		flags.Usage()
-		return 2
+	if status, ok := parseArgs(flags, args, 0); !ok {
+		return status
 	}
 	if err := serve(ctx, *listen, nil, stdout, stderr, getenv); err != nil {
 		fmt.Fprintf(stderr, "swisscoverage serve: %v\n", err)
@@ -72,11 +64,11 @@ func serve(
 	ctx context.Context, address string, ready chan<- string,
 	stdout, stderr io.Writer, getenv func(string) string,
 ) error {
-	databaseURL := getenv("DATABASE_URL")
-	if databaseURL == "" {
-		return errDatabaseURL
+	databaseAddress, err := databaseURL(getenv)
+	if err != nil {
+		return err
 	}
-	database, err := store.OpenReadOnly(ctx, databaseURL, statementTimeout)
+	database, err := store.OpenReadOnly(ctx, databaseAddress, statementTimeout)
 	if err != nil {
 		return err
 	}

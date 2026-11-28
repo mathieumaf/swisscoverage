@@ -1,14 +1,14 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { browserTimeoutMs, createApiClient } from "../api/client";
 import { formatDate, type Locale } from "../i18n/locales";
-import type { MessageKey } from "../i18n/messages/en";
-import { translate } from "../i18n/translate";
-import { describePeriod, periodFields } from "./describe";
+import { translator } from "../i18n/translate";
+import { describePeriod, periodFields, positionText } from "./describe";
 import { Sheet } from "./Sheet";
 import {
   mutedText,
   operatorColors,
   operatorDot,
+  operatorLine,
   type StationHistory,
   stationPath,
 } from "./stations";
@@ -31,8 +31,7 @@ type State =
 // publishes of it today, or last published. Its page has the history.
 export function StationSheet({ id, locale, apiUrl, onClose, back }: Props) {
   const [state, setState] = useState<State>({ status: "loading" });
-  const t = (key: MessageKey, values?: Record<string, string>) =>
-    translate(locale, key, values);
+  const t = translator(locale);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,13 +62,14 @@ export function StationSheet({ id, locale, apiUrl, onClose, back }: Props) {
   const station = state.status === "ready" ? state.station : undefined;
   const current = station?.periods[0];
   const text = current && describePeriod(locale, current);
+  const position = station && positionText(station);
 
   return (
     <Sheet
       title={station?.name ?? "…"}
       eyebrow={
         station && (
-          <p className="mb-1 flex items-center gap-[0.4rem] text-[0.8125rem] font-semibold tracking-[0.04em] text-muted uppercase">
+          <p className={operatorLine}>
             <span
               className={operatorDot}
               style={{ background: operatorColors[station.operator] }}
@@ -93,7 +93,7 @@ export function StationSheet({ id, locale, apiUrl, onClose, back }: Props) {
         </p>
       )}
 
-      {station && current && text && (
+      {station && current && text && position && (
         <>
           {!station.published && (
             <p className="my-[1em] rounded-lg bg-border px-3 py-2">
@@ -120,12 +120,9 @@ export function StationSheet({ id, locale, apiUrl, onClose, back }: Props) {
               </Field>
             ))}
             <Field label={t("sheet.position")}>
-              {station.position.lat.toFixed(5)},{" "}
-              {station.position.lon.toFixed(5)}
+              {position.wgs84}
               <br />
-              <span className={mutedText}>
-                LV95 {station.lv95.east}, {station.lv95.north}
-              </span>
+              <span className={mutedText}>{position.lv95}</span>
             </Field>
             <Field label={t("sheet.firstSeen")}>
               {formatDate(locale, new Date(station.firstSeen))}
