@@ -14,30 +14,32 @@ export type PlaceSearch =
   | { status: "ready"; places: Place[]; fuzzy: boolean };
 
 // The places that match what the visitor types, asked of swisstopo once they
-// have typed enough and paused. A newer query cancels the one before.
+// have typed enough and paused. A newer query cancels the one before, and the
+// answer to an older one is never shown.
 export function usePlaces(query: string): PlaceSearch {
   const text = placeQuery(query);
   const wanted = text.length >= placeQueryMinLength;
-  const [search, setSearch] = useState<PlaceSearch>({ status: "idle" });
+  const [answer, setAnswer] = useState<{ text: string; search: PlaceSearch }>({
+    text: "",
+    search: { status: "idle" },
+  });
 
   useEffect(() => {
     if (!wanted) {
-      setSearch({ status: "idle" });
       return;
     }
-    setSearch({ status: "loading" });
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       searchPlaces(text, controller.signal).then(
         ({ places, fuzzy }) => {
           if (!controller.signal.aborted) {
-            setSearch({ status: "ready", places, fuzzy });
+            setAnswer({ text, search: { status: "ready", places, fuzzy } });
           }
         },
         (cause: unknown) => {
           if (!controller.signal.aborted) {
             console.error("Searching places failed:", cause);
-            setSearch({ status: "error" });
+            setAnswer({ text, search: { status: "error" } });
           }
         },
       );
@@ -48,5 +50,8 @@ export function usePlaces(query: string): PlaceSearch {
     };
   }, [text, wanted]);
 
-  return wanted ? search : { status: "idle" };
+  if (!wanted) {
+    return { status: "idle" };
+  }
+  return answer.text === text ? answer.search : { status: "loading" };
 }

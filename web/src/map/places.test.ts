@@ -1,5 +1,11 @@
-import { describe, expect, test } from "bun:test";
-import { labelText, placeQuery, placeSearchAddress, toPlaces } from "./places";
+import { afterEach, describe, expect, test } from "bun:test";
+import {
+  labelText,
+  placeQuery,
+  placeSearchAddress,
+  searchPlaces,
+  toPlaces,
+} from "./places";
 
 // Results shaped like the answers of swisstopo's location search
 // (docs/data-sources.md), with the fields the site reads.
@@ -41,9 +47,8 @@ describe("placeSearchAddress", () => {
     });
   });
 
-  test("sends at most ten words and a hundred characters", () => {
+  test("sends at most ten words", () => {
     expect(placeQuery("a b c d e f g h i j k l")).toBe("a b c d e f g h i j");
-    expect(placeQuery("x".repeat(150))).toHaveLength(100);
   });
 });
 
@@ -53,13 +58,13 @@ describe("toPlaces", () => {
       fuzzy: false,
       places: [
         {
-          key: "address:1006646:0",
+          key: "address:0",
           origin: "address",
           label: "Bundesplatz 3 3011 Bern",
           center: [7.444191932678223, 46.946773529052734],
         },
         {
-          key: "gg25:5586:1",
+          key: "gg25:1",
           origin: "gg25",
           label: "Lausanne (VD)",
           center: [6.638521671295166, 46.52865219116211],
@@ -136,5 +141,60 @@ describe("labelText", () => {
     expect(
       labelText("Route de Lausanne # <b>1032 Romanel-sur-Lausanne</b>"),
     ).toBe("Route de Lausanne 1032 Romanel-sur-Lausanne");
+  });
+});
+
+describe("searchPlaces", () => {
+  const realFetch = globalThis.fetch;
+  const realAny = AbortSignal.any;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    AbortSignal.any = realAny;
+  });
+
+  // Browsers before Safari 17.4 and Chrome 116 lack `AbortSignal.any`.
+  function withoutAny() {
+    // @ts-expect-error: removed as in an older browser.
+    AbortSignal.any = undefined;
+  }
+
+  test("reads an answer without credentials or redirects", async () => {
+    withoutAny();
+    let options: RequestInit | undefined;
+    globalThis.fetch = (async (_: unknown, init?: RequestInit) => {
+      options = init;
+      return Response.json({ results: [address] });
+    }) as typeof fetch;
+    const { places } = await searchPlaces(
+      "Bundesplatz 3",
+      new AbortController().signal,
+    );
+    expect(places.map((place) => place.label)).toEqual([
+      "Bundesplatz 3 3011 Bern",
+    ]);
+    expect(options?.credentials).toBe("omit");
+    expect(options?.redirect).toBe("error");
+  });
+
+  test("stops when the caller gives up", async () => {
+    withoutAny();
+    globalThis.fetch = ((_: unknown, init?: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new DOMException("Aborted", "AbortError")),
+        );
+      })) as typeof fetch;
+    const caller = new AbortController();
+    const search = searchPlaces("Bern", caller.signal);
+    caller.abort();
+    await expect(search).rejects.toThrow("Aborted");
+  });
+
+  test("refuses an answer that is an error", async () => {
+    globalThis.fetch = (async () =>
+      new Response("busy", { status: 503 })) as unknown as typeof fetch;
+    await expect(
+      searchPlaces("Bern", new AbortController().signal),
+    ).rejects.toThrow("503");
   });
 });

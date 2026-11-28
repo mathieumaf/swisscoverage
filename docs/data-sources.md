@@ -152,7 +152,8 @@ attribution.
 What to know:
 
 - **Fair use.** The REST services allow 40 requests a minute and 21 million a
-  year. The terms count "the integration of geoservices in web applications
+  year; the terms do not say whether per address or per application. They
+  count "the integration of geoservices in web applications
   with an average of 20,000 users per day" as fair use, ask to avoid bots
   with high query rates, and may restrict or refuse access in case of
   excessive use. The site asks only once the visitor has typed three

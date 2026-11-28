@@ -176,7 +176,8 @@ personal data.
    contract. The browser reaches the same origin. What this does not cover
    yet: the website sends no security headers of its own, such as a Content
    Security Policy. They come with the deployment, which fixes the origins a
-   policy must allow: the API's and the base map's. _Unverified_
+   policy must allow: the API's, the base map's and the location search's
+   (`api3.geo.admin.ch`). _Unverified_
    for the MCP server: it ships in the same image as the API, the import and
    the migrations, so this holds only if each deployment gets its own
    credentials and network access, and if the MCP package cannot import the

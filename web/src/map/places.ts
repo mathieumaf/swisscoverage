@@ -20,9 +20,8 @@ export const placeQueryDelayMs = 300;
 const placeLimit = 5;
 const placeTimeoutMs = 10_000;
 
-// The service reads at most ten words, and nobody types a longer address.
+// The service reads at most ten words.
 const maxWords = 10;
-const maxQueryLength = 100;
 
 // Where a place may stand: the map's own limits.
 const area = { west: 3.5, south: 44.5, east: 13, north: 49 };
@@ -45,12 +44,7 @@ export interface PlaceAnswer {
 
 // The query as the service gets it.
 export function placeQuery(query: string): string {
-  return query
-    .trim()
-    .split(/\s+/u)
-    .slice(0, maxWords)
-    .join(" ")
-    .slice(0, maxQueryLength);
+  return query.trim().split(/\s+/u).slice(0, maxWords).join(" ");
 }
 
 export function placeSearchAddress(query: string): URL {
@@ -69,15 +63,29 @@ export async function searchPlaces(
   query: string,
   signal: AbortSignal,
 ): Promise<PlaceAnswer> {
-  const response = await fetch(placeSearchAddress(query), {
-    signal: AbortSignal.any([signal, AbortSignal.timeout(placeTimeoutMs)]),
-    credentials: "omit",
-    redirect: "error",
-  });
-  if (!response.ok) {
-    throw new Error(`The search by address answered ${response.status}`);
+  // The caller's signal or the timeout, whichever comes first, without
+  // `AbortSignal.any`, which browsers before Safari 17.4 lack.
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  const timer = setTimeout(abort, placeTimeoutMs);
+  signal.addEventListener("abort", abort);
+  if (signal.aborted) {
+    abort();
   }
-  return toPlaces(await response.json());
+  try {
+    const response = await fetch(placeSearchAddress(query), {
+      signal: controller.signal,
+      credentials: "omit",
+      redirect: "error",
+    });
+    if (!response.ok) {
+      throw new Error(`The search by address answered ${response.status}`);
+    }
+    return toPlaces(await response.json());
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", abort);
+  }
 }
 
 // What the site keeps of an answer of the service, which it does not trust:
@@ -119,7 +127,7 @@ function toPlace(result: unknown, index: number): Place | undefined {
     return undefined;
   }
   const place: Place = {
-    key: `${origin}:${typeof result.id === "number" ? result.id : index}:${index}`,
+    key: `${origin}:${index}`,
     origin,
     label: text,
     center: [lon, lat],
@@ -136,7 +144,6 @@ function toPlace(result: unknown, index: number): Place | undefined {
 // `Route de Lausanne #`.
 export function labelText(label: string): string {
   return label
-    .slice(0, 500)
     .replace(/<[^>]*>/gu, "")
     .replace(
       /&(amp|lt|gt|quot|#39|apos);/gu,

@@ -483,16 +483,19 @@ export default function StationMap({ locale, apiUrl }: Props) {
   }, [selected]);
 
   // On a small map MapLibre shows its attribution unfolded until the map is
-  // dragged, over the bottom of the panel or of a sheet: opening either folds
-  // it, as a drag would. Its button unfolds it again.
-  const panelOrSheet = panelOpen || selected.length > 0;
+  // dragged, over the bottom of the panel or of a sheet: opening either, or
+  // one in place of the other, folds it, as a drag would. Its button unfolds
+  // it again.
   useEffect(() => {
-    if (panelOrSheet && window.matchMedia("(max-width: 640px)").matches) {
+    if (
+      (panelOpen || selected.length > 0) &&
+      window.matchMedia("(max-width: 640px)").matches
+    ) {
       container.current
         ?.querySelector(".maplibregl-compact-show")
         ?.classList.remove("maplibregl-compact-show");
     }
-  }, [panelOrSheet]);
+  }, [panelOpen, selected]);
 
   // Open the station the address names, once the stations are loaded, and
   // show it unless the address also gives the map's position.
@@ -585,11 +588,12 @@ export default function StationMap({ locale, apiUrl }: Props) {
       : { top: 48, bottom: 48, left: 48, right: panelWidth + 48 };
     // The padding frames this view only: given to `flyTo`, it would stay
     // for every later move.
+    const zoom = place.origin === "address" ? addressZoom : areaMaxZoom;
     const camera = instance.cameraForBounds(
       place.bounds ?? [place.center, place.center],
-      { padding, maxZoom: place.bounds ? areaMaxZoom : addressZoom },
+      { padding, maxZoom: zoom },
     );
-    instance.flyTo(camera ?? { center: place.center, zoom: addressZoom });
+    instance.flyTo(camera ?? { center: place.center, zoom });
   }, []);
 
   const close = useCallback(() => setSelected([]), []);

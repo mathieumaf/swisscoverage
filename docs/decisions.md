@@ -483,8 +483,8 @@ Three facts shaped most choices:
 - **Cost.** What a visitor types goes to the Confederation's servers, along
   with their IP address, station labels included once they reach three
   characters. The search depends on a service with no guarantee, and
-  `api3.geo.admin.ch` joins the origins the Content Security Policy must
-  allow.
+  `api3.geo.admin.ch` joins the origins that the Content Security Policy,
+  which comes with the deployment, must allow.
 - **Rejected.** A relay on the site's server: it would hide the visitor's
   address from swisstopo, but send every visitor's searches from one
   address, where the terms' 40 requests a minute would likely count them all
